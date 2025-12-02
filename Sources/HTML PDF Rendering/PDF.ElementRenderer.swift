@@ -213,13 +213,20 @@ extension PDF {
                 context.x += indent
                 context.availableWidth -= indent
 
+                // Enable preformatted mode to preserve whitespace/newlines
+                let wasPreserving = context.preserveWhitespace
+                context.preserveWhitespace = true
+
                 // Render content
                 let _ = renderContent(with: preStyle)
 
                 // Flush inline runs accumulated by children
                 let _ = context.flushInlineRuns()
 
-                // Restore and add spacing after
+                // Restore preformatted mode
+                context.preserveWhitespace = wasPreserving
+
+                // Restore position and add spacing after
                 context.x = originalX
                 context.availableWidth += indent
                 context.advanceY(fontSize * 0.5)
@@ -366,6 +373,9 @@ extension PDF {
             // Flush pending runs before list
             let _ = context.flushInlineRuns()
 
+            // Push unordered list context
+            context.pushList(.unordered)
+
             let fontSize = style.fontSize ?? configuration.defaultFontSize
             let bulletIndent: Double = 20
             let originalX = context.x
@@ -384,6 +394,9 @@ extension PDF {
 
             // Flush any remaining runs
             let _ = context.flushInlineRuns()
+
+            // Pop list context
+            context.popList()
 
             // Restore position
             context.x = originalX
@@ -404,6 +417,9 @@ extension PDF {
             // Flush pending runs before list
             let _ = context.flushInlineRuns()
 
+            // Push ordered list context (starting at 1)
+            context.pushList(.ordered(startNumber: 1))
+
             let fontSize = style.fontSize ?? configuration.defaultFontSize
             let numberIndent: Double = 25
             let originalX = context.x
@@ -422,6 +438,9 @@ extension PDF {
 
             // Flush any remaining runs
             let _ = context.flushInlineRuns()
+
+            // Pop list context
+            context.popList()
 
             // Restore position
             context.x = originalX
@@ -446,16 +465,19 @@ extension PDF {
             let font = PDF.Font(style, base: configuration.defaultFont)
             let color = style.color ?? configuration.defaultColor
 
-            // Check for page break before rendering bullet
+            // Check for page break before rendering marker
             context.checkPageBreak(needing: fontSize)
 
-            // Render bullet point at the original margin
-            // The bullet appears to the left of the indented content
-            // Using hyphen-minus as bullet since bullet (U+2022) isn't in Standard 14 fonts
-            let bulletX = context.x - 12  // Position bullet to the left
+            // Get the list marker (-, 1., 2., etc.) from context
+            let marker = context.nextListMarker()
+
+            // Calculate marker position to the left of indented content
+            // For numbered lists, we need more space for wider markers like "10."
+            let markerWidth = font.stringWidth(marker, atSize: fontSize)
+            let markerX = context.x - markerWidth - 4  // 4pt gap between marker and content
             context.addOperation(.text(PDF.TextOperation(
-                text: "-",
-                position: PDF.Point(x: bulletX, y: context.y),
+                text: marker,
+                position: PDF.Point(x: markerX, y: context.y),
                 font: font,
                 size: fontSize,
                 color: color
