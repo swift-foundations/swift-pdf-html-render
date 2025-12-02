@@ -20,6 +20,9 @@ extension HTML {
         /// Font style
         public var fontStyle: FontStyle?
 
+        /// Font family
+        public var fontFamily: FontFamily?
+
         /// Outer margins
         public var margin: PDF.EdgeInsets?
 
@@ -41,6 +44,7 @@ extension HTML {
             color: PDF.Color? = nil,
             fontWeight: FontWeight? = nil,
             fontStyle: FontStyle? = nil,
+            fontFamily: FontFamily? = nil,
             margin: PDF.EdgeInsets? = nil,
             padding: PDF.EdgeInsets? = nil,
             textAlign: TextAlignment? = nil,
@@ -51,6 +55,7 @@ extension HTML {
             self.color = color
             self.fontWeight = fontWeight
             self.fontStyle = fontStyle
+            self.fontFamily = fontFamily
             self.margin = margin
             self.padding = padding
             self.textAlign = textAlign
@@ -68,6 +73,7 @@ extension HTML {
             if let value = other.color { color = value }
             if let value = other.fontWeight { fontWeight = value }
             if let value = other.fontStyle { fontStyle = value }
+            if let value = other.fontFamily { fontFamily = value }
             if let value = other.margin { margin = value }
             if let value = other.padding { padding = value }
             if let value = other.textAlign { textAlign = value }
@@ -101,6 +107,20 @@ extension HTML.ComputedStyle {
     public enum FontStyle: Sendable {
         case normal
         case italic
+    }
+}
+
+// MARK: - Font Family
+
+extension HTML.ComputedStyle {
+    /// Font family values (maps to PDF Standard 14 fonts)
+    public enum FontFamily: Sendable {
+        /// Helvetica (sans-serif, default)
+        case helvetica
+        /// Times Roman (serif)
+        case times
+        /// Courier (monospace, for code)
+        case courier
     }
 }
 
@@ -161,15 +181,29 @@ extension PDF.Font {
     /// let font = PDF.Font(style, base: .helvetica) // helveticaBold
     /// ```
     public init(_ style: HTML.ComputedStyle, base: PDF.Font = .helvetica) {
+        // Determine base font from fontFamily if specified
+        let baseFont: PDF.Font
+        switch style.fontFamily {
+        case .helvetica:
+            baseFont = .helvetica
+        case .times:
+            baseFont = .times
+        case .courier:
+            baseFont = .courier
+        case nil:
+            baseFont = base
+        }
+
+        // Apply weight and style
         switch (style.fontWeight, style.fontStyle) {
         case (.bold, .italic):
-            self = base.boldItalicVariant
+            self = baseFont.boldItalicVariant
         case (.bold, _):
-            self = base.boldVariant
+            self = baseFont.boldVariant
         case (_, .italic):
-            self = base.italicVariant
+            self = baseFont.italicVariant
         default:
-            self = base
+            self = baseFont
         }
     }
 }
