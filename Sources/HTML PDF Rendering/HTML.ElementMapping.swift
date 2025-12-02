@@ -12,18 +12,25 @@ extension HTML {
     public enum ElementMapping {
 
         /// Convert an HTML.View to a PDF.View
+        ///
+        /// This method attempts direct tree conversion for types conforming to
+        /// `PDFConvertible`, falling back to string parsing for other types.
         public static func convert<T: HTML.View>(
             _ html: T,
             configuration: HTML.Configuration,
             style: HTML.ComputedStyle = .empty
         ) -> any PDF.View {
-            // Get raw HTML bytes to analyze the structure
+            // Try direct conversion if the type conforms to PDFConvertible
+            if let convertible = html as? (any PDFConvertible) {
+                return convertible.toPDFView(configuration: configuration, style: style)
+            }
+
+            // Fallback: render to HTML string and parse
             var htmlContext = HTML.Context()
             var buffer: [UInt8] = []
             T._render(html, into: &buffer, context: &htmlContext)
             let htmlString = String(decoding: buffer, as: UTF8.self)
 
-            // Parse and convert the HTML string to PDF views
             return convertHTMLString(
                 htmlString,
                 configuration: configuration,

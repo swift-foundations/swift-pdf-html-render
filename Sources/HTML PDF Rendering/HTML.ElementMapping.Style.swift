@@ -6,7 +6,7 @@ import PDF_Standard
 extension HTML.ElementMapping {
 
     /// Extract style from inline attributes
-    static func styleFromAttributes(_ attributes: [String: String]) -> HTML.ComputedStyle {
+    public static func styleFromAttributes(_ attributes: [String: String]) -> HTML.ComputedStyle {
         var style = HTML.ComputedStyle.empty
 
         guard let styleAttr = attributes["style"] else {
