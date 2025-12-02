@@ -15,6 +15,7 @@ let package = Package(
         .package(path: "../swift-html-rendering"),
         .package(path: "../swift-pdf-rendering"),
         .package(path: "/Users/coen/Developer/swift-standards/swift-standards"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
     ],
     targets: [
         .target(
@@ -23,6 +24,13 @@ let package = Package(
                 .product(name: "HTML Rendering", package: "swift-html-rendering"),
                 .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
                 .product(name: "Standards", package: "swift-standards"),
+            ]
+        ),
+        .testTarget(
+            name: "HTML PDF Rendering Tests",
+            dependencies: [
+                "HTML PDF Rendering",
+                .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
             ]
         ),
     ]

@@ -32,7 +32,7 @@ extension HTML {
         }
 
         /// Convert an HTML string to PDF views
-        static func convertHTMLString(
+        public static func convertHTMLString(
             _ html: String,
             configuration: HTML.Configuration,
             style: HTML.ComputedStyle
@@ -142,6 +142,8 @@ extension HTML {
             }
         }
 
+        // MARK: - Parsing Helpers
+
         /// Parse tag name from tag content
         private static func parseTagName(_ tagContent: String) -> String {
             let content = String(tagContent.trimming(where: \.isWhitespace))
@@ -151,11 +153,10 @@ extension HTML {
             return content.lowercased()
         }
 
-        /// Parse attributes from tag content (simple parser without regex)
-        private static func parseAttributes(_ tagContent: String) -> [String: String] {
+        /// Parse attributes from tag content
+        static func parseAttributes(_ tagContent: String) -> [String: String] {
             var attributes: [String: String] = [:]
 
-            // Skip tag name
             guard let spaceIndex = tagContent.firstIndex(of: " ") else {
                 return attributes
             }
@@ -163,11 +164,9 @@ extension HTML {
             var remaining = tagContent[tagContent.index(after: spaceIndex)...]
 
             while !remaining.isEmpty {
-                // Skip whitespace
                 remaining = remaining.drop(while: \.isWhitespace)
                 guard !remaining.isEmpty else { break }
 
-                // Find attribute name
                 var nameEnd = remaining.startIndex
                 while nameEnd < remaining.endIndex && remaining[nameEnd] != "=" && !remaining[nameEnd].isWhitespace {
                     nameEnd = remaining.index(after: nameEnd)
@@ -177,15 +176,12 @@ extension HTML {
                 guard !name.isEmpty else { break }
 
                 remaining = remaining[nameEnd...]
-
-                // Skip whitespace and equals sign
                 remaining = remaining.drop(while: \.isWhitespace)
 
                 if remaining.first == "=" {
                     remaining = remaining.dropFirst()
                     remaining = remaining.drop(while: \.isWhitespace)
 
-                    // Get value
                     if remaining.first == "\"" || remaining.first == "'" {
                         let quote = remaining.first!
                         remaining = remaining.dropFirst()
@@ -195,7 +191,6 @@ extension HTML {
                             remaining = remaining[remaining.index(after: endQuote)...]
                         }
                     } else {
-                        // Unquoted value - find end
                         var valueEnd = remaining.startIndex
                         while valueEnd < remaining.endIndex && !remaining[valueEnd].isWhitespace {
                             valueEnd = remaining.index(after: valueEnd)
@@ -235,7 +230,6 @@ extension HTML {
                     }
                     index = html.index(index, offsetBy: closeTag.count)
                 } else if remaining.hasPrefix(openTag) {
-                    // Check if it's actually an open tag (not just matching prefix)
                     let afterTag = html.index(index, offsetBy: openTag.count)
                     if afterTag < html.endIndex {
                         let nextChar = html[afterTag]
@@ -261,7 +255,9 @@ extension HTML {
             return voidElements.contains(tagName)
         }
 
-        /// Handle void elements (br, hr, etc.)
+        // MARK: - Element Dispatch
+
+        /// Handle void elements by dispatching to element-specific methods
         private static func handleVoidElement(
             _ tagName: String,
             attributes: [String: String],
@@ -269,16 +265,16 @@ extension HTML {
             style: HTML.ComputedStyle
         ) -> (any PDF.View)? {
             switch tagName {
-            case "br":
-                return PDF.Spacer(style.fontSize ?? configuration.defaultFontSize)
-            case "hr":
-                return PDF.Divider()
+            case BR.tag:
+                return BR.toPDF(configuration: configuration, style: style)
+            case ThematicBreak.tag:
+                return ThematicBreak.toPDF(configuration: configuration, style: style)
             default:
                 return nil
             }
         }
 
-        /// Convert a specific HTML element to PDF view
+        /// Convert element by dispatching to element-specific methods
         private static func convertElement(
             tagName: String,
             content: String,
@@ -288,53 +284,69 @@ extension HTML {
         ) -> (any PDF.View)? {
             switch tagName {
             // Headings
-            case "h1":
-                return createHeading(level: 1, content: content, configuration: configuration, style: style)
-            case "h2":
-                return createHeading(level: 2, content: content, configuration: configuration, style: style)
-            case "h3":
-                return createHeading(level: 3, content: content, configuration: configuration, style: style)
-            case "h4":
-                return createHeading(level: 4, content: content, configuration: configuration, style: style)
-            case "h5":
-                return createHeading(level: 5, content: content, configuration: configuration, style: style)
-            case "h6":
-                return createHeading(level: 6, content: content, configuration: configuration, style: style)
+            case H1.tag:
+                return H1.toPDF(content: content, configuration: configuration, style: style)
+            case H2.tag:
+                return H2.toPDF(content: content, configuration: configuration, style: style)
+            case H3.tag:
+                return H3.toPDF(content: content, configuration: configuration, style: style)
+            case H4.tag:
+                return H4.toPDF(content: content, configuration: configuration, style: style)
+            case H5.tag:
+                return H5.toPDF(content: content, configuration: configuration, style: style)
+            case H6.tag:
+                return H6.toPDF(content: content, configuration: configuration, style: style)
 
             // Block elements
-            case "div", "section", "article", "header", "footer", "main", "aside", "nav":
-                return convertHTMLString(content, configuration: configuration, style: style)
+            case ContentDivision.tag:
+                return ContentDivision.toPDF(content: content, configuration: configuration, style: style)
+            case Section.tag:
+                return Section.toPDF(content: content, configuration: configuration, style: style)
+            case Article.tag:
+                return Article.toPDF(content: content, configuration: configuration, style: style)
+            case Header.tag:
+                return Header.toPDF(content: content, configuration: configuration, style: style)
+            case Footer.tag:
+                return Footer.toPDF(content: content, configuration: configuration, style: style)
+            case Main.tag:
+                return Main.toPDF(content: content, configuration: configuration, style: style)
+            case Aside.tag:
+                return Aside.toPDF(content: content, configuration: configuration, style: style)
+            case NavigationSection.tag:
+                return NavigationSection.toPDF(content: content, configuration: configuration, style: style)
 
-            case "p":
-                return createParagraph(content: content, configuration: configuration, style: style)
+            case Paragraph.tag:
+                return Paragraph.toPDF(content: content, configuration: configuration, style: style)
 
             // Inline formatting
-            case "b", "strong":
-                let boldStyle = style.merging(HTML.ComputedStyle(fontWeight: .bold))
-                return convertHTMLString(content, configuration: configuration, style: boldStyle)
-
-            case "i", "em":
-                let italicStyle = style.merging(HTML.ComputedStyle(fontStyle: .italic))
-                return convertHTMLString(content, configuration: configuration, style: italicStyle)
-
-            case "span":
-                return convertHTMLString(content, configuration: configuration, style: style)
+            case B.tag:
+                return B.toPDF(content: content, configuration: configuration, style: style)
+            case StrongImportance.tag:
+                return StrongImportance.toPDF(content: content, configuration: configuration, style: style)
+            case IdiomaticText.tag:
+                return IdiomaticText.toPDF(content: content, configuration: configuration, style: style)
+            case Emphasis.tag:
+                return Emphasis.toPDF(content: content, configuration: configuration, style: style)
+            case ContentSpan.tag:
+                return ContentSpan.toPDF(content: content, configuration: configuration, style: style)
 
             // Lists
-            case "ul", "ol":
-                return createList(content: content, ordered: tagName == "ol", configuration: configuration, style: style)
+            case UnorderedList.tag:
+                return UnorderedList.toPDF(content: content, configuration: configuration, style: style)
+            case OrderedList.tag:
+                return OrderedList.toPDF(content: content, configuration: configuration, style: style)
+            case ListItem.tag:
+                return ListItem.toPDF(content: content, configuration: configuration, style: style)
 
-            case "li":
-                return createListItem(content: content, configuration: configuration, style: style)
+            // Code
+            case PreformattedText.tag:
+                return PreformattedText.toPDF(content: content, configuration: configuration, style: style)
+            case Code.tag:
+                return Code.toPDF(content: content, configuration: configuration, style: style)
 
-            // Other
-            case "pre", "code":
-                let monoStyle = style.merging(HTML.ComputedStyle(fontSize: style.fontSize ?? configuration.defaultFontSize * 0.9))
-                return convertHTMLString(content, configuration: configuration, style: monoStyle)
-
-            case "blockquote":
-                let quoteStyle = style.merging(HTML.ComputedStyle(fontStyle: .italic))
-                return convertHTMLString(content, configuration: configuration, style: quoteStyle)
+            // Quote
+            case BlockQuote.tag:
+                return BlockQuote.toPDF(content: content, configuration: configuration, style: style)
 
             default:
                 // Default: treat as text container
@@ -346,8 +358,10 @@ extension HTML {
             }
         }
 
+        // MARK: - Text View Helper
+
         /// Create a text view with the given style
-        private static func createTextView(
+        static func createTextView(
             _ text: String,
             configuration: HTML.Configuration,
             style: HTML.ComputedStyle
@@ -358,229 +372,6 @@ extension HTML {
                 fontSize: style.fontSize ?? configuration.defaultFontSize,
                 color: style.color ?? configuration.defaultColor
             )
-        }
-
-        /// Create a heading view
-        private static func createHeading(
-            level: Int,
-            content: String,
-            configuration: HTML.Configuration,
-            style: HTML.ComputedStyle
-        ) -> any PDF.View {
-            let headingSize = configuration.headingSize(level: level)
-            let headingStyle = style.merging(HTML.ComputedStyle(
-                fontSize: headingSize,
-                fontWeight: .bold
-            ))
-
-            let childView = convertHTMLString(content, configuration: configuration, style: headingStyle)
-            let spacing = headingSize * 0.5
-            return PDF.VStack(spacing: 0, children: [
-                PDF.Spacer(spacing),
-                childView,
-                PDF.Spacer(spacing * 0.5)
-            ])
-        }
-
-        /// Create a paragraph view
-        private static func createParagraph(
-            content: String,
-            configuration: HTML.Configuration,
-            style: HTML.ComputedStyle
-        ) -> any PDF.View {
-            let childView = convertHTMLString(content, configuration: configuration, style: style)
-            let spacing = (style.fontSize ?? configuration.defaultFontSize) * 0.5
-            return PDF.VStack(spacing: 0, children: [
-                childView,
-                PDF.Spacer(spacing)
-            ])
-        }
-
-        /// Create a list view
-        private static func createList(
-            content: String,
-            ordered: Bool,
-            configuration: HTML.Configuration,
-            style: HTML.ComputedStyle
-        ) -> any PDF.View {
-            // Extract list items and number them
-            var items: [any PDF.View] = []
-            var itemIndex = 0
-
-            var remaining = content[...]
-            while let liStart = remaining.range(of: "<li") {
-                // Find the end of opening tag
-                if let tagEnd = remaining[liStart.upperBound...].firstIndex(of: ">") {
-                    let afterTag = remaining.index(after: tagEnd)
-
-                    // Find closing </li>
-                    if let closeStart = remaining[afterTag...].range(of: "</li>") {
-                        let itemContent = String(remaining[afterTag..<closeStart.lowerBound])
-                        itemIndex += 1
-
-                        let bullet = ordered ? "\(itemIndex). " : "• "
-                        let trimmedContent = String(itemContent.trimming(where: \.isWhitespace))
-                        let itemView = createTextView(
-                            bullet + trimmedContent,
-                            configuration: configuration,
-                            style: style
-                        )
-                        items.append(itemView)
-
-                        remaining = remaining[closeStart.upperBound...]
-                    } else {
-                        break
-                    }
-                } else {
-                    break
-                }
-            }
-
-            let spacing = (style.fontSize ?? configuration.defaultFontSize) * 0.3
-            return PDF.VStack(spacing: spacing, children: items)
-        }
-
-        /// Create a list item view
-        private static func createListItem(
-            content: String,
-            configuration: HTML.Configuration,
-            style: HTML.ComputedStyle
-        ) -> any PDF.View {
-            let itemView = convertHTMLString(content, configuration: configuration, style: style)
-            return itemView
-        }
-
-        /// Extract style from inline attributes
-        private static func styleFromAttributes(_ attributes: [String: String]) -> HTML.ComputedStyle {
-            var style = HTML.ComputedStyle.empty
-
-            guard let styleAttr = attributes["style"] else {
-                return style
-            }
-
-            // Parse inline style attribute
-            let properties = styleAttr.split(separator: ";")
-            for prop in properties {
-                let parts = prop.split(separator: ":", maxSplits: 1)
-                guard parts.count == 2 else { continue }
-
-                let name = String(parts[0].trimming(where: \.isWhitespace)).lowercased()
-                let value = String(parts[1].trimming(where: \.isWhitespace)).lowercased()
-
-                switch name {
-                case "font-size":
-                    style.fontSize = parseFontSize(value)
-                case "color":
-                    style.color = parseColor(value)
-                case "font-weight":
-                    if value == "bold" || value == "700" || value == "800" || value == "900" {
-                        style.fontWeight = .bold
-                    }
-                case "font-style":
-                    if value == "italic" || value == "oblique" {
-                        style.fontStyle = .italic
-                    }
-                case "text-align":
-                    style.textAlign = parseTextAlign(value)
-                case "background-color", "background":
-                    style.backgroundColor = parseColor(value)
-                default:
-                    break
-                }
-            }
-
-            return style
-        }
-
-        /// Parse font size from CSS value
-        private static func parseFontSize(_ value: String) -> Double? {
-            let cleaned = String(value.trimming(where: \.isWhitespace))
-
-            if cleaned.hasSuffix("px") {
-                let number = cleaned.dropLast(2)
-                return Double(number).map { $0 * 0.75 } // px to pt
-            } else if cleaned.hasSuffix("pt") {
-                let number = cleaned.dropLast(2)
-                return Double(number)
-            } else if cleaned.hasSuffix("em") {
-                let number = cleaned.dropLast(2)
-                return Double(number).map { $0 * 12 } // Assume 12pt base
-            } else if cleaned.hasSuffix("%") {
-                let number = cleaned.dropLast(1)
-                return Double(number).map { $0 / 100 * 12 }
-            }
-
-            return Double(cleaned)
-        }
-
-        /// Parse color from CSS value
-        private static func parseColor(_ value: String) -> PDF.Color? {
-            let cleaned = String(value.trimming(where: \.isWhitespace)).lowercased()
-
-            // Named colors
-            switch cleaned {
-            case "black": return .black
-            case "white": return .white
-            case "red": return .red
-            case "green": return .rgb(r: 0, g: 0.5, b: 0)
-            case "blue": return .blue
-            case "gray", "grey": return .gray50
-            default:
-                break
-            }
-
-            // Hex colors
-            if cleaned.hasPrefix("#") {
-                return PDF.Color(hex: String(cleaned.dropFirst()))
-            }
-
-            // RGB/RGBA
-            if cleaned.hasPrefix("rgb") {
-                return parseRGBColor(cleaned)
-            }
-
-            return nil
-        }
-
-        /// Parse RGB/RGBA color (without Foundation)
-        private static func parseRGBColor(_ value: String) -> PDF.Color? {
-            // Extract numbers from rgb(r, g, b) or rgba(r, g, b, a)
-            var numbers: [Double] = []
-            var currentNumber = ""
-
-            for char in value {
-                if char.isNumber || char == "." {
-                    currentNumber.append(char)
-                } else if !currentNumber.isEmpty {
-                    if let num = Double(currentNumber) {
-                        numbers.append(num)
-                    }
-                    currentNumber = ""
-                }
-            }
-            // Don't forget the last number
-            if !currentNumber.isEmpty, let num = Double(currentNumber) {
-                numbers.append(num)
-            }
-
-            guard numbers.count >= 3 else { return nil }
-
-            let red = numbers[0] / 255.0
-            let green = numbers[1] / 255.0
-            let blue = numbers[2] / 255.0
-
-            return .rgb(r: red, g: green, b: blue)
-        }
-
-        /// Parse text alignment
-        private static func parseTextAlign(_ value: String) -> HTML.ComputedStyle.TextAlignment? {
-            switch value.lowercased() {
-            case "left": return .left
-            case "center": return .center
-            case "right": return .right
-            case "justify": return .justify
-            default: return nil
-            }
         }
     }
 }
