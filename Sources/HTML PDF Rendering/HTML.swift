@@ -1,12 +1,15 @@
 // HTML.swift
 
 public import PDF_Rendering
-public import HTML_Rendering
+public import HTML_Renderable
 
 // MARK: - PDF.Document from HTML
 
 extension PDF.Document {
     /// Create a PDF document from an HTML view using a builder closure.
+    ///
+    /// This initializer converts HTML views to PDF. The HTML content
+    /// is rendered to PDF using type-safe conversion.
     ///
     /// Example:
     /// ```swift
@@ -36,12 +39,7 @@ extension PDF.Document {
         @HTML.Builder content: () -> T
     ) {
         let html = content()
-        let pdfView = HTML.ElementMapping.convert(
-            html,
-            configuration: configuration,
-            style: .empty
-        )
-        let pdfContent = renderPDFView(pdfView, configuration: configuration)
+        let pdfContent = renderHTMLView(html, configuration: configuration)
 
         self.init(
             title: title,
@@ -59,6 +57,8 @@ extension PDF.Document {
     }
 
     /// Create a PDF document from an existing HTML view.
+    ///
+    /// This initializer converts HTML views to PDF using type-safe conversion.
     ///
     /// Example:
     /// ```swift
@@ -81,12 +81,7 @@ extension PDF.Document {
         keywords: String? = nil,
         configuration: HTML.Configuration = .default
     ) {
-        let pdfView = HTML.ElementMapping.convert(
-            html,
-            configuration: configuration,
-            style: .empty
-        )
-        let pdfContent = renderPDFView(pdfView, configuration: configuration)
+        let pdfContent = renderHTMLView(html, configuration: configuration)
 
         self.init(
             title: title,
@@ -104,11 +99,14 @@ extension PDF.Document {
     }
 }
 
-// MARK: - PDF View Rendering Helper
+// MARK: - PDF Rendering Helper
 
-/// Render a PDF.View in a context, returning the content
-private func renderPDFView(
-    _ view: any PDF.View,
+/// Render an HTML view to PDF content.
+///
+/// This function handles conversion of any HTML.View to PDF.Content.
+/// It supports all HTML DSL types through the HTMLToPDFConvertible protocol.
+private func renderHTMLView<T: HTML.View>(
+    _ html: T,
     configuration: HTML.Configuration
 ) -> PDF.Content {
     var context = PDF.Context(
@@ -122,5 +120,40 @@ private func renderPDFView(
         lineHeight: configuration.lineHeight
     )
 
-    return view.render(context: &context)
+    // Convert the HTML view to PDF content
+    return convertToPDF(
+        html,
+        configuration: configuration,
+        style: .empty,
+        context: &context
+    )
+}
+
+/// Internal conversion function that handles runtime type checking.
+///
+/// This enables conversion of opaque `some HTML.View` types by checking
+/// conformance at runtime. For custom views that don't directly conform to
+/// HTMLToPDFConvertible, we recursively render their body property.
+internal func convertToPDF<T: HTML.View>(
+    _ view: T,
+    configuration: HTML.Configuration,
+    style: HTML.ComputedStyle,
+    context: inout PDF.Context
+) -> PDF.Content {
+    // If the view directly conforms to HTMLToPDFConvertible, use it
+    if let convertible = view as? any HTMLToPDFConvertible {
+        return convertible.renderToPDF(
+            configuration: configuration,
+            style: style,
+            context: &context
+        )
+    }
+    // For custom HTML.View types, recursively render their body
+    // This mirrors how HTML rendering works - delegating to body
+    return convertToPDF(
+        view.body,
+        configuration: configuration,
+        style: style,
+        context: &context
+    )
 }

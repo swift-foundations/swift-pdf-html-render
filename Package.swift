@@ -21,7 +21,7 @@ let package = Package(
         .target(
             name: "HTML PDF Rendering",
             dependencies: [
-                .product(name: "HTML Rendering", package: "swift-html-rendering"),
+                .product(name: "HTML Renderable", package: "swift-html-rendering"),
                 .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
                 .product(name: "Standards", package: "swift-standards"),
             ]
@@ -30,6 +30,7 @@ let package = Package(
             name: "HTML PDF Rendering Tests",
             dependencies: [
                 "HTML PDF Rendering",
+                .product(name: "HTML Rendering", package: "swift-html-rendering"),
                 .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
             ]
         ),

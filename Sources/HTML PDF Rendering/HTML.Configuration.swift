@@ -1,7 +1,7 @@
 // HTML.Configuration.swift
 
 public import PDF_Rendering
-public import HTML_Rendering
+public import HTML_Renderable
 
 extension HTML {
     /// Configuration for HTML to PDF conversion
