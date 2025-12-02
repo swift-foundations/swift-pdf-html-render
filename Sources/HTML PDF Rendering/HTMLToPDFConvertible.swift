@@ -2,6 +2,7 @@
 
 import HTML_Renderable
 import PDF_Rendering
+import CSS
 
 /// Protocol for HTML types that can be rendered directly to PDF.
 ///
@@ -73,9 +74,68 @@ extension HTML.Element: HTMLToPDFConvertible {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        PDF.ElementRenderer.render(
-            tag: tag,
-            content: content,
+        // Look up renderer in registry
+        if let rendererType = PDFElementRendererRegistry.shared.renderer(for: tag) {
+            // Wrap content as HTMLToPDFConvertible
+            let children: [any HTMLToPDFConvertible]
+            if let content = content {
+                children = [HTMLViewWrapper(content)]
+            } else {
+                children = []
+            }
+
+            // Use registry-based renderer
+            do {
+                try rendererType.render(
+                    tag: tag,
+                    attributes: [:],  // HTML.Element doesn't expose attributes directly
+                    children: children,
+                    style: style,
+                    context: &context,
+                    configuration: configuration
+                )
+            } catch {
+                // Silently handle render errors for now
+            }
+            return PDF.Content()
+        }
+
+        // Fallback: render content directly with convertToPDF
+        if let content = content {
+            return convertToPDF(
+                content,
+                configuration: configuration,
+                style: style,
+                context: &context
+            )
+        }
+        return PDF.Content()
+    }
+}
+
+// MARK: - HTMLViewWrapper
+
+/// Internal wrapper to bridge any HTML.View to HTMLToPDFConvertible.
+///
+/// This enables the registry-based renderers to work with generic HTML.View content.
+private struct HTMLViewWrapper<Content: HTML.View>: HTMLToPDFConvertible {
+    let content: Content
+
+    init(_ content: Content) {
+        self.content = content
+    }
+
+    var body: Never {
+        fatalError("HTMLViewWrapper should not access body")
+    }
+
+    func renderToPDF(
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        convertToPDF(
+            content,
             configuration: configuration,
             style: style,
             context: &context
@@ -113,7 +173,7 @@ extension HTML._Attributes: HTMLToPDFConvertible {
 
 // MARK: - Optional Conformance
 
-extension Optional: HTMLToPDFConvertible where Wrapped: HTML.View {
+extension Swift.Optional: HTMLToPDFConvertible where Wrapped: HTML.View {
     public func renderToPDF(
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
@@ -142,6 +202,45 @@ extension Never: HTMLToPDFConvertible {
         context: inout PDF.Context
     ) -> PDF.Content {
         fatalError("Never cannot be rendered to PDF")
+    }
+}
+
+// MARK: - HTML.AnyView Conformance
+
+extension HTML.AnyView: HTMLToPDFConvertible {
+    public func renderToPDF(
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        // HTML.AnyView stores the wrapped view in `base` as `any HTML.View`
+        // We render it through convertToPDF which handles the type-erased content
+        return convertToPDF(
+            base,
+            configuration: configuration,
+            style: style,
+            context: &context
+        )
+    }
+}
+
+// MARK: - CSS<Base> Conformance
+
+extension CSS: HTMLToPDFConvertible where Base: HTML.View {
+    public func renderToPDF(
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        // CSS<Base> is a wrapper that provides fluent CSS property access
+        // The actual styles are applied to the base via .inlineStyle() calls
+        // We simply render the wrapped base content
+        return convertToPDF(
+            base,
+            configuration: configuration,
+            style: style,
+            context: &context
+        )
     }
 }
 

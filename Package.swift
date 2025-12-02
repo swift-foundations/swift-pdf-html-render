@@ -14,7 +14,12 @@ let package = Package(
     dependencies: [
         .package(path: "../swift-html-rendering"),
         .package(path: "../swift-pdf-rendering"),
+        .package(path: "../swift-css"),
+        .package(path: "/Users/coen/Developer/swift-standards/swift-html-standard"),
+        .package(path: "/Users/coen/Developer/swift-standards/swift-css-standard"),
+        .package(path: "/Users/coen/Developer/swift-standards/swift-w3c-css"),
         .package(path: "/Users/coen/Developer/swift-standards/swift-standards"),
+        .package(path: "/Users/coen/Developer/swift-standards/swift-iso-9899"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
     ],
     targets: [
@@ -23,7 +28,12 @@ let package = Package(
             dependencies: [
                 .product(name: "HTML Renderable", package: "swift-html-rendering"),
                 .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
+                .product(name: "CSS", package: "swift-css"),
+                .product(name: "HTML Standard", package: "swift-html-standard"),
+                .product(name: "CSS Standard", package: "swift-css-standard"),
+                .product(name: "W3C CSS", package: "swift-w3c-css"),
                 .product(name: "Standards", package: "swift-standards"),
+                .product(name: "ISO 9899", package: "swift-iso-9899"),
             ]
         ),
         .testTarget(

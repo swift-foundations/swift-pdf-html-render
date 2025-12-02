@@ -28,24 +28,24 @@ struct `HTML.ComputedStyle Tests` {
     func `Creates style with all values`() {
         let style = HTML.ComputedStyle(
             fontSize: 14,
-            color: .red,
-            fontWeight: .bold,
-            fontStyle: .italic,
+            color: PDF.Color.red,
+            fontWeight: HTML.ComputedStyle.FontWeight.bold,
+            fontStyle: HTML.ComputedStyle.FontStyle.italic,
+            textAlign: HTML.ComputedStyle.TextAlignment.center,
             margin: PDF.EdgeInsets(all: 10),
             padding: PDF.EdgeInsets(all: 5),
-            textAlign: .center,
-            backgroundColor: .white,
-            border: HTML.ComputedStyle.BorderStyle(width: 2, color: .black)
+            border: HTML.ComputedStyle.BorderStyle(width: 2, color: PDF.Color.black),
+            backgroundColor: PDF.Color.white
         )
 
         #expect(style.fontSize == 14)
-        #expect(style.color == .red)
-        #expect(style.fontWeight == .bold)
-        #expect(style.fontStyle == .italic)
+        #expect(style.color == PDF.Color.red)
+        #expect(style.fontWeight == HTML.ComputedStyle.FontWeight.bold)
+        #expect(style.fontStyle == HTML.ComputedStyle.FontStyle.italic)
         #expect(style.margin?.top == 10)
         #expect(style.padding?.top == 5)
-        #expect(style.textAlign == .center)
-        #expect(style.backgroundColor == .white)
+        #expect(style.textAlign == HTML.ComputedStyle.TextAlignment.center)
+        #expect(style.backgroundColor == PDF.Color.white)
         #expect(style.border?.width == 2)
     }
 
@@ -53,37 +53,37 @@ struct `HTML.ComputedStyle Tests` {
 
     @Test
     func `Merge overwrites with new values`() {
-        var style = HTML.ComputedStyle(fontSize: 12, color: .black)
-        let other = HTML.ComputedStyle(fontSize: 16, fontWeight: .bold)
+        var style = HTML.ComputedStyle(fontSize: 12, color: PDF.Color.black)
+        let other = HTML.ComputedStyle(fontSize: 16, fontWeight: HTML.ComputedStyle.FontWeight.bold)
 
         style.merge(from: other)
 
         #expect(style.fontSize == 16)  // Overwritten
-        #expect(style.color == .black) // Kept
-        #expect(style.fontWeight == .bold) // Added
+        #expect(style.color == PDF.Color.black) // Kept
+        #expect(style.fontWeight == HTML.ComputedStyle.FontWeight.bold) // Added
     }
 
     @Test
     func `Merge preserves values when other is nil`() {
-        var style = HTML.ComputedStyle(fontSize: 12, color: .red)
+        var style = HTML.ComputedStyle(fontSize: 12, color: PDF.Color.red)
         let other = HTML.ComputedStyle.empty
 
         style.merge(from: other)
 
         #expect(style.fontSize == 12)
-        #expect(style.color == .red)
+        #expect(style.color == PDF.Color.red)
     }
 
     @Test
     func `Merging returns new style without mutating original`() {
         let style = HTML.ComputedStyle(fontSize: 12)
-        let other = HTML.ComputedStyle(fontWeight: .bold)
+        let other = HTML.ComputedStyle(fontWeight: HTML.ComputedStyle.FontWeight.bold)
 
         let merged = style.merging(other)
 
         #expect(style.fontWeight == nil) // Original unchanged
         #expect(merged.fontSize == 12)
-        #expect(merged.fontWeight == .bold)
+        #expect(merged.fontWeight == HTML.ComputedStyle.FontWeight.bold)
     }
 }
 
@@ -143,21 +143,21 @@ struct `HTML.ComputedStyle.BorderStyle Tests` {
         let border = HTML.ComputedStyle.BorderStyle()
 
         #expect(border.width == 1)
-        #expect(border.color == .black)
-        #expect(border.style == .solid)
+        #expect(border.color == PDF.Color.black)
+        #expect(border.style == HTML.ComputedStyle.BorderStyle.Style.solid)
     }
 
     @Test
     func `Creates border with custom values`() {
         let border = HTML.ComputedStyle.BorderStyle(
             width: 3,
-            color: .red,
-            style: .dashed
+            color: PDF.Color.red,
+            style: HTML.ComputedStyle.BorderStyle.Style.dashed
         )
 
         #expect(border.width == 3)
-        #expect(border.color == .red)
-        #expect(border.style == .dashed)
+        #expect(border.color == PDF.Color.red)
+        #expect(border.style == HTML.ComputedStyle.BorderStyle.Style.dashed)
     }
 
     @Test
@@ -177,33 +177,33 @@ struct `PDF.Font Resolution Tests` {
     @Test
     func `Empty style returns base font`() {
         let style = HTML.ComputedStyle.empty
-        let font = PDF.Font(style, base: .helvetica)
+        let font = PDF.Font(style, base: PDF.Font.helvetica)
 
-        #expect(font == .helvetica)
+        #expect(font == PDF.Font.helvetica)
     }
 
     @Test
     func `Bold style returns bold variant`() {
-        let style = HTML.ComputedStyle(fontWeight: .bold)
-        let font = PDF.Font(style, base: .helvetica)
+        let style = HTML.ComputedStyle(fontWeight: HTML.ComputedStyle.FontWeight.bold)
+        let font = PDF.Font(style, base: PDF.Font.helvetica)
 
-        #expect(font == .helveticaBold)
+        #expect(font == PDF.Font.helveticaBold)
     }
 
     @Test
     func `Italic style returns italic variant`() {
-        let style = HTML.ComputedStyle(fontStyle: .italic)
-        let font = PDF.Font(style, base: .helvetica)
+        let style = HTML.ComputedStyle(fontStyle: HTML.ComputedStyle.FontStyle.italic)
+        let font = PDF.Font(style, base: PDF.Font.helvetica)
 
-        #expect(font == .helveticaOblique)
+        #expect(font == PDF.Font.helveticaOblique)
     }
 
     @Test
     func `Bold italic style returns bold italic variant`() {
-        let style = HTML.ComputedStyle(fontWeight: .bold, fontStyle: .italic)
-        let font = PDF.Font(style, base: .helvetica)
+        let style = HTML.ComputedStyle(fontWeight: HTML.ComputedStyle.FontWeight.bold, fontStyle: HTML.ComputedStyle.FontStyle.italic)
+        let font = PDF.Font(style, base: PDF.Font.helvetica)
 
-        #expect(font == .helveticaBoldOblique)
+        #expect(font == PDF.Font.helveticaBoldOblique)
     }
 
     @Test(arguments: [
@@ -212,7 +212,7 @@ struct `PDF.Font Resolution Tests` {
         (PDF.Font.courier, PDF.Font.courierBold),
     ])
     func `Bold variant for font families`(base: PDF.Font, expected: PDF.Font) {
-        let style = HTML.ComputedStyle(fontWeight: .bold)
+        let style = HTML.ComputedStyle(fontWeight: HTML.ComputedStyle.FontWeight.bold)
         let font = PDF.Font(style, base: base)
 
         #expect(font == expected)
@@ -224,7 +224,7 @@ struct `PDF.Font Resolution Tests` {
         (PDF.Font.courier, PDF.Font.courierOblique),
     ])
     func `Italic variant for font families`(base: PDF.Font, expected: PDF.Font) {
-        let style = HTML.ComputedStyle(fontStyle: .italic)
+        let style = HTML.ComputedStyle(fontStyle: HTML.ComputedStyle.FontStyle.italic)
         let font = PDF.Font(style, base: base)
 
         #expect(font == expected)
@@ -236,7 +236,7 @@ struct `PDF.Font Resolution Tests` {
         (PDF.Font.courier, PDF.Font.courierBoldOblique),
     ])
     func `Bold italic variant for font families`(base: PDF.Font, expected: PDF.Font) {
-        let style = HTML.ComputedStyle(fontWeight: .bold, fontStyle: .italic)
+        let style = HTML.ComputedStyle(fontWeight: HTML.ComputedStyle.FontWeight.bold, fontStyle: HTML.ComputedStyle.FontStyle.italic)
         let font = PDF.Font(style, base: base)
 
         #expect(font == expected)
