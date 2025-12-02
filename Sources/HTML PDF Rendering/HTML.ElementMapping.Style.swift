@@ -1,9 +1,81 @@
 // HTML.ElementMapping.Style.swift
 
+import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
 
 extension HTML.ElementMapping {
+
+    /// Convert CSS properties from HTML.Style objects to HTML.ComputedStyle.
+    ///
+    /// This bridges swift-css styles to PDF rendering. Each HTML.Style contains
+    /// a CSS property name and value that we parse and convert.
+    public static func styleFromCSSProperties(_ styles: [HTML.Style]) -> HTML.ComputedStyle {
+        var result = HTML.ComputedStyle.empty
+
+        for style in styles {
+            let property = style.property.lowercased()
+            let value = style.value.lowercased()
+
+            switch property {
+            case "font-size":
+                result.fontSize = parseFontSize(value)
+            case "color":
+                result.color = parseColor(value)
+            case "font-weight":
+                if value == "bold" || value == "700" || value == "800" || value == "900" {
+                    result.fontWeight = .bold
+                } else if value == "normal" || value == "400" {
+                    result.fontWeight = .normal
+                }
+            case "font-style":
+                if value == "italic" || value == "oblique" {
+                    result.fontStyle = .italic
+                } else if value == "normal" {
+                    result.fontStyle = .normal
+                }
+            case "font-family":
+                result.fontFamily = parseFontFamily(value)
+            case "text-align":
+                result.textAlign = parseTextAlign(value)
+            case "background-color", "background":
+                result.backgroundColor = parseColor(value)
+            case "margin":
+                result.margin = parseEdgeInsets(value)
+            case "margin-top":
+                if result.margin == nil { result.margin = PDF.EdgeInsets(all: 0) }
+                result.margin?.top = parseLength(value) ?? 0
+            case "margin-right":
+                if result.margin == nil { result.margin = PDF.EdgeInsets(all: 0) }
+                result.margin?.right = parseLength(value) ?? 0
+            case "margin-bottom":
+                if result.margin == nil { result.margin = PDF.EdgeInsets(all: 0) }
+                result.margin?.bottom = parseLength(value) ?? 0
+            case "margin-left":
+                if result.margin == nil { result.margin = PDF.EdgeInsets(all: 0) }
+                result.margin?.left = parseLength(value) ?? 0
+            case "padding":
+                result.padding = parseEdgeInsets(value)
+            case "padding-top":
+                if result.padding == nil { result.padding = PDF.EdgeInsets(all: 0) }
+                result.padding?.top = parseLength(value) ?? 0
+            case "padding-right":
+                if result.padding == nil { result.padding = PDF.EdgeInsets(all: 0) }
+                result.padding?.right = parseLength(value) ?? 0
+            case "padding-bottom":
+                if result.padding == nil { result.padding = PDF.EdgeInsets(all: 0) }
+                result.padding?.bottom = parseLength(value) ?? 0
+            case "padding-left":
+                if result.padding == nil { result.padding = PDF.EdgeInsets(all: 0) }
+                result.padding?.left = parseLength(value) ?? 0
+            default:
+                // Unsupported property - skip
+                break
+            }
+        }
+
+        return result
+    }
 
     /// Extract style from inline attributes
     public static func styleFromAttributes(_ attributes: [String: String]) -> HTML.ComputedStyle {
@@ -135,6 +207,81 @@ extension HTML.ElementMapping {
         case "right": return .right
         case "justify": return .justify
         default: return nil
+        }
+    }
+
+    /// Parse font family from CSS value
+    static func parseFontFamily(_ value: String) -> HTML.ComputedStyle.FontFamily? {
+        // Remove quotes and lowercase
+        let cleaned = value.lowercased().filter { $0 != "\"" && $0 != "'" }
+
+        // Check for font family keywords
+        if cleaned.contains("monospace") || cleaned.contains("courier") {
+            return .courier
+        } else if cleaned.contains("serif") && !cleaned.contains("sans-serif") {
+            return .times
+        } else if cleaned.contains("sans-serif") || cleaned.contains("helvetica") || cleaned.contains("arial") {
+            return .helvetica
+        } else if cleaned.contains("times") {
+            return .times
+        }
+
+        return nil
+    }
+
+    /// Parse length value (px, pt, em, etc.) to points
+    static func parseLength(_ value: String) -> Double? {
+        let cleaned = String(value.trimming(where: \.isWhitespace)).lowercased()
+
+        if cleaned.hasSuffix("px") {
+            let number = cleaned.dropLast(2)
+            return Double(number).map { $0 * 0.75 } // px to pt
+        } else if cleaned.hasSuffix("pt") {
+            let number = cleaned.dropLast(2)
+            return Double(number)
+        } else if cleaned.hasSuffix("em") {
+            let number = cleaned.dropLast(2)
+            return Double(number).map { $0 * 12 } // Assume 12pt base
+        } else if cleaned.hasSuffix("rem") {
+            let number = cleaned.dropLast(3)
+            return Double(number).map { $0 * 12 } // Assume 12pt base
+        } else if cleaned == "0" {
+            return 0
+        }
+
+        return Double(cleaned)
+    }
+
+    /// Parse edge insets from CSS shorthand (e.g., "10px", "10px 20px", "10px 20px 30px 40px")
+    static func parseEdgeInsets(_ value: String) -> PDF.EdgeInsets? {
+        let parts = value.split(whereSeparator: \.isWhitespace)
+            .map { String($0) }
+
+        switch parts.count {
+        case 1:
+            // All sides same
+            guard let all = parseLength(parts[0]) else { return nil }
+            return PDF.EdgeInsets(top: all, left: all, bottom: all, right: all)
+        case 2:
+            // vertical | horizontal
+            guard let vertical = parseLength(parts[0]),
+                  let horizontal = parseLength(parts[1]) else { return nil }
+            return PDF.EdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
+        case 3:
+            // top | horizontal | bottom
+            guard let top = parseLength(parts[0]),
+                  let horizontal = parseLength(parts[1]),
+                  let bottom = parseLength(parts[2]) else { return nil }
+            return PDF.EdgeInsets(top: top, left: horizontal, bottom: bottom, right: horizontal)
+        case 4:
+            // top | right | bottom | left
+            guard let top = parseLength(parts[0]),
+                  let right = parseLength(parts[1]),
+                  let bottom = parseLength(parts[2]),
+                  let left = parseLength(parts[3]) else { return nil }
+            return PDF.EdgeInsets(top: top, left: left, bottom: bottom, right: right)
+        default:
+            return nil
         }
     }
 }

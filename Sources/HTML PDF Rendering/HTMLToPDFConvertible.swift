@@ -144,3 +144,31 @@ extension Never: HTMLToPDFConvertible {
         fatalError("Never cannot be rendered to PDF")
     }
 }
+
+// MARK: - HTML.InlineStyle Conformance
+
+extension HTML.InlineStyle: HTMLToPDFConvertible {
+    public func renderToPDF(
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        // Extract CSS styles from this InlineStyle wrapper
+        let cssStyles = extractStyles()
+
+        // Convert CSS property/value pairs to HTML.ComputedStyle
+        let cssStyle = HTML.ElementMapping.styleFromCSSProperties(cssStyles)
+
+        // Merge with inherited style
+        let mergedStyle = style.merging(cssStyle)
+
+        // Extract and render the wrapped content
+        let content = extractContent()
+        return convertToPDF(
+            content,
+            configuration: configuration,
+            style: mergedStyle,
+            context: &context
+        )
+    }
+}
