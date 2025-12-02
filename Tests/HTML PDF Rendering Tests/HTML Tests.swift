@@ -1,5 +1,6 @@
 // HTML Tests.swift
 
+import Foundation
 import Testing
 @testable import HTML_PDF_Rendering
 import PDF_Rendering
@@ -133,6 +134,90 @@ struct `HTML PDF.Document Tests` {
 }
 
 // MARK: - HTML Element Integration Tests
+
+@Suite
+struct `Inline Text Flow Tests` {
+
+    @Test
+    func `Inline text renders on same line`() {
+        // This test verifies that inline elements like <strong> and <em>
+        // render on the same line as surrounding text
+        let document = PDF.Document {
+            Paragraph {
+                "It supports "
+                StrongImportance { "bold" }
+                " and "
+                Emphasis { "italic" }
+                " text."
+            }
+        }
+
+        let page = document.pages.first!
+        let textOps = page.content.operations.compactMap { op -> PDF.TextOperation? in
+            if case .text(let textOp) = op { return textOp }
+            return nil
+        }
+
+        // With proper inline flow, all text should be on the same Y position
+        // (or very close, within floating point tolerance)
+        let yPositions = Set(textOps.map { Int($0.position.y) })
+
+        // All text should be on the same line (same Y position)
+        #expect(yPositions.count == 1, "Expected all text on same line, got Y positions: \(yPositions)")
+    }
+
+    @Test
+    func `Write PDF file to disk`() throws {
+        // Create a test document with mixed inline content
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Article {
+                    Header {
+                        H1 { "PDF Rendering Test" }
+                    }
+
+                    Paragraph {
+                        "It supports "
+                        StrongImportance { "bold" }
+                        " and "
+                        Emphasis { "italic" }
+                        " text."
+                    }
+
+                    H2 { "Features" }
+
+                    UnorderedList {
+                        ListItem { "Native Swift implementation" }
+                        ListItem { "No external dependencies" }
+                        ListItem { "Type-safe HTML to PDF conversion" }
+                    }
+
+                    Footer {
+                        Paragraph { "Generated on: \(Date())" }
+                    }
+                }
+            }
+        }
+
+        let document = PDF.Document(title: "Test Document") {
+            TestView()
+        }
+
+        let bytes = [UInt8](document)
+        let data = Data(bytes)
+
+        let url = URL(fileURLWithPath: "/private/tmp/swift-pdf-test.pdf")
+        try data.write(to: url)
+
+        // Verify file was written and has content
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(bytes.count > 500, "PDF should have substantial content")
+
+        // Verify operations were generated
+        let page = document.pages.first!
+        #expect(!page.content.operations.isEmpty, "PDF should have operations")
+    }
+}
 
 @Suite
 struct `HTML Element Integration Tests` {

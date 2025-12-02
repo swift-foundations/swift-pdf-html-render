@@ -33,12 +33,15 @@ extension HTML.Text: HTMLToPDFConvertible {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        PDF.Text(
-            text,
+        // Append as text run instead of rendering directly.
+        // Block elements will flush accumulated runs with proper line wrapping.
+        context.appendInlineRun(PDF.TextRun(
+            text: text,
             font: PDF.Font(style, base: configuration.defaultFont),
             fontSize: style.fontSize ?? configuration.defaultFontSize,
             color: style.color ?? configuration.defaultColor
-        ).render(context: &context)
+        ))
+        return PDF.Content()
     }
 }
 
@@ -50,13 +53,15 @@ extension String: HTMLToPDFConvertible {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        // Strings are rendered as text, similar to HTML.Text
-        PDF.Text(
-            self,
+        // Append as text run instead of rendering directly.
+        // Block elements will flush accumulated runs with proper line wrapping.
+        context.appendInlineRun(PDF.TextRun(
+            text: self,
             font: PDF.Font(style, base: configuration.defaultFont),
             fontSize: style.fontSize ?? configuration.defaultFontSize,
             color: style.color ?? configuration.defaultColor
-        ).render(context: &context)
+        ))
+        return PDF.Content()
     }
 }
 

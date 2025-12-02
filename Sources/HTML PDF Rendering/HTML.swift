@@ -121,12 +121,20 @@ private func renderHTMLView<T: HTML.View>(
     )
 
     // Convert the HTML view to PDF content
-    return convertToPDF(
+    var operations: [PDF.Operation] = []
+
+    let result = convertToPDF(
         html,
         configuration: configuration,
         style: .empty,
         context: &context
     )
+    operations.append(contentsOf: result.operations)
+
+    // Flush any remaining inline runs at the end
+    operations.append(contentsOf: context.flushInlineRuns().operations)
+
+    return PDF.Content(operations: operations)
 }
 
 /// Internal conversion function that handles runtime type checking.
@@ -148,6 +156,7 @@ internal func convertToPDF<T: HTML.View>(
             context: &context
         )
     }
+
     // For custom HTML.View types, recursively render their body
     // This mirrors how HTML rendering works - delegating to body
     return convertToPDF(
