@@ -5,7 +5,10 @@ import PDF_Rendering
 import Renderable
 
 extension _Tuple: HTMLToPDFConvertible where repeat each Content: HTML.View {
-    public func renderToPDF(
+    // Note: Content = Never is already defined in _Tuple's HTML.View conformance
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
@@ -13,7 +16,7 @@ extension _Tuple: HTMLToPDFConvertible where repeat each Content: HTML.View {
         var operations: [PDF.Operation] = []
 
         func convert<T: HTML.View>(_ element: T) {
-            let result = convertToPDF(
+            let result = PDF.Content(
                 element,
                 configuration: configuration,
                 style: style,
@@ -22,7 +25,7 @@ extension _Tuple: HTMLToPDFConvertible where repeat each Content: HTML.View {
             operations.append(contentsOf: result.operations)
         }
 
-        repeat convert(each content)
+        repeat convert(each view.content)
 
         return PDF.Content(operations: operations)
     }

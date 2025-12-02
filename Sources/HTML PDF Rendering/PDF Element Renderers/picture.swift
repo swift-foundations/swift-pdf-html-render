@@ -25,7 +25,7 @@ extension Picture {
             // Picture element is a container that provides fallback images
             // In PDF context, we just render the children (the img element)
             for child in children {
-                _ = child.renderToPDF(configuration: configuration, style: style, context: &context)
+                _ = HTML.renderToPDF(child, configuration: configuration, style: style, context: &context)
             }
         }
     }

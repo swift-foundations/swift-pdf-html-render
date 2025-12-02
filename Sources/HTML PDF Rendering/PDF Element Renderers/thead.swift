@@ -24,7 +24,7 @@ extension TableHead {
             // Render child rows with bold styling for headers
             let headerStyle = style.merging(HTML.ComputedStyle(fontWeight: .bold))
             for child in children {
-                _ = child.renderToPDF(configuration: configuration, style: headerStyle, context: &context)
+                _ = HTML.renderToPDF(child, configuration: configuration, style: headerStyle, context: &context)
             }
         }
     }

@@ -41,15 +41,15 @@ extension PDF.Document {
     ) {
         let html = content()
         let pages = renderHTMLToPages(html, configuration: configuration)
-
+        
         // Build info if any metadata provided
         let info: PDF.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
-            ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
-            : nil
-
+        ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
+        : nil
+        
         self.init(pages: pages, info: info)
     }
-
+    
     /// Create a PDF document from an existing HTML view.
     ///
     /// This initializer converts HTML views to PDF using type-safe conversion.
@@ -78,12 +78,12 @@ extension PDF.Document {
         configuration: HTML.Configuration = .default
     ) {
         let pages = renderHTMLToPages(html, configuration: configuration)
-
+        
         // Build info if any metadata provided
         let info: PDF.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
-            ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
-            : nil
-
+        ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
+        : nil
+        
         self.init(pages: pages, info: info)
     }
 }
@@ -109,21 +109,21 @@ private func renderHTMLToPages<T: HTML.View>(
         color: configuration.defaultColor,
         lineHeight: configuration.lineHeight
     )
-
+    
     // Convert the HTML view to PDF content (operations are stored in context)
-    let _ = convertToPDF(
+    let _ = PDF.Content(
         html,
         configuration: configuration,
         style: .empty,
         context: &context
     )
-
+    
     // Flush any remaining inline runs at the end
     let _ = context.flushInlineRuns()
-
+    
     // Get all pages from context
     let allPages = context.getAllPages()
-
+    
     // Create PDF.Page objects
     if allPages.isEmpty {
         // Return a single empty page if no content
@@ -133,7 +133,7 @@ private func renderHTMLToPages<T: HTML.View>(
             content: PDF.Content()
         )]
     }
-
+    
     return allPages.map { operations in
         PDF.Page(
             paperSize: configuration.paperSize,
@@ -143,32 +143,41 @@ private func renderHTMLToPages<T: HTML.View>(
     }
 }
 
-/// Internal conversion function that handles runtime type checking.
-///
-/// This enables conversion of opaque `some HTML.View` types by checking
-/// conformance at runtime. For custom views that don't directly conform to
-/// HTMLToPDFConvertible, we recursively render their body property.
-internal func convertToPDF<T: HTML.View>(
-    _ view: T,
-    configuration: HTML.Configuration,
-    style: HTML.ComputedStyle,
-    context: inout PDF.Context
-) -> PDF.Content {
-    // If the view directly conforms to HTMLToPDFConvertible, use it
-    if let convertible = view as? any HTMLToPDFConvertible {
-        return convertible.renderToPDF(
+
+// new one
+extension PDF.Content {
+    
+    /// Internal conversion function that handles runtime type checking.
+    ///
+    /// This enables conversion of opaque `some HTML.View` types by checking
+    /// conformance at runtime. For custom views that don't directly conform to
+    /// HTMLToPDFConvertible, we recursively render their body property.
+    internal init<T: HTML.View>(
+        _ view: T,
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) {
+        // If the view directly conforms to HTMLToPDFConvertible, use static dispatch
+        if let convertibleType = T.self as? any HTMLToPDFConvertible.Type {
+            // Open existential and call static _renderToPDF
+            func callRender<V: HTMLToPDFConvertible>(_ type: V.Type) -> PDF.Content {
+                guard let typedView = view as? V else {
+                    fatalError("Type mismatch in PDF.Content.init")
+                }
+                return V._renderToPDF(typedView, configuration: configuration, style: style, context: &context)
+            }
+            self = callRender(convertibleType)
+            return
+        }
+
+        // For custom HTML.View types, recursively render their body
+        // This mirrors how HTML rendering works - delegating to body
+        self = PDF.Content(
+            view.body,
             configuration: configuration,
             style: style,
             context: &context
         )
     }
-
-    // For custom HTML.View types, recursively render their body
-    // This mirrors how HTML rendering works - delegating to body
-    return convertToPDF(
-        view.body,
-        configuration: configuration,
-        style: style,
-        context: &context
-    )
 }

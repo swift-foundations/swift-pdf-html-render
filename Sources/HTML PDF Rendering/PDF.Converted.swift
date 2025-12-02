@@ -17,6 +17,8 @@ extension PDF {
     /// // Type: PDF.Converted<HTML.Element<HTML.Element<HTML.Text>>>
     /// ```
     public struct Converted<Source: HTMLToPDFConvertible>: PDF.View {
+        public typealias Content = Never
+
         /// The source HTML view to convert
         public let source: Source
 
@@ -43,13 +45,17 @@ extension PDF {
         }
 
         public var body: Never {
-            fatalError("PDF.Converted uses render() directly")
+            fatalError("PDF.Converted is a leaf view")
         }
 
-        public func render(context: inout PDF.Context) -> PDF.Content {
-            source.renderToPDF(
-                configuration: configuration,
-                style: style,
+        public static func _render(
+            _ view: Self,
+            context: inout PDF.Context
+        ) -> PDF.Content {
+            Source._renderToPDF(
+                view.source,
+                configuration: view.configuration,
+                style: view.style,
                 context: &context
             )
         }

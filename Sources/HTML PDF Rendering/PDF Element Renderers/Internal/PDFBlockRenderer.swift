@@ -2,6 +2,7 @@
 // Shared utilities for block element rendering
 
 import PDF_Rendering
+import HTML_Renderable
 
 /// Renders children as a block element with spacing.
 ///
@@ -36,9 +37,9 @@ public func renderBlock(
         context.advanceY(beforeSpacing)
     }
 
-    // Render children
+    // Render children using dynamic dispatch
     for child in children {
-        _ = child.renderToPDF(configuration: configuration, style: style, context: &context)
+        _ = HTML.renderToPDF(child, configuration: configuration, style: style, context: &context)
     }
 
     // Flush inline runs accumulated by children
@@ -67,6 +68,6 @@ public func renderInline(
     configuration: HTML.Configuration
 ) {
     for child in children {
-        _ = child.renderToPDF(configuration: configuration, style: style, context: &context)
+        _ = HTML.renderToPDF(child, configuration: configuration, style: style, context: &context)
     }
 }

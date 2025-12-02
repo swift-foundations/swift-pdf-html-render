@@ -6,21 +6,24 @@ import Renderable
 
 extension _Conditional: HTMLToPDFConvertible
 where First: HTML.View, Second: HTML.View {
-    public func renderToPDF(
+    // Note: Content = Never is already defined in _Conditional's HTML.View conformance
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        switch self {
+        switch view {
         case .first(let first):
-            return convertToPDF(
+            return PDF.Content(
                 first,
                 configuration: configuration,
                 style: style,
                 context: &context
             )
         case .second(let second):
-            return convertToPDF(
+            return PDF.Content(
                 second,
                 configuration: configuration,
                 style: style,

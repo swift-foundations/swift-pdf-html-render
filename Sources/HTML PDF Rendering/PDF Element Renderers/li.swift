@@ -52,7 +52,7 @@ extension ListItem {
 
             // Render children
             for child in children {
-                _ = child.renderToPDF(configuration: configuration, style: style, context: &context)
+                _ = HTML.renderToPDF(child, configuration: configuration, style: style, context: &context)
             }
 
             // Flush and advance

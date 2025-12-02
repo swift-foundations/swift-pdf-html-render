@@ -39,11 +39,12 @@ extension ThematicBreak {
 
             // Render horizontal line
             let lineColor = style.color ?? .gray50
-            let lineOps = PDF.Divider(
+            let divider = PDF.Divider(
                 color: lineColor,
                 thickness: 1,
                 padding: 0
-            ).render(context: &context)
+            )
+            let lineOps = PDF.Divider._render(divider, context: &context)
             context.addOperations(lineOps.operations)
 
             // Add spacing after

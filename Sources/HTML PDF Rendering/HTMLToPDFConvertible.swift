@@ -9,27 +9,68 @@ import CSS
 /// This protocol enables 100% type-safe conversion from HTML.View types
 /// to PDF content without intermediate string serialization.
 ///
-/// Conforming types implement `renderToPDF` which returns `PDF.Content`
-/// directly, avoiding type erasure.
+/// Conforming types implement `_renderToPDF` which returns `PDF.Content`
+/// directly, avoiding type erasure. The static method pattern mirrors
+/// `Renderable._render` for compile-time type safety.
 public protocol HTMLToPDFConvertible: HTML.View {
     /// Render this HTML view to PDF content operations.
     ///
     /// - Parameters:
+    ///   - view: The view to render
     ///   - configuration: PDF conversion settings (paper size, fonts, etc.)
     ///   - style: Current computed style inherited from parent elements
     ///   - context: Mutable PDF context tracking position and state
     /// - Returns: PDF content operations for this view
-    func renderToPDF(
+    static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content
 }
 
+// MARK: - Default Implementation
+
+extension HTMLToPDFConvertible where Content: HTMLToPDFConvertible {
+    /// Default implementation delegates to the body's render method.
+    @inlinable
+    @_disfavoredOverload
+    public static func _renderToPDF(
+        _ view: Self,
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        Content._renderToPDF(view.body, configuration: configuration, style: style, context: &context)
+    }
+}
+
+// MARK: - Dynamic Dispatch Helper
+
+extension HTML {
+    /// Renders an HTML view to PDF using dynamic dispatch.
+    /// Use this when you have `any HTMLToPDFConvertible` and need to call `_renderToPDF`.
+    @inlinable
+    public static func renderToPDF(
+        _ view: some HTMLToPDFConvertible,
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        func callRender<V: HTMLToPDFConvertible>(_ v: V) -> PDF.Content {
+            V._renderToPDF(v, configuration: configuration, style: style, context: &context)
+        }
+        return callRender(view)
+    }
+}
+
 // MARK: - HTML.Text Conformance
 
 extension HTML.Text: HTMLToPDFConvertible {
-    public func renderToPDF(
+    public typealias Content = Never
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
@@ -37,7 +78,7 @@ extension HTML.Text: HTMLToPDFConvertible {
         // Append as text run instead of rendering directly.
         // Block elements will flush accumulated runs with proper line wrapping.
         context.appendInlineRun(PDF.TextRun(
-            text: text,
+            text: view.text,
             font: PDF.Font(style, base: configuration.defaultFont),
             fontSize: style.fontSize ?? configuration.defaultFontSize,
             color: style.color ?? configuration.defaultColor
@@ -49,7 +90,10 @@ extension HTML.Text: HTMLToPDFConvertible {
 // MARK: - String Conformance
 
 extension String: HTMLToPDFConvertible {
-    public func renderToPDF(
+    public typealias Content = Never
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
@@ -57,7 +101,7 @@ extension String: HTMLToPDFConvertible {
         // Append as text run instead of rendering directly.
         // Block elements will flush accumulated runs with proper line wrapping.
         context.appendInlineRun(PDF.TextRun(
-            text: self,
+            text: view,
             font: PDF.Font(style, base: configuration.defaultFont),
             fontSize: style.fontSize ?? configuration.defaultFontSize,
             color: style.color ?? configuration.defaultColor
@@ -69,16 +113,19 @@ extension String: HTMLToPDFConvertible {
 // MARK: - HTML.Element Conformance
 
 extension HTML.Element: HTMLToPDFConvertible {
-    public func renderToPDF(
+    public typealias Content = Never
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
         // Look up renderer in registry
-        if let rendererType = PDFElementRendererRegistry.shared.renderer(for: tag) {
+        if let rendererType = PDFElementRendererRegistry.shared.renderer(for: view.tag) {
             // Wrap content as HTMLToPDFConvertible
             let children: [any HTMLToPDFConvertible]
-            if let content = content {
+            if let content = view.content {
                 children = [HTMLViewWrapper(content)]
             } else {
                 children = []
@@ -87,7 +134,7 @@ extension HTML.Element: HTMLToPDFConvertible {
             // Use registry-based renderer
             do {
                 try rendererType.render(
-                    tag: tag,
+                    tag: view.tag,
                     attributes: [:],  // HTML.Element doesn't expose attributes directly
                     children: children,
                     style: style,
@@ -100,9 +147,9 @@ extension HTML.Element: HTMLToPDFConvertible {
             return PDF.Content()
         }
 
-        // Fallback: render content directly with convertToPDF
-        if let content = content {
-            return convertToPDF(
+        // Fallback: render content directly with PDF.Content.init
+        if let content = view.content {
+            return PDF.Content(
                 content,
                 configuration: configuration,
                 style: style,
@@ -118,24 +165,27 @@ extension HTML.Element: HTMLToPDFConvertible {
 /// Internal wrapper to bridge any HTML.View to HTMLToPDFConvertible.
 ///
 /// This enables the registry-based renderers to work with generic HTML.View content.
-private struct HTMLViewWrapper<Content: HTML.View>: HTMLToPDFConvertible {
-    let content: Content
+private struct HTMLViewWrapper<Wrapped: HTML.View>: HTMLToPDFConvertible {
+    typealias Content = Never
 
-    init(_ content: Content) {
-        self.content = content
+    let wrapped: Wrapped
+
+    init(_ wrapped: Wrapped) {
+        self.wrapped = wrapped
     }
 
     var body: Never {
         fatalError("HTMLViewWrapper should not access body")
     }
 
-    func renderToPDF(
+    static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        convertToPDF(
-            content,
+        PDF.Content(
+            view.wrapped,
             configuration: configuration,
             style: style,
             context: &context
@@ -145,15 +195,16 @@ private struct HTMLViewWrapper<Content: HTML.View>: HTMLToPDFConvertible {
 
 // MARK: - HTML._Attributes Conformance
 
-extension HTML._Attributes: HTMLToPDFConvertible {
-    public func renderToPDF(
+extension HTML._Attributes: HTMLToPDFConvertible where Content: HTML.View {
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
         // Convert OrderedDictionary to Dictionary for style extraction
         var dict: [String: String] = [:]
-        for (key, value) in attributes {
+        for (key, value) in view.attributes {
             dict[key] = value
         }
 
@@ -161,9 +212,9 @@ extension HTML._Attributes: HTMLToPDFConvertible {
         let attributeStyle = HTML.ElementMapping.styleFromAttributes(dict)
         let mergedStyle = style.merging(attributeStyle)
 
-        // Render the wrapped content with merged style using internal conversion
-        return convertToPDF(
-            content,
+        // Render the wrapped content with merged style
+        return PDF.Content(
+            view.content,
             configuration: configuration,
             style: mergedStyle,
             context: &context
@@ -174,14 +225,17 @@ extension HTML._Attributes: HTMLToPDFConvertible {
 // MARK: - Optional Conformance
 
 extension Swift.Optional: HTMLToPDFConvertible where Wrapped: HTML.View {
-    public func renderToPDF(
+    // Note: Content = Never is already defined in Optional's Renderable conformance
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        switch self {
+        switch view {
         case .some(let value):
-            return convertToPDF(
+            return PDF.Content(
                 value,
                 configuration: configuration,
                 style: style,
@@ -196,7 +250,8 @@ extension Swift.Optional: HTMLToPDFConvertible where Wrapped: HTML.View {
 // MARK: - Never Conformance
 
 extension Never: HTMLToPDFConvertible {
-    public func renderToPDF(
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
@@ -208,15 +263,18 @@ extension Never: HTMLToPDFConvertible {
 // MARK: - HTML.AnyView Conformance
 
 extension HTML.AnyView: HTMLToPDFConvertible {
-    public func renderToPDF(
+    // Note: Content = Never is already defined in HTML.AnyView's HTML.View conformance
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
         // HTML.AnyView stores the wrapped view in `base` as `any HTML.View`
-        // We render it through convertToPDF which handles the type-erased content
-        return convertToPDF(
-            base,
+        // We render it through PDF.Content.init which handles the type-erased content
+        return PDF.Content(
+            view.base,
             configuration: configuration,
             style: style,
             context: &context
@@ -227,7 +285,8 @@ extension HTML.AnyView: HTMLToPDFConvertible {
 // MARK: - CSS<Base> Conformance
 
 extension CSS: HTMLToPDFConvertible where Base: HTML.View {
-    public func renderToPDF(
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
@@ -235,8 +294,8 @@ extension CSS: HTMLToPDFConvertible where Base: HTML.View {
         // CSS<Base> is a wrapper that provides fluent CSS property access
         // The actual styles are applied to the base via .inlineStyle() calls
         // We simply render the wrapped base content
-        return convertToPDF(
-            base,
+        return PDF.Content(
+            view.base,
             configuration: configuration,
             style: style,
             context: &context
@@ -247,13 +306,16 @@ extension CSS: HTMLToPDFConvertible where Base: HTML.View {
 // MARK: - HTML.InlineStyle Conformance
 
 extension HTML.InlineStyle: HTMLToPDFConvertible {
-    public func renderToPDF(
+    public typealias Content = Never
+
+    public static func _renderToPDF(
+        _ view: Self,
         configuration: HTML.Configuration,
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
         // Extract CSS styles from this InlineStyle wrapper
-        let cssStyles = extractStyles()
+        let cssStyles = view.extractStyles()
 
         // Convert CSS property/value pairs to HTML.ComputedStyle
         let cssStyle = HTML.ElementMapping.styleFromCSSProperties(cssStyles)
@@ -261,9 +323,10 @@ extension HTML.InlineStyle: HTMLToPDFConvertible {
         // Merge with inherited style
         let mergedStyle = style.merging(cssStyle)
 
-        // Extract and render the wrapped content
-        let content = extractContent()
-        return convertToPDF(
+        // Extract and render the wrapped content with merged style
+        // Note: extractContent() returns `any HTML.View`, so we use PDF.Content.init
+        let content = view.extractContent()
+        return PDF.Content(
             content,
             configuration: configuration,
             style: mergedStyle,

@@ -23,7 +23,7 @@ extension TableFoot {
         ) throws {
             // Render child rows
             for child in children {
-                _ = child.renderToPDF(configuration: configuration, style: style, context: &context)
+                _ = HTML.renderToPDF(child, configuration: configuration, style: style, context: &context)
             }
         }
     }
