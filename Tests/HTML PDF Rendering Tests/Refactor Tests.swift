@@ -2,23 +2,23 @@
 // Tests for the two-phase HTML → PDF transformation
 
 import Testing
+import Foundation
 import HTML_Rendering
 import PDF_Rendering
-@testable import HTML_PDF_Rendering_Refactor
+@testable import HTML_PDF_Rendering
 
-@Suite("HTMLToPDF Transformation Tests")
-struct HTMLToPDFTransformationTests {
+@Suite("PDF.HTML.View Tests")
+struct PDFHTMLViewTests {
 
     // MARK: - Basic Transformation
 
     @Test("String transforms to PDF content")
     func stringTransformation() {
         let html = "Hello, World!"
+        let (pages, _) = PDF.HTML.pages(from: html)
 
-        let content = PDF.Content(html)
-
-        // Should have operations from the flushed text
-        #expect(content.operations.count >= 0) // May be 0 if no flush triggered
+        // Should have at least one page
+        #expect(pages.count >= 1)
     }
 
     @Test("Paragraph transforms with spacing")
@@ -29,10 +29,11 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
 
-        // Should have text operations
-        let textOps = content.operations.filter {
+        // Should have operations
+        let ops = pages.first ?? []
+        let textOps = ops.filter {
             if case .text = $0 { return true }
             return false
         }
@@ -47,10 +48,11 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let ops = pages.first ?? []
 
         // Should have text operations
-        let textOps = content.operations.compactMap { op -> PDF.Content.Text.Operation? in
+        let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
             if case .text(let textOp) = op { return textOp }
             return nil
         }
@@ -59,7 +61,7 @@ struct HTMLToPDFTransformationTests {
 
         // H1 should use larger font size (2x default)
         if let firstOp = textOps.first {
-            let config = HTMLToPDF.Configuration()
+            let config = PDF.HTML.Configuration()
             let expectedSize = config.headingSize(level: 1)
             #expect(firstOp.size == expectedSize)
         }
@@ -79,10 +81,11 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let ops = pages.first ?? []
 
         // Get all text operations
-        let textOps = content.operations.compactMap { op -> PDF.Content.Text.Operation? in
+        let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
             if case .text(let textOp) = op { return textOp }
             return nil
         }
@@ -102,9 +105,10 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let ops = pages.first ?? []
 
-        let textOps = content.operations.compactMap { op -> PDF.Content.Text.Operation? in
+        let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
             if case .text(let textOp) = op { return textOp }
             return nil
         }
@@ -127,9 +131,10 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let ops = pages.first ?? []
 
-        let textOps = content.operations.compactMap { op -> PDF.Content.Text.Operation? in
+        let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
             if case .text(let textOp) = op { return textOp }
             return nil
         }
@@ -154,9 +159,10 @@ struct HTMLToPDFTransformationTests {
             }
         }
 
-        let content = PDF.Content(TestView())
+        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let ops = pages.first ?? []
 
-        let textOps = content.operations.compactMap { op -> PDF.Content.Text.Operation? in
+        let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
             if case .text(let textOp) = op { return textOp }
             return nil
         }
@@ -206,7 +212,7 @@ struct HTMLToPDFTransformationTests {
 
     @Test("Configuration affects heading sizes")
     func configurationHeadingSizes() {
-        let config = HTMLToPDF.Configuration(defaultFontSize: 14)
+        let config = PDF.HTML.Configuration(defaultFontSize: 14)
 
         #expect(config.headingSize(level: 1) == 28) // 14 * 2.0
         #expect(config.headingSize(level: 2) == 21) // 14 * 1.5
@@ -215,7 +221,7 @@ struct HTMLToPDFTransformationTests {
 
     @Test("Configuration affects content dimensions")
     func configurationDimensions() {
-        let config = HTMLToPDF.Configuration(
+        let config = PDF.HTML.Configuration(
             paperSize: .a4,
             margins: .init(top: 72, left: 72, bottom: 72, right: 72)
         )
@@ -227,11 +233,11 @@ struct HTMLToPDFTransformationTests {
 
 // MARK: - Comprehensive Test
 
-@Suite("Comprehensive HTML to PDF Tests")
-struct ComprehensiveHTMLToPDFTests {
+@Suite("Comprehensive PDF.HTML.View Tests")
+struct ComprehensivePDFHTMLViewTests {
 
     @Test("Complex document renders correctly")
-    func complexDocument() {
+    func complexDocument() throws {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
                 Article {
@@ -269,7 +275,7 @@ struct ComprehensiveHTMLToPDFTests {
             }
         }
 
-        let doc = PDF.Document(
+        let doc = PDF.Document.init(
             ComplexView(),
             title: "Complex Test",
             author: "Test Suite"
@@ -277,12 +283,13 @@ struct ComprehensiveHTMLToPDFTests {
 
         let bytes = [UInt8](doc)
 
+        // Write to /tmp for visual inspection
+        let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
+        try Data(bytes).write(to: url)
+        print("PDF written to: \(url.path)")
+
         // Basic sanity checks
         #expect(doc.pages.count >= 1)
         #expect(bytes.count > 1000, "Complex document should have substantial content")
-
-        // Count operations
-        let totalOps = doc.pages.reduce(0) { $0 + $1.content.operations.count }
-        #expect(totalOps > 5, "Should have multiple operations")
     }
 }

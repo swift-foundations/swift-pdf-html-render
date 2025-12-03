@@ -6,8 +6,8 @@ import HTML_Rendering
 import PDF_Rendering
 @testable import HTML_PDF_Rendering_Refactor
 
-@Suite("PDF.Transform Tests")
-struct PDFTransformTests {
+@Suite("HTMLToPDF Transformation Tests")
+struct HTMLToPDFTransformationTests {
 
     // MARK: - Basic Transformation
 
@@ -59,7 +59,7 @@ struct PDFTransformTests {
 
         // H1 should use larger font size (2x default)
         if let firstOp = textOps.first {
-            let config = PDFTransformConfiguration()
+            let config = HTMLToPDF.Configuration()
             let expectedSize = config.headingSize(level: 1)
             #expect(firstOp.size == expectedSize)
         }
@@ -206,7 +206,7 @@ struct PDFTransformTests {
 
     @Test("Configuration affects heading sizes")
     func configurationHeadingSizes() {
-        let config = PDFTransformConfiguration(defaultFontSize: 14)
+        let config = HTMLToPDF.Configuration(defaultFontSize: 14)
 
         #expect(config.headingSize(level: 1) == 28) // 14 * 2.0
         #expect(config.headingSize(level: 2) == 21) // 14 * 1.5
@@ -215,7 +215,7 @@ struct PDFTransformTests {
 
     @Test("Configuration affects content dimensions")
     func configurationDimensions() {
-        let config = PDFTransformConfiguration(
+        let config = HTMLToPDF.Configuration(
             paperSize: .a4,
             margins: .init(top: 72, left: 72, bottom: 72, right: 72)
         )
@@ -227,8 +227,8 @@ struct PDFTransformTests {
 
 // MARK: - Comprehensive Test
 
-@Suite("Comprehensive PDF.Transform Tests")
-struct ComprehensivePDFTransformTests {
+@Suite("Comprehensive HTML to PDF Tests")
+struct ComprehensiveHTMLToPDFTests {
 
     @Test("Complex document renders correctly")
     func complexDocument() {

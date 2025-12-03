@@ -1,14 +1,16 @@
-// String+Transform.swift
+// String+PDF.HTML.View.swift
 // String is a leaf type - appends text run to context
 
 import PDF_Rendering
 
-extension String: PDF.Transform {
-    public static func _transform(
+extension String: PDF.HTML.View {
+    public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
+        into buffer: inout Buffer,
         context: inout PDF.Context,
-        configuration: PDFTransformConfiguration
-    ) {
+        configuration: PDF.HTML.Configuration
+    ) where Buffer.Element == PDF.Render.Operation {
+        // Append text as inline run (will be flushed at block boundaries)
         let run = PDF.TextRun(
             text: view,
             font: context.font,
