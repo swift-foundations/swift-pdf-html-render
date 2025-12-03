@@ -5,7 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 03/12/2025.
 //
 
-import HtmlToPdf
+//import HtmlToPdf
 import Foundation
 import Testing
 @testable import HTML_PDF_Rendering
@@ -447,13 +447,13 @@ struct `Comprehensive Visual Tests HTML to PDF` {
             ComprehensiveView()
         }
         
-        @Dependency(\.pdf) var pdf
         
         
-        _ = try await pdf.render(
-            html: String(ComprehensiveView()),
-            to: URL(fileURLWithPath: "/private/tmp/swift-pdf-comprehensive-html-to-pdf.pdf")
-        )
+//        @Dependency(\.pdf) var pdf
+//        _ = try await pdf.render(
+//            html: String(ComprehensiveView()),
+//            to: URL(fileURLWithPath: "/private/tmp/swift-pdf-comprehensive-html-to-pdf.pdf")
+//        )
 
         let bytes = [UInt8](document)
         let data = Data(bytes)
