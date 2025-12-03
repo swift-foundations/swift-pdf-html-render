@@ -110,7 +110,7 @@ extension ISO_32000.Font.Family {
         }
     }
 
-    private static func fromGeneric(_ generic: GenericFamily) -> ISO_32000.Font.Family {
+    private static func fromGeneric(_ generic: W3C_CSS_Fonts.GenericFamily) -> ISO_32000.Font.Family {
         switch generic {
         case .serif:
             return .times

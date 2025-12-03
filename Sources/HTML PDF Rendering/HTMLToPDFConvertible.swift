@@ -350,8 +350,8 @@ extension HTML.InlineStyle: HTMLToPDFConvertible {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        // Extract CSS styles from this InlineStyle wrapper
-        let cssStyles = view.extractStyles()
+        // Extract CSS style entries from this InlineStyle wrapper
+        let cssStyles = view.extractStyleEntries()
 
         // Convert CSS property/value pairs to HTML.ComputedStyle
         let cssStyle = HTML.ElementMapping.styleFromCSSProperties(cssStyles)

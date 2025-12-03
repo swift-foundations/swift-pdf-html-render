@@ -7,16 +7,19 @@ import W3C_CSS_Fonts
 
 extension HTML.ElementMapping {
 
-    /// Convert CSS properties from HTML.Style objects to HTML.ComputedStyle.
+    /// Convert CSS properties from HTML.StyleEntry objects to HTML.ComputedStyle.
     ///
-    /// This bridges swift-css styles to PDF rendering. Each HTML.Style contains
-    /// a CSS property name and value that we parse and convert.
-    public static func styleFromCSSProperties(_ styles: [HTML.Style]) -> HTML.ComputedStyle {
+    /// This bridges swift-css styles to PDF rendering. Each HTML.StyleEntry contains
+    /// a CSS declaration (property:value) that we parse and convert.
+    public static func styleFromCSSProperties(_ styles: [HTML.StyleEntry]) -> HTML.ComputedStyle {
         var result = HTML.ComputedStyle.empty
 
         for style in styles {
-            let property = style.property.lowercased()
-            let value = style.value.lowercased()
+            let declarationString = style.declarationString
+            // Split declaration into property and value
+            guard let colonIndex = declarationString.firstIndex(of: ":") else { continue }
+            let property = String(declarationString[..<colonIndex]).trimmingCharacters(in: .whitespaces).lowercased()
+            let value = String(declarationString[declarationString.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces).lowercased()
 
             switch property {
             case "font-size":
