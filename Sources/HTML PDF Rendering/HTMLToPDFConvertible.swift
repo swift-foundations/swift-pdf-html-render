@@ -167,7 +167,6 @@ extension HTML.Element: HTMLToPDFConvertible {
             let pdfStyle = stylableType.pdfStyle
             mergedStyle = style.merging(pdfStyle.toComputedStyle(configuration: configuration))
         } else {
-            // For dynamic tags or non-stylable tags, just use the inherited style
             mergedStyle = style
         }
 
@@ -179,11 +178,9 @@ extension HTML.Element: HTMLToPDFConvertible {
             children = []
         }
 
-        // Use centralized dispatch based on tag
+        // Type-safe dispatch: call _renderToPDF directly on the Tag type
         do {
-            try dispatchElementRender(
-                tag: view.tag,
-                attributes: [:],  // HTML.Element doesn't expose attributes directly
+            try Tag._renderToPDF(
                 children: children,
                 style: mergedStyle,
                 context: &context,
@@ -315,6 +312,20 @@ extension HTML.AnyView: HTMLToPDFConvertible {
             style: style,
             context: &context
         )
+    }
+}
+
+// MARK: - HTML.Empty Conformance
+
+extension HTML.Empty: HTMLToPDFConvertible {
+    public static func _renderToPDF(
+        _ view: Self,
+        configuration: HTML.Configuration,
+        style: HTML.ComputedStyle,
+        context: inout PDF.Context
+    ) -> PDF.Content {
+        // Empty renders nothing - return empty content without accessing body
+        return PDF.Content()
     }
 }
 

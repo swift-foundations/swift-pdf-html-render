@@ -12,6 +12,7 @@ import Testing
 import PDF_Rendering
 import PDF_Standard
 import HTML_Rendering
+import HTML_Renderable_TestSupport
 import CSS
 
 @Suite

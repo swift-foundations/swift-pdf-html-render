@@ -217,7 +217,7 @@ struct `HTML Element Integration Tests` {
         let page = document.pages.first!
         let hasBoldText = page.content.operations.contains {
             if case .text(let op) = $0 {
-                return op.font == .helveticaBold
+                return op.font == .helvetica.bold
             }
             return false
         }

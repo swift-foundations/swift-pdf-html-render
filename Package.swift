@@ -47,6 +47,7 @@ let package = Package(
                 "HTML PDF Rendering",
 //                .product(name: "HtmlToPdf", package: "swift-html-to-pdf"),
                 .product(name: "HTML Rendering", package: "swift-html-rendering"),
+                .product(name: "HTML Renderable TestSupport", package: "swift-html-rendering"),
                 .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
             ]
         ),
