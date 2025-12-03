@@ -3,6 +3,7 @@
 
 import PDF_Rendering
 import HTML_Standard
+import W3C_CSS_Fonts
 
 extension Code {
     /// Renderer for the `<code>` element.
@@ -12,7 +13,7 @@ extension Code {
     public struct Renderer: PDFElementRenderer {
         public static let supportedTags: Set<String> = ["code"]
 
-        
+
         public static func render(
             tag: String,
             attributes: [String: String],
@@ -24,7 +25,7 @@ extension Code {
             let fontSize = style.fontSize ?? configuration.defaultFontSize
             let codeStyle = style.merging(HTML.ComputedStyle(
                 fontSize: fontSize * 0.9,
-                fontFamily: .courier
+                fontFamily: .monospace
             ))
             renderInline(
                 children: children,

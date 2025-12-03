@@ -3,6 +3,7 @@
 
 import PDF_Rendering
 import HTML_Standard
+import W3C_CSS_Fonts
 
 extension PreformattedText {
     /// Renderer for the `<pre>` element.
@@ -26,7 +27,7 @@ extension PreformattedText {
 
             let preStyle = style.merging(HTML.ComputedStyle(
                 fontSize: fontSize * 0.9,
-                fontFamily: .courier,
+                fontFamily: .monospace,
                 whiteSpace: .pre
             ))
 

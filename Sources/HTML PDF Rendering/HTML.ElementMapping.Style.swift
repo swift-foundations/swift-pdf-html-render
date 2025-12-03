@@ -3,6 +3,7 @@
 import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
+import W3C_CSS_Fonts
 
 extension HTML.ElementMapping {
 
@@ -23,19 +24,11 @@ extension HTML.ElementMapping {
             case "color":
                 result.color = parseColor(value)
             case "font-weight":
-                if value == "bold" || value == "700" || value == "800" || value == "900" {
-                    result.fontWeight = .bold
-                } else if value == "normal" || value == "400" {
-                    result.fontWeight = .normal
-                }
+                result.fontWeight = FontWeight(parsing: value)
             case "font-style":
-                if value == "italic" || value == "oblique" {
-                    result.fontStyle = .italic
-                } else if value == "normal" {
-                    result.fontStyle = .normal
-                }
+                result.fontStyle = FontStyle(parsing: value)
             case "font-family":
-                result.fontFamily = parseFontFamily(value)
+                result.fontFamily = FontFamily(parsing: value)
             case "text-align":
                 result.textAlign = parseTextAlign(value)
             case "background-color", "background":
@@ -100,13 +93,9 @@ extension HTML.ElementMapping {
             case "color":
                 style.color = parseColor(value)
             case "font-weight":
-                if value == "bold" || value == "700" || value == "800" || value == "900" {
-                    style.fontWeight = .bold
-                }
+                style.fontWeight = FontWeight(parsing: value)
             case "font-style":
-                if value == "italic" || value == "oblique" {
-                    style.fontStyle = .italic
-                }
+                style.fontStyle = FontStyle(parsing: value)
             case "text-align":
                 style.textAlign = parseTextAlign(value)
             case "background-color", "background":
@@ -208,25 +197,6 @@ extension HTML.ElementMapping {
         case "justify": return .justify
         default: return nil
         }
-    }
-
-    /// Parse font family from CSS value
-    static func parseFontFamily(_ value: String) -> HTML.ComputedStyle.FontFamily? {
-        // Remove quotes and lowercase
-        let cleaned = value.lowercased().filter { $0 != "\"" && $0 != "'" }
-
-        // Check for font family keywords
-        if cleaned.contains("monospace") || cleaned.contains("courier") {
-            return .courier
-        } else if cleaned.contains("serif") && !cleaned.contains("sans-serif") {
-            return .times
-        } else if cleaned.contains("sans-serif") || cleaned.contains("helvetica") || cleaned.contains("arial") {
-            return .helvetica
-        } else if cleaned.contains("times") {
-            return .times
-        }
-
-        return nil
     }
 
     /// Parse length value (px, pt, em, etc.) to points

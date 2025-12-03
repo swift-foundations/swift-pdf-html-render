@@ -1,6 +1,7 @@
 // HTML.ComputedStyle.swift
 
 public import PDF_Rendering
+public import W3C_CSS_Fonts
 
 extension HTML {
     /// Computed style values for an HTML element.
@@ -16,14 +17,14 @@ extension HTML {
         /// Text color
         public var color: PDF.Color?
 
-        /// Font weight
-        public var fontWeight: FontWeight?
+        /// Font weight (CSS font-weight)
+        public var fontWeight: W3C_CSS_Fonts.FontWeight?
 
-        /// Font style
-        public var fontStyle: FontStyle?
+        /// Font style (CSS font-style)
+        public var fontStyle: W3C_CSS_Fonts.FontStyle?
 
-        /// Font family
-        public var fontFamily: FontFamily?
+        /// Font family (CSS font-family)
+        public var fontFamily: W3C_CSS_Fonts.FontFamily?
 
         /// Text alignment
         public var textAlign: TextAlignment?
@@ -375,11 +376,11 @@ extension HTML {
                     color = parsed
                 }
             case "font-weight":
-                fontWeight = value == "bold" || value == "700" ? .bold : .normal
+                fontWeight = W3C_CSS_Fonts.FontWeight(parsing: value)
             case "font-style":
-                fontStyle = value == "italic" || value == "oblique" ? .italic : .normal
+                fontStyle = W3C_CSS_Fonts.FontStyle(parsing: value)
             case "font-family":
-                fontFamily = HTML.ElementMapping.parseFontFamily(stringValue)
+                fontFamily = W3C_CSS_Fonts.FontFamily(parsing: stringValue)
             case "text-align":
                 textAlign = HTML.ElementMapping.parseTextAlign(stringValue)
             case "line-height":
@@ -450,39 +451,6 @@ extension HTML {
     }
 }
 
-// MARK: - Font Weight
-
-extension HTML.ComputedStyle {
-    /// Font weight values
-    public enum FontWeight: Sendable {
-        case normal
-        case bold
-    }
-}
-
-// MARK: - Font Style
-
-extension HTML.ComputedStyle {
-    /// Font style values
-    public enum FontStyle: Sendable {
-        case normal
-        case italic
-    }
-}
-
-// MARK: - Font Family
-
-extension HTML.ComputedStyle {
-    /// Font family values (maps to PDF Standard 14 fonts)
-    public enum FontFamily: Sendable {
-        /// Helvetica (sans-serif, default)
-        case helvetica
-        /// Times Roman (serif)
-        case times
-        /// Courier (monospace, for code)
-        case courier
-    }
-}
 
 // MARK: - Text Alignment
 
@@ -647,90 +615,26 @@ extension PDF.Font {
     /// Example:
     /// ```swift
     /// let style = HTML.ComputedStyle(fontWeight: .bold)
-    /// let font = PDF.Font(style, base: .helvetica) // helveticaBold
+    /// let font = PDF.Font(style, base: .helvetica) // helvetica.bold
     /// ```
     public init(_ style: HTML.ComputedStyle, base: PDF.Font = .helvetica) {
         // Determine base font from fontFamily if specified
         let baseFont: PDF.Font
-        switch style.fontFamily {
-        case .helvetica:
-            baseFont = .helvetica
-        case .times:
-            baseFont = .timesRoman
-        case .courier:
-            baseFont = .courier
-        case nil:
+        if let family = style.fontFamily {
+            let pdfFamily = ISO_32000.Font.Family(family)
+            baseFont = ISO_32000.Font.find(family: pdfFamily, weight: .regular, style: .normal) ?? base
+        } else {
             baseFont = base
         }
 
         // Apply weight and style
-        switch (style.fontWeight, style.fontStyle) {
-        case (.bold, .italic):
-            self = baseFont.boldItalicVariant
-        case (.bold, _):
-            self = baseFont.boldVariant
-        case (_, .italic):
-            self = baseFont.italicVariant
-        default:
-            self = baseFont
-        }
-    }
-}
+        let pdfWeight = style.fontWeight.map { ISO_32000.Font.Weight($0) } ?? .regular
+        let pdfStyle = style.fontStyle.map { ISO_32000.Font.Style($0) } ?? .normal
 
-// MARK: - PDF.Font Variants
-
-extension PDF.Font {
-    /// Bold variant of this font
-    var boldVariant: PDF.Font {
-        switch self {
-        case .helvetica, .helveticaOblique:
-            return .helveticaBold
-        case .helveticaBold, .helveticaBoldOblique:
-            return self
-        case .timesRoman, .timesItalic:
-            return .timesBold
-        case .timesBold, .timesBoldItalic:
-            return self
-        case .courier, .courierOblique:
-            return .courierBold
-        case .courierBold, .courierBoldOblique:
-            return self
-        default:
-            return self
-        }
-    }
-
-    /// Italic variant of this font
-    var italicVariant: PDF.Font {
-        switch self {
-        case .helvetica, .helveticaBold:
-            return .helveticaOblique
-        case .helveticaOblique, .helveticaBoldOblique:
-            return self
-        case .timesRoman, .timesBold:
-            return .timesItalic
-        case .timesItalic, .timesBoldItalic:
-            return self
-        case .courier, .courierBold:
-            return .courierOblique
-        case .courierOblique, .courierBoldOblique:
-            return self
-        default:
-            return self
-        }
-    }
-
-    /// Bold italic variant of this font
-    var boldItalicVariant: PDF.Font {
-        switch self {
-        case .helvetica, .helveticaBold, .helveticaOblique, .helveticaBoldOblique:
-            return .helveticaBoldOblique
-        case .timesRoman, .timesBold, .timesItalic, .timesBoldItalic:
-            return .timesBoldItalic
-        case .courier, .courierBold, .courierOblique, .courierBoldOblique:
-            return .courierBoldOblique
-        default:
-            return self
-        }
+        self = ISO_32000.Font.find(
+            family: baseFont.family,
+            weight: pdfWeight,
+            style: pdfStyle
+        ) ?? baseFont
     }
 }

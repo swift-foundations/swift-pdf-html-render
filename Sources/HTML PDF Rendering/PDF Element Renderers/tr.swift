@@ -3,6 +3,7 @@
 
 import PDF_Rendering
 import HTML_Standard
+import W3C_CSS_Fonts
 
 extension TableRow {
     /// Renderer for the `<tr>` element.
@@ -28,11 +29,26 @@ extension TableRow {
                 // Add tab separator before each cell except the first
                 if index > 0 {
                     let font: PDF.Font = {
-                        switch (style.fontWeight, style.fontStyle) {
-                        case (.bold, .italic): return .helveticaBoldOblique
-                        case (.bold, _): return .helveticaBold
-                        case (_, .italic): return .helveticaOblique
-                        default: return .helvetica
+                        let isBold: Bool = {
+                            guard let weight = style.fontWeight else { return false }
+                            switch weight {
+                            case .bold, .bolder: return true
+                            case .number(let n) where n >= 600: return true
+                            default: return false
+                            }
+                        }()
+                        let isItalic: Bool = {
+                            guard let fontStyle = style.fontStyle else { return false }
+                            switch fontStyle {
+                            case .italic, .oblique, .obliqueAngle: return true
+                            default: return false
+                            }
+                        }()
+                        switch (isBold, isItalic) {
+                        case (true, true): return .helvetica.bold.italic
+                        case (true, false): return .helvetica.bold
+                        case (false, true): return .helvetica.italic
+                        case (false, false): return .helvetica
                         }
                     }()
                     context.appendInlineRun(PDF.TextRun(
