@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "HTML PDF Rendering", targets: ["HTML PDF Rendering"]),
+        .library(name: "HTML PDF Rendering Refactor", targets: ["HTML PDF Rendering Refactor"]),
     ],
     dependencies: [
         .package(path: "../swift-html-rendering"),
@@ -41,6 +42,19 @@ let package = Package(
                 .product(name: "ISO 9899", package: "swift-iso-9899"),
             ]
         ),
+        .target(
+            name: "HTML PDF Rendering Refactor",
+            dependencies: [
+                .product(name: "HTML Renderable", package: "swift-html-rendering"),
+                .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
+                .product(name: "CSS", package: "swift-css"),
+                .product(name: "HTML Standard", package: "swift-html-standard"),
+                .product(name: "CSS Standard", package: "swift-css-standard"),
+                .product(name: "W3C CSS", package: "swift-w3c-css"),
+                .product(name: "Standards", package: "swift-standards"),
+                .product(name: "ISO 9899", package: "swift-iso-9899"),
+            ]
+        ),
         .testTarget(
             name: "HTML PDF Rendering Tests",
             dependencies: [
@@ -49,6 +63,13 @@ let package = Package(
                 .product(name: "HTML Rendering", package: "swift-html-rendering"),
                 .product(name: "HTML Renderable TestSupport", package: "swift-html-rendering"),
                 .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
+            ]
+        ),
+        .testTarget(
+            name: "HTML PDF Rendering Refactor Tests",
+            dependencies: [
+                "HTML PDF Rendering Refactor",
+                .product(name: "HTML Rendering", package: "swift-html-rendering"),
             ]
         ),
     ]

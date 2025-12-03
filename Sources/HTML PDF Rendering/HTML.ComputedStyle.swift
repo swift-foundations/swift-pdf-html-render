@@ -1,7 +1,7 @@
 // HTML.ComputedStyle.swift
 
 public import PDF_Rendering
-public import W3C_CSS_Fonts
+public import CSS_Standard
 
 extension HTML {
     /// Computed style values for an HTML element.
@@ -27,7 +27,7 @@ extension HTML {
         public var fontFamily: W3C_CSS_Fonts.FontFamily?
 
         /// Text alignment
-        public var textAlign: TextAlignment?
+        public var textAlign: W3C_CSS_Text.TextAlign?
 
         /// Line height multiplier (1.0 = normal)
         public var lineHeight: Double?
@@ -118,7 +118,7 @@ extension HTML {
             fontWeight: FontWeight? = nil,
             fontStyle: FontStyle? = nil,
             fontFamily: FontFamily? = nil,
-            textAlign: TextAlignment? = nil,
+            textAlign: W3C_CSS_Text.TextAlign? = nil,
             lineHeight: Double? = nil,
             letterSpacing: Double? = nil,
             textDecoration: TextDecoration? = nil,
@@ -303,7 +303,7 @@ extension HTML {
             case "font-family":
                 fontFamily = value as? FontFamily
             case "text-align":
-                textAlign = value as? TextAlignment
+                textAlign = value as? W3C_CSS_Text.TextAlign
             case "line-height":
                 lineHeight = value as? Double
             case "letter-spacing":
@@ -451,18 +451,6 @@ extension HTML {
     }
 }
 
-
-// MARK: - Text Alignment
-
-extension HTML.ComputedStyle {
-    /// Text alignment values
-    public enum TextAlignment: Sendable {
-        case left
-        case center
-        case right
-        case justify
-    }
-}
 
 // MARK: - Border Style
 
@@ -619,22 +607,34 @@ extension PDF.Font {
     /// ```
     public init(_ style: HTML.ComputedStyle, base: PDF.Font = .helvetica) {
         // Determine base font from fontFamily if specified
-        let baseFont: PDF.Font
+        var result: PDF.Font
         if let family = style.fontFamily {
             let pdfFamily = ISO_32000.Font.Family(family)
-            baseFont = ISO_32000.Font.find(family: pdfFamily, weight: .regular, style: .normal) ?? base
+            result = ISO_32000.Font.find(family: pdfFamily, weight: .regular, style: .normal) ?? base
         } else {
-            baseFont = base
+            result = base
         }
 
-        // Apply weight and style
-        let pdfWeight = style.fontWeight.map { ISO_32000.Font.Weight($0) } ?? .regular
-        let pdfStyle = style.fontStyle.map { ISO_32000.Font.Style($0) } ?? .normal
+        // Apply weight using the .bold computed property
+        // This handles family-specific variations correctly
+        if let fontWeight = style.fontWeight {
+            let pdfWeight = ISO_32000.Font.Weight(fontWeight)
+            if pdfWeight == .bold {
+                result = result.bold
+            }
+        }
 
-        self = ISO_32000.Font.find(
-            family: baseFont.family,
-            weight: pdfWeight,
-            style: pdfStyle
-        ) ?? baseFont
+        // Apply style using the .italic computed property
+        // This correctly uses .oblique for Helvetica/Courier and .italic for Times
+        if let fontStyle = style.fontStyle {
+            switch fontStyle {
+            case .italic, .oblique, .obliqueAngle:
+                result = result.italic
+            default:
+                break
+            }
+        }
+
+        self = result
     }
 }

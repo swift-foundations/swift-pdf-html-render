@@ -3,7 +3,7 @@
 import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
-import W3C_CSS_Fonts
+import CSS_Standard
 
 extension HTML.ElementMapping {
 
@@ -192,7 +192,7 @@ extension HTML.ElementMapping {
     }
 
     /// Parse text alignment
-    static func parseTextAlign(_ value: String) -> HTML.ComputedStyle.TextAlignment? {
+    static func parseTextAlign(_ value: String) -> W3C_CSS_Text.TextAlign? {
         switch value.lowercased() {
         case "left": return .left
         case "center": return .center

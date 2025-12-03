@@ -3,6 +3,7 @@
 import Testing
 @testable import HTML_PDF_Rendering
 import PDF_Standard
+import CSS_Standard
 
 @Suite
 struct `HTML.ComputedStyle Tests` {
@@ -31,7 +32,7 @@ struct `HTML.ComputedStyle Tests` {
             color: PDF.Color.red,
             fontWeight: .bold,
             fontStyle: .italic,
-            textAlign: HTML.ComputedStyle.TextAlignment.center,
+            textAlign: W3C_CSS_Text.TextAlign.center,
             margin: PDF.EdgeInsets(all: 10),
             padding: PDF.EdgeInsets(all: 5),
             border: HTML.ComputedStyle.BorderStyle(width: 2, color: PDF.Color.black),
@@ -44,7 +45,7 @@ struct `HTML.ComputedStyle Tests` {
         #expect(style.fontStyle == .italic)
         #expect(style.margin?.top == 10)
         #expect(style.padding?.top == 5)
-        #expect(style.textAlign == HTML.ComputedStyle.TextAlignment.center)
+        #expect(style.textAlign == W3C_CSS_Text.TextAlign.center)
         #expect(style.backgroundColor == PDF.Color.white)
         #expect(style.border?.width == 2)
     }
@@ -118,14 +119,14 @@ struct `HTML.ComputedStyle Tests` {
 // MARK: - Text Alignment Tests
 
 @Suite
-struct `HTML.ComputedStyle.TextAlignment Tests` {
+struct `W3C_CSS_Text.TextAlign Tests` {
 
     @Test
     func `All alignment values exist`() {
-        let left = HTML.ComputedStyle.TextAlignment.left
-        let center = HTML.ComputedStyle.TextAlignment.center
-        let right = HTML.ComputedStyle.TextAlignment.right
-        let justify = HTML.ComputedStyle.TextAlignment.justify
+        let left = W3C_CSS_Text.TextAlign.left
+        let center = W3C_CSS_Text.TextAlign.center
+        let right = W3C_CSS_Text.TextAlign.right
+        let justify = W3C_CSS_Text.TextAlign.justify
 
         #expect(left != center)
         #expect(center != right)
