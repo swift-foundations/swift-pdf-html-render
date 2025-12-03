@@ -30,3 +30,11 @@ extension Aside {
         }
     }
 }
+
+extension Aside: @retroactive PDF.View {
+    public var body: some PDF.View {
+        PDF.Divider() // actual implementation here
+    }
+}
+
+

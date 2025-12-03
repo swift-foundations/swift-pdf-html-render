@@ -77,13 +77,49 @@ extension HTML.Text: HTMLToPDFConvertible {
     ) -> PDF.Content {
         // Append as text run instead of rendering directly.
         // Block elements will flush accumulated runs with proper line wrapping.
+        let fontSize = style.fontSize ?? configuration.defaultFontSize
         context.appendInlineRun(PDF.TextRun(
             text: view.text,
             font: PDF.Font(style, base: configuration.defaultFont),
-            fontSize: style.fontSize ?? configuration.defaultFontSize,
-            color: style.color ?? configuration.defaultColor
+            fontSize: fontSize,
+            color: style.color ?? configuration.defaultColor,
+            textDecoration: style.textDecoration?.toPDFDecoration ?? .none,
+            backgroundColor: style.backgroundColor,
+            verticalOffset: style.verticalAlign?.toOffset(fontSize: fontSize) ?? 0,
+            linkURL: style.linkURL
         ))
         return PDF.Content()
+    }
+}
+
+// MARK: - Text Decoration Conversion
+
+extension HTML.ComputedStyle.TextDecoration {
+    /// Convert HTML text decoration to PDF text decoration
+    var toPDFDecoration: PDF.TextDecoration {
+        switch self {
+        case .none: return .none
+        case .underline: return .underline
+        case .lineThrough: return .lineThrough
+        case .overline: return .none  // Not supported in PDF.TextDecoration
+        }
+    }
+}
+
+// MARK: - Vertical Align Conversion
+
+extension HTML.ComputedStyle.VerticalAlign {
+    /// Convert vertical alignment to a Y offset in points
+    /// Positive = up, Negative = down
+    func toOffset(fontSize: Double) -> Double {
+        switch self {
+        case .super:
+            return fontSize * 0.4  // Move up for superscript
+        case .sub:
+            return -fontSize * 0.2  // Move down for subscript
+        case .baseline, .top, .middle, .bottom, .textTop, .textBottom:
+            return 0  // No offset for other alignments
+        }
     }
 }
 
@@ -100,11 +136,15 @@ extension String: HTMLToPDFConvertible {
     ) -> PDF.Content {
         // Append as text run instead of rendering directly.
         // Block elements will flush accumulated runs with proper line wrapping.
+        let fontSize = style.fontSize ?? configuration.defaultFontSize
         context.appendInlineRun(PDF.TextRun(
             text: view,
             font: PDF.Font(style, base: configuration.defaultFont),
-            fontSize: style.fontSize ?? configuration.defaultFontSize,
-            color: style.color ?? configuration.defaultColor
+            fontSize: fontSize,
+            color: style.color ?? configuration.defaultColor,
+            textDecoration: style.textDecoration?.toPDFDecoration ?? .none,
+            backgroundColor: style.backgroundColor,
+            verticalOffset: style.verticalAlign?.toOffset(fontSize: fontSize) ?? 0
         ))
         return PDF.Content()
     }
@@ -121,40 +161,36 @@ extension HTML.Element: HTMLToPDFConvertible {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        // Look up renderer in registry
-        if let rendererType = PDFElementRendererRegistry.shared.renderer(for: view.tag) {
-            // Wrap content as HTMLToPDFConvertible
-            let children: [any HTMLToPDFConvertible]
-            if let content = view.content {
-                children = [HTMLViewWrapper(content)]
-            } else {
-                children = []
-            }
-
-            // Use registry-based renderer
-            do {
-                try rendererType.render(
-                    tag: view.tag,
-                    attributes: [:],  // HTML.Element doesn't expose attributes directly
-                    children: children,
-                    style: style,
-                    context: &context,
-                    configuration: configuration
-                )
-            } catch {
-                // Silently handle render errors for now
-            }
-            return PDF.Content()
+        // Check if the Tag type conforms to PDF.Stylable for type-safe styling
+        let mergedStyle: HTML.ComputedStyle
+        if let stylableType = Tag.self as? any PDF.Stylable.Type {
+            let pdfStyle = stylableType.pdfStyle
+            mergedStyle = style.merging(pdfStyle.toComputedStyle(configuration: configuration))
+        } else {
+            // For dynamic tags or non-stylable tags, just use the inherited style
+            mergedStyle = style
         }
 
-        // Fallback: render content directly with PDF.Content.init
+        // Wrap content as HTMLToPDFConvertible
+        let children: [any HTMLToPDFConvertible]
         if let content = view.content {
-            return PDF.Content(
-                content,
-                configuration: configuration,
-                style: style,
-                context: &context
+            children = [HTMLViewWrapper(content)]
+        } else {
+            children = []
+        }
+
+        // Use centralized dispatch based on tag
+        do {
+            try dispatchElementRender(
+                tag: view.tag,
+                attributes: [:],  // HTML.Element doesn't expose attributes directly
+                children: children,
+                style: mergedStyle,
+                context: &context,
+                configuration: configuration
             )
+        } catch {
+            // Silently handle render errors for now
         }
         return PDF.Content()
     }

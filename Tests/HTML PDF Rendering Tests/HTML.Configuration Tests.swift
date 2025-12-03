@@ -26,7 +26,7 @@ struct `HTML.Configuration Tests` {
         let config = HTML.Configuration(
             paperSize: .letter,
             margins: PDF.EdgeInsets(all: 50),
-            defaultFont: .times,
+            defaultFont: .timesRoman,
             defaultFontSize: 14,
             defaultColor: .blue,
             cssSupport: .none,
@@ -35,7 +35,7 @@ struct `HTML.Configuration Tests` {
 
         #expect(config.paperSize == .letter)
         #expect(config.margins.top == 50)
-        #expect(config.defaultFont == .times)
+        #expect(config.defaultFont == .timesRoman)
         #expect(config.defaultFontSize == 14)
         #expect(config.defaultColor == .blue)
         #expect(config.lineHeight == 1.5)

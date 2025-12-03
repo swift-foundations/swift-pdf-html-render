@@ -13,7 +13,7 @@ extension _Tuple: HTMLToPDFConvertible where repeat each Content: HTML.View {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        var operations: [PDF.Operation] = []
+        var operations: [PDF.Content.Operation] = []
 
         func convert<T: HTML.View>(_ element: T) {
             let result = PDF.Content(

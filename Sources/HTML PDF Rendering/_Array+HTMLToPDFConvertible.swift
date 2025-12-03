@@ -13,7 +13,7 @@ extension _Array: HTMLToPDFConvertible where Element: HTML.View {
         style: HTML.ComputedStyle,
         context: inout PDF.Context
     ) -> PDF.Content {
-        var operations: [PDF.Operation] = []
+        var operations: [PDF.Content.Operation] = []
         let fontSize = style.fontSize ?? configuration.defaultFontSize
         let spacing = fontSize * 0.3
 

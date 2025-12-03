@@ -208,7 +208,7 @@ struct `PDF.Font Resolution Tests` {
 
     @Test(arguments: [
         (PDF.Font.helvetica, PDF.Font.helveticaBold),
-        (PDF.Font.times, PDF.Font.timesBold),
+        (PDF.Font.timesRoman, PDF.Font.timesBold),
         (PDF.Font.courier, PDF.Font.courierBold),
     ])
     func `Bold variant for font families`(base: PDF.Font, expected: PDF.Font) {
@@ -220,7 +220,7 @@ struct `PDF.Font Resolution Tests` {
 
     @Test(arguments: [
         (PDF.Font.helvetica, PDF.Font.helveticaOblique),
-        (PDF.Font.times, PDF.Font.timesItalic),
+        (PDF.Font.timesRoman, PDF.Font.timesItalic),
         (PDF.Font.courier, PDF.Font.courierOblique),
     ])
     func `Italic variant for font families`(base: PDF.Font, expected: PDF.Font) {
@@ -232,7 +232,7 @@ struct `PDF.Font Resolution Tests` {
 
     @Test(arguments: [
         (PDF.Font.helvetica, PDF.Font.helveticaBoldOblique),
-        (PDF.Font.times, PDF.Font.timesBoldItalic),
+        (PDF.Font.timesRoman, PDF.Font.timesBoldItalic),
         (PDF.Font.courier, PDF.Font.courierBoldOblique),
     ])
     func `Bold italic variant for font families`(base: PDF.Font, expected: PDF.Font) {

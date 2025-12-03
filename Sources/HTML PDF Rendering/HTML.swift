@@ -43,8 +43,8 @@ extension PDF.Document {
         let pages = renderHTMLToPages(html, configuration: configuration)
         
         // Build info if any metadata provided
-        let info: PDF.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
-        ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
+        let info: PDF.Document.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
+        ? PDF.Document.Info(title: title, author: author, subject: subject, keywords: keywords)
         : nil
         
         self.init(pages: pages, info: info)
@@ -80,8 +80,8 @@ extension PDF.Document {
         let pages = renderHTMLToPages(html, configuration: configuration)
         
         // Build info if any metadata provided
-        let info: PDF.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
-        ? PDF.Info(title: title, author: author, subject: subject, keywords: keywords)
+        let info: PDF.Document.Info? = (title != nil || author != nil || subject != nil || keywords != nil)
+        ? PDF.Document.Info(title: title, author: author, subject: subject, keywords: keywords)
         : nil
         
         self.init(pages: pages, info: info)
@@ -123,7 +123,8 @@ private func renderHTMLToPages<T: HTML.View>(
     
     // Get all pages from context
     let allPages = context.getAllPages()
-    
+    let allAnnotations = context.getAllAnnotations()
+
     // Create PDF.Page objects
     if allPages.isEmpty {
         // Return a single empty page if no content
@@ -133,12 +134,14 @@ private func renderHTMLToPages<T: HTML.View>(
             content: PDF.Content()
         )]
     }
-    
-    return allPages.map { operations in
-        PDF.Page(
+
+    return allPages.enumerated().map { (index, operations) in
+        let annotations = index < allAnnotations.count ? allAnnotations[index] : []
+        return PDF.Page(
             paperSize: configuration.paperSize,
             margins: configuration.margins,
-            content: PDF.Content(operations: operations)
+            content: PDF.Content(operations: operations),
+            annotations: annotations
         )
     }
 }

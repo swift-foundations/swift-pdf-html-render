@@ -8,11 +8,11 @@ extension Anchor {
     /// Renderer for the `<a>` (anchor) element.
     ///
     /// The `<a>` element creates a hyperlink. In PDF output,
-    /// it renders as inline text (links are not interactive in basic PDF).
+    /// it renders as clickable text with underline styling.
     public struct Renderer: PDFElementRenderer {
         public static let supportedTags: Set<String> = ["a"]
 
-        
+
         public static func render(
             tag: String,
             attributes: [String: String],
@@ -21,11 +21,20 @@ extension Anchor {
             context: inout PDF.Context,
             configuration: HTML.Configuration
         ) throws {
-            // Links render as inline text
-            // Future: could add underline or color styling
+            // Get the href attribute for the link URL
+            let href = attributes["href"]
+
+            // Create link style: blue color, underline, and pass the URL
+            var linkStyle = style.merging(HTML.ComputedStyle(
+                color: .rgb(r: 0.0, g: 0.0, b: 0.8),  // Blue color for links
+                textDecoration: .underline,
+                linkURL: href
+            ))
+
+            // Render children with link style
             renderInline(
                 children: children,
-                style: style,
+                style: linkStyle,
                 context: &context,
                 configuration: configuration
             )

@@ -104,6 +104,11 @@ extension HTML {
         /// Border spacing in points
         public var borderSpacing: Double?
 
+        // MARK: - Link Properties
+
+        /// URL for clickable links (set on <a> elements)
+        public var linkURL: String?
+
         /// Create an empty computed style
         public init(
             // Text properties
@@ -139,7 +144,9 @@ extension HTML {
             listStylePosition: ListStylePosition? = nil,
             // Table properties
             borderCollapse: BorderCollapse? = nil,
-            borderSpacing: Double? = nil
+            borderSpacing: Double? = nil,
+            // Link properties
+            linkURL: String? = nil
         ) {
             // Text properties
             self.fontSize = fontSize
@@ -175,6 +182,8 @@ extension HTML {
             // Table properties
             self.borderCollapse = borderCollapse
             self.borderSpacing = borderSpacing
+            // Link properties
+            self.linkURL = linkURL
         }
 
         /// Empty style with no values set
@@ -217,6 +226,8 @@ extension HTML {
             // Table properties
             if let value = other.borderCollapse { borderCollapse = value }
             if let value = other.borderSpacing { borderSpacing = value }
+            // Link properties
+            if let value = other.linkURL { linkURL = value }
         }
 
         /// Returns a new style with `other` merged in
@@ -645,7 +656,7 @@ extension PDF.Font {
         case .helvetica:
             baseFont = .helvetica
         case .times:
-            baseFont = .times
+            baseFont = .timesRoman
         case .courier:
             baseFont = .courier
         case nil:
@@ -676,7 +687,7 @@ extension PDF.Font {
             return .helveticaBold
         case .helveticaBold, .helveticaBoldOblique:
             return self
-        case .times, .timesItalic:
+        case .timesRoman, .timesItalic:
             return .timesBold
         case .timesBold, .timesBoldItalic:
             return self
@@ -696,7 +707,7 @@ extension PDF.Font {
             return .helveticaOblique
         case .helveticaOblique, .helveticaBoldOblique:
             return self
-        case .times, .timesBold:
+        case .timesRoman, .timesBold:
             return .timesItalic
         case .timesItalic, .timesBoldItalic:
             return self
@@ -714,7 +725,7 @@ extension PDF.Font {
         switch self {
         case .helvetica, .helveticaBold, .helveticaOblique, .helveticaBoldOblique:
             return .helveticaBoldOblique
-        case .times, .timesBold, .timesItalic, .timesBoldItalic:
+        case .timesRoman, .timesBold, .timesItalic, .timesBoldItalic:
             return .timesBoldItalic
         case .courier, .courierBold, .courierOblique, .courierBoldOblique:
             return .courierBoldOblique

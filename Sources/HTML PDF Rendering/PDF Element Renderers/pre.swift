@@ -12,7 +12,7 @@ extension PreformattedText {
     public struct Renderer: PDFElementRenderer {
         public static let supportedTags: Set<String> = ["pre"]
 
-        
+
         public static func render(
             tag: String,
             attributes: [String: String],
@@ -30,6 +30,10 @@ extension PreformattedText {
                 whiteSpace: .pre
             ))
 
+            // Enable whitespace preservation for preformatted text
+            let wasPreserving = context.preserveWhitespace
+            context.preserveWhitespace = true
+
             try renderBlock(
                 children: children,
                 style: preStyle,
@@ -38,6 +42,9 @@ extension PreformattedText {
                 beforeSpacing: fontSize * spacing.before,
                 afterSpacing: fontSize * spacing.after
             )
+
+            // Restore previous whitespace mode
+            context.preserveWhitespace = wasPreserving
         }
     }
 }
