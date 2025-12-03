@@ -4,7 +4,58 @@
 import HTML_Standard
 import HTML_Renderable
 import PDF_Rendering
+import WHATWG_HTML
 
-// Note: Heading rendering is handled by HTML.Element via flow-based rendering.
-// The HTML.Element extension checks Tag.flow and renders as block for <h1>-<h6>.
-// Custom heading handling (font size, spacing, etc.) can be added here if needed.
+// MARK: - H1
+
+extension H1: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 1)
+    }
+}
+
+// MARK: - H2
+
+extension H2: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 2)
+    }
+}
+
+// MARK: - H3
+
+extension H3: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 3)
+    }
+}
+
+// MARK: - H4
+
+extension H4: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 4)
+    }
+}
+
+// MARK: - H5
+
+extension H5: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 5)
+    }
+}
+
+// MARK: - H6
+
+extension H6: PDF.HTML.TagRenderer {
+    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+        context.font = context.font.bold
+        context.fontSize = configuration.headingSize(level: 6)
+    }
+}

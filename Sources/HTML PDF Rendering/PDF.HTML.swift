@@ -11,6 +11,20 @@ extension PDF {
     public enum HTML {}
 }
 
+// MARK: - Internal Tag Renderer Protocol
+
+extension PDF.HTML {
+    /// Internal protocol for tags that provide custom PDF styling.
+    ///
+    /// Tags conform to this to define style changes (font, size, color) for PDF rendering.
+    /// The save/restore of style state is handled by HTML.Element.
+    /// This is an implementation detail - not part of the public API.
+    internal protocol TagRenderer {
+        /// Apply tag-specific styling to the context.
+        static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration)
+    }
+}
+
 // MARK: - Main Entry Point
 
 extension PDF.HTML {

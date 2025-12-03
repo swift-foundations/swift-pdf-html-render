@@ -12,12 +12,34 @@ extension HTML.Element: PDF.HTML.View where Content: HTML.View {
         context: inout PDF.Context,
         configuration: PDF.HTML.Configuration
     ) where Buffer.Element == PDF.Render.Operation {
-        // Use flow-based rendering from WHATWG_HTML.Element
-        switch Tag.flow {
-        case .block:
-            PDF.HTML.renderBlock(view.content, into: &buffer, context: &context, configuration: configuration)
-        case .inline:
-            PDF.HTML.renderInline(view.content, into: &buffer, context: &context, configuration: configuration)
+        // Helper to render based on Tag.flow
+        func renderWithFlow() {
+            switch Tag.flow {
+            case .block:
+                PDF.HTML.renderBlock(view.content, into: &buffer, context: &context, configuration: configuration)
+            case .inline:
+                PDF.HTML.renderInline(view.content, into: &buffer, context: &context, configuration: configuration)
+            }
+        }
+
+        // Check if Tag provides custom styling
+        if let tagRenderer = Tag.self as? any PDF.HTML.TagRenderer.Type {
+            // Save current style
+            let savedFont = context.font
+            let savedFontSize = context.fontSize
+
+            // Apply tag-specific style
+            tagRenderer.applyStyle(to: &context, configuration: configuration)
+
+            // Render with flow
+            renderWithFlow()
+
+            // Restore style
+            context.font = savedFont
+            context.fontSize = savedFontSize
+        } else {
+            // Default: just render with flow
+            renderWithFlow()
         }
     }
 }
