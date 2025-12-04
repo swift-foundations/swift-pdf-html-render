@@ -20,34 +20,28 @@ extension HTML.InlineStyle: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Save current style state
-        let savedFont = context.font
-        let savedFontSize = context.fontSize
-        let savedColor = context.color
+        let savedFont = context.pdf.font
+        let savedFontSize = context.pdf.fontSize
+        let savedColor = context.pdf.color
 
         defer {
             // Restore style state after rendering content
-            context.font = savedFont
-            context.fontSize = savedFontSize
-            context.color = savedColor
+            context.pdf.font = savedFont
+            context.pdf.fontSize = savedFontSize
+            context.pdf.color = savedColor
         }
 
         // Apply the style if the property conforms to StyleModifier
         if let style = view.style {
             if let modifier = style.property as? any PDF.HTML.StyleModifier {
-                modifier.apply(to: &context, configuration: configuration)
+                modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
         }
 
         // Render the wrapped content
-        Content._render(
-            view.content,
-            into: &buffer,
-            context: &context,
-            configuration: configuration
-        )
+        Content._render(view.content, into: &buffer, context: &context)
     }
 }

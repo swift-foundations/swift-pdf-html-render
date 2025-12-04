@@ -12,24 +12,13 @@ where First: PDF.HTML.View, Second: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         switch view {
         case .first(let first):
-            First._render(
-                first,
-                into: &buffer,
-                context: &context,
-                configuration: configuration
-            )
+            First._render(first, into: &buffer, context: &context)
         case .second(let second):
-            Second._render(
-                second,
-                into: &buffer,
-                context: &context,
-                configuration: configuration
-            )
+            Second._render(second, into: &buffer, context: &context)
         }
     }
 }

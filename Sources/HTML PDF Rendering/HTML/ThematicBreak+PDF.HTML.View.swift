@@ -9,22 +9,21 @@ extension ThematicBreak: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Flush any pending inline runs
-        _ = context.flushInlineRuns()
+        _ = context.pdf.flushInlineRuns()
 
         // Add spacing before the rule
-        let spacing = configuration.defaultFontSize * 0.5
-        context.advance(PDF.UserSpace.Y(spacing))
+        let spacing = context.configuration.defaultFontSize * 0.5
+        context.pdf.advance(PDF.UserSpace.Y(spacing))
 
         // Draw horizontal line
-        let lineY = context.y
-        let startX = context.x
-        let endX = PDF.UserSpace.X(PDF.UserSpace.Unit(context.x.value + context.availableWidth.value))
+        let lineY = context.pdf.y
+        let startX = context.pdf.x
+        let endX = PDF.UserSpace.X(PDF.UserSpace.Unit(context.pdf.x.value + context.pdf.availableWidth.value))
 
-        context.add(.graphics(.line(
+        context.pdf.add(.graphics(.line(
             from: PDF.UserSpace.Coordinate(x: startX, y: lineY),
             to: PDF.UserSpace.Coordinate(x: endX, y: lineY),
             color: .gray(0.5),
@@ -32,6 +31,6 @@ extension ThematicBreak: PDF.HTML.View {
         )))
 
         // Add spacing after the rule
-        context.advance(PDF.UserSpace.Y(spacing))
+        context.pdf.advance(PDF.UserSpace.Y(spacing))
     }
 }

@@ -7,8 +7,7 @@ extension Swift.Never: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Never is uninhabited - this will never be called
     }

@@ -255,75 +255,17 @@ struct `Comprehensive PDF.HTML.View Tests` {
     func `document showing all elements and properties`() throws {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
-                // ===== PHASE 1: TEXT STYLING =====
-                H1 { "All HTML Elements Demo" }
-
-                H2 { "1. Text Styling" }
-
-                Paragraph {
-                    "Normal text, "
-                    StrongImportance { "bold" }
-                    ", "
-                    Emphasis { "italic" }
-                    ", "
-                    StrongImportance { Emphasis { "bold italic" } }
-                    ", "
-                    Code { "code" }
-                    ", "
-                    Mark { "highlighted" }
-                    ", "
-                    Strikethrough { "strikethrough" }
-                    ", "
-                    UnarticulatedAnnotation { "underline" }
-                    "."
-                }
-
-                // ===== PHASE 2: BLOCK ELEMENTS =====
-                H2 { "2. Block Elements" }
-
-                Paragraph { "A blockquote follows:" }
-                BlockQuote {
-                    Paragraph { "This is a block quotation with left indentation. It should wrap properly within the indented area." }
-                }
-
-                Paragraph { "A preformatted block follows:" }
-                PreformattedText {
-                    "func hello() {\n    print(\"Hello, World!\")\n}"
-                }
-
-                Paragraph { "A horizontal rule follows:" }
-                ThematicBreak()
-
-                // ===== PHASE 3: LISTS =====
-                H2 { "3. Lists" }
-
-                Paragraph { "An unordered list:" }
-                UnorderedList {
-                    ListItem { "First bullet item" }
-                    ListItem { "Second bullet item" }
-                    ListItem { "Third bullet item" }
-                }
-
-                Paragraph { "An ordered list:" }
-                OrderedList {
-                    ListItem { "First numbered item" }
-                    ListItem { "Second numbered item" }
-                    ListItem { "Third numbered item" }
-                }
-
-                // ===== PHASE 4: HEADINGS =====
-                H2 { "4. All Heading Levels" }
-                H1 { "Heading 1" }
-                H2 { "Heading 2" }
-                H3 { "Heading 3" }
-                H4 { "Heading 4" }
-                H5 { "Heading 5" }
-                H6 { "Heading 6" }
-
-                // ===== CONCLUSION =====
-                Paragraph {
-                    Emphasis { "End of demo." }
-                }
+                TextStylingDemo()
+                BlockElementsDemo()
+                ListsDemo()
+                HeadingsDemo()
+                TableDemo()
+                DescriptionListDemo()
+                SemanticDemo()
+                FigureDemo()
+                NestedListDemo()
+                InlineStyleDemo()
+                Paragraph { Emphasis { "End of demo." } }
             }
         }
 
@@ -346,5 +288,168 @@ struct `Comprehensive PDF.HTML.View Tests` {
         // Basic sanity checks
         #expect(doc.pages.count >= 1)
         #expect(bytes.count > 1000, "Complex document should have substantial content")
+    }
+}
+//
+//// MARK: - Demo Helper Views
+
+private struct TextStylingDemo: HTML.View {
+    var body: some HTML.View {
+        H1 { "All HTML Elements Demo" }
+        H2 { "1. Text Styling" }
+        Paragraph {
+            "Normal, "
+            StrongImportance { "bold" }
+            ", "
+            Emphasis { "italic" }
+            ", "
+            Code { "code" }
+            "."
+        }
+        Paragraph {
+            Mark { "highlighted" }
+            ", "
+            Strikethrough { "strikethrough" }
+            ", "
+            UnarticulatedAnnotation { "underline" }
+            "."
+        }
+    }
+}
+
+private struct BlockElementsDemo: HTML.View {
+    var body: some HTML.View {
+        H2 { "2. Block Elements" }
+        BlockQuote {
+            Paragraph { "This is a block quotation." }
+        }
+        PreformattedText {
+            "func hello() {\n    print(\"Hello\")\n}"
+        }
+        ThematicBreak()
+    }
+}
+
+private struct ListsDemo: HTML.View {
+    var body: some HTML.View {
+        H2 { "3. Lists" }
+        UnorderedList {
+            ListItem { "Bullet 1" }
+            ListItem { "Bullet 2" }
+        }
+        OrderedList {
+            ListItem { "Number 1" }
+            ListItem { "Number 2" }
+        }
+    }
+}
+
+private struct HeadingsDemo: HTML.View {
+    var body: some HTML.View {
+        H2 { "4. Headings" }
+        H1 { "H1" }
+        H2 { "H2" }
+        H3 { "H3" }
+        H4 { "H4" }
+        H5 { "H5" }
+        H6 { "H6" }
+    }
+}
+
+private struct TableDemo: HTML.View {
+    var body: some HTML.View {
+        Table {
+            Caption { "Sample Data Table" }
+            TableHead {
+                TableRow {
+                    TableHeader { "Name" }
+                    TableHeader { "Age" }
+                    TableHeader { "City" }
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableDataCell { "Alice" }
+                    TableDataCell { "30" }
+                    TableDataCell { "New York" }
+                }
+                TableRow {
+                    TableDataCell { "Bob" }
+                    TableDataCell { "25" }
+                    TableDataCell { "Los Angeles" }
+                }
+            }
+        }
+    }
+}
+
+private struct DescriptionListDemo: HTML.View {
+    var body: some HTML.View {
+        DescriptionList {
+            DescriptionTerm { "HTML" }
+            DescriptionDetails { "HyperText Markup Language" }
+            DescriptionTerm { "CSS" }
+            DescriptionDetails { "Cascading Style Sheets" }
+            DescriptionTerm { "PDF" }
+            DescriptionDetails { "Portable Document Format" }
+        }
+    }
+}
+
+private struct SemanticDemo: HTML.View {
+    var body: some HTML.View {
+        Article {
+            Header {
+                H3 { "Article Title" }
+            }
+            Section {
+                Paragraph { "Main content of the article." }
+            }
+            Footer {
+                Paragraph { Small { "Author: Test Suite" } }
+            }
+        }
+    }
+}
+
+private struct FigureDemo: HTML.View {
+    var body: some HTML.View {
+        Figure {
+            Paragraph { "[Image placeholder]" }
+            FigureCaption { "Figure 1: Sample figure." }
+        }
+    }
+}
+
+private struct NestedListDemo: HTML.View {
+    var body: some HTML.View {
+        UnorderedList {
+            ListItem { "Item 1" }
+            ListItem {
+                "Item 2 with nested:"
+                UnorderedList {
+                    ListItem { "Nested 2.1" }
+                    ListItem { "Nested 2.2" }
+                }
+            }
+            ListItem { "Item 3" }
+        }
+    }
+}
+
+private struct InlineStyleDemo: HTML.View {
+    var body: some HTML.View {
+        Paragraph {
+            "Normal, "
+            ContentSpan { "red" }
+                .css.color(.red)
+            ", "
+            ContentSpan { "blue" }
+                .css.color(.blue)
+            "."
+        }
+        ContentDivision {
+            Paragraph { "Content in a div." }
+        }
     }
 }

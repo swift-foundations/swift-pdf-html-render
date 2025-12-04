@@ -13,15 +13,9 @@ extension HTML._Attributes: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // HTML attributes don't affect PDF rendering - delegate to wrapped content
-        Content._render(
-            view.content,
-            into: &buffer,
-            context: &context,
-            configuration: configuration
-        )
+        Content._render(view.content, into: &buffer, context: &context)
     }
 }

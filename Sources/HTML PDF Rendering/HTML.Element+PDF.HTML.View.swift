@@ -9,30 +9,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render<Buffer: RangeReplaceableCollection>(
         _ view: Self,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Check if this is a list container (ul, ol) - needs special handling
         if let listContainer = Tag.self as? any PDF.HTML.ListContainer.Type {
-            renderListContainer(
-                view,
-                listContainer: listContainer,
-                into: &buffer,
-                context: &context,
-                configuration: configuration
-            )
+            renderListContainer(view, listContainer: listContainer, into: &buffer, context: &context)
             return
         }
 
         // Check if this is a list item - needs special handling
         if let listItemRenderer = Tag.self as? any PDF.HTML.ListItemRenderer.Type {
-            renderListItem(
-                view,
-                listItemRenderer: listItemRenderer,
-                into: &buffer,
-                context: &context,
-                configuration: configuration
-            )
+            renderListItem(view, listItemRenderer: listItemRenderer, into: &buffer, context: &context)
             return
         }
 
@@ -40,47 +27,37 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         func renderWithFlow() {
             switch Tag.flow {
             case .block:
-                PDF.HTML.renderBlock(
-                    view.content,
-                    into: &buffer,
-                    context: &context,
-                    configuration: configuration
-                )
+                PDF.HTML.renderBlock(view.content, into: &buffer, context: &context)
             case .inline:
-                PDF.HTML.renderInline(
-                    view.content,
-                    into: &buffer,
-                    context: &context,
-                    configuration: configuration
-                )
+                PDF.HTML.renderInline(view.content, into: &buffer, context: &context)
             }
         }
 
         // Check if Tag provides custom styling
         if let tagRenderer = Tag.self as? any PDF.HTML.TagRenderer.Type {
             // Save current style and layout state
-            let savedFont = context.font
-            let savedFontSize = context.fontSize
-            let savedTextDecoration = context.textDecoration
-            let savedTextBackgroundColor = context.textBackgroundColor
-            let savedX = context.x
-            let savedAvailableWidth = context.availableWidth
-            let savedPreserveWhitespace = context.preserveWhitespace
+            let savedFont = context.pdf.font
+            let savedFontSize = context.pdf.fontSize
+            let savedTextDecoration = context.pdf.textDecoration
+            let savedTextBackgroundColor = context.pdf.textBackgroundColor
+            let savedX = context.pdf.x
+            let savedAvailableWidth = context.pdf.availableWidth
+            let savedPreserveWhitespace = context.pdf.preserveWhitespace
 
             // Apply tag-specific style
-            tagRenderer.applyStyle(to: &context, configuration: configuration)
+            tagRenderer.applyStyle(to: &context.pdf, configuration: context.configuration)
 
             // Render with flow
             renderWithFlow()
 
             // Restore style and layout state
-            context.font = savedFont
-            context.fontSize = savedFontSize
-            context.textDecoration = savedTextDecoration
-            context.textBackgroundColor = savedTextBackgroundColor
-            context.x = savedX
-            context.availableWidth = savedAvailableWidth
-            context.preserveWhitespace = savedPreserveWhitespace
+            context.pdf.font = savedFont
+            context.pdf.fontSize = savedFontSize
+            context.pdf.textDecoration = savedTextDecoration
+            context.pdf.textBackgroundColor = savedTextBackgroundColor
+            context.pdf.x = savedX
+            context.pdf.availableWidth = savedAvailableWidth
+            context.pdf.preserveWhitespace = savedPreserveWhitespace
         } else {
             // Default: just render with flow
             renderWithFlow()
@@ -92,32 +69,31 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         _ view: Self,
         listContainer: any PDF.HTML.ListContainer.Type,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Flush any pending inline runs
-        _ = context.flushInlineRuns()
+        _ = context.pdf.flushInlineRuns()
 
         // Push list type onto stack
-        context.push(list: listContainer.listType())
+        context.pdf.push(list: listContainer.listType())
 
         // Save and indent for list content
-        let savedX = context.x
-        let savedWidth = context.availableWidth
+        let savedX = context.pdf.x
+        let savedWidth = context.pdf.availableWidth
         let listIndent: PDF.UserSpace.Unit = 20
-        context.x = PDF.UserSpace.X(PDF.UserSpace.Unit(context.x.value) + listIndent)
-        context.availableWidth = PDF.UserSpace.Width(PDF.UserSpace.Unit(context.availableWidth.value) - listIndent)
+        context.pdf.x = PDF.UserSpace.X(PDF.UserSpace.Unit(context.pdf.x.value) + listIndent)
+        context.pdf.availableWidth = PDF.UserSpace.Width(PDF.UserSpace.Unit(context.pdf.availableWidth.value) - listIndent)
 
         // Render list content
         if let content = view.content {
-            Content._render(content, into: &buffer, context: &context, configuration: configuration)
+            Content._render(content, into: &buffer, context: &context)
         }
 
         // Flush and restore
-        _ = context.flushInlineRuns()
-        context.x = savedX
-        context.availableWidth = savedWidth
-        context.popList()
+        _ = context.pdf.flushInlineRuns()
+        context.pdf.x = savedX
+        context.pdf.availableWidth = savedWidth
+        context.pdf.popList()
     }
 
     /// Render a list item (li)
@@ -125,57 +101,56 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         _ view: Self,
         listItemRenderer: any PDF.HTML.ListItemRenderer.Type,
         into buffer: inout Buffer,
-        context: inout PDF.Context,
-        configuration: PDF.HTML.Configuration
+        context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
         // Flush any pending inline runs
-        _ = context.flushInlineRuns()
+        _ = context.pdf.flushInlineRuns()
 
         // Get the marker text
-        let marker = context.nextListMarker()
+        let marker = context.pdf.nextListMarker()
 
         // Render marker at current position (left of content area)
-        let markerWidth = context.font.stringWidth(marker + " ", atSize: context.fontSize)
-        let markerX = PDF.UserSpace.X(PDF.UserSpace.Unit(context.x.value) - markerWidth)
+        let markerWidth = context.pdf.font.stringWidth(marker + " ", atSize: context.pdf.fontSize)
+        let markerX = PDF.UserSpace.X(PDF.UserSpace.Unit(context.pdf.x.value) - markerWidth)
 
         // Create text run for marker
         let markerRun = PDF.TextRun(
             text: marker,
-            font: context.font,
-            fontSize: context.fontSize,
-            color: context.color
+            font: context.pdf.font,
+            fontSize: context.pdf.fontSize,
+            color: context.pdf.color
         )
 
         // Render marker inline run
-        let savedInlineRuns = context.inlineRuns
-        context.inlineRuns = [markerRun]
+        let savedInlineRuns = context.pdf.inlineRuns
+        context.pdf.inlineRuns = [markerRun]
 
         // Calculate marker position
-        let lineHeight = PDF.UserSpace.Height(context.lineHeightPoints)
-        context.checkPageBreak(needing: lineHeight)
+        let lineHeight = PDF.UserSpace.Height(context.pdf.lineHeightPoints)
+        context.pdf.checkPageBreak(needing: lineHeight)
 
         // Manually render marker at left offset position
         let baselineY = PDF.UserSpace.Y(
-            PDF.UserSpace.Unit(context.y.value) +
-            context.font.metrics.ascender(atSize: context.fontSize)
+            PDF.UserSpace.Unit(context.pdf.y.value) +
+            context.pdf.font.metrics.ascender(atSize: context.pdf.fontSize)
         )
-        context.add(.text(PDF.Render.TextOperation(
+        context.pdf.add(.text(PDF.Render.TextOperation(
             text: marker,
             position: PDF.UserSpace.Coordinate(x: markerX, y: baselineY),
-            font: context.font,
-            size: context.fontSize,
-            color: context.color
+            font: context.pdf.font,
+            size: context.pdf.fontSize,
+            color: context.pdf.color
         )))
 
         // Restore inline runs
-        context.inlineRuns = savedInlineRuns
+        context.pdf.inlineRuns = savedInlineRuns
 
         // Render content
         if let content = view.content {
-            Content._render(content, into: &buffer, context: &context, configuration: configuration)
+            Content._render(content, into: &buffer, context: &context)
         }
 
         // Flush content
-        _ = context.flushInlineRuns()
+        _ = context.pdf.flushInlineRuns()
     }
 }
