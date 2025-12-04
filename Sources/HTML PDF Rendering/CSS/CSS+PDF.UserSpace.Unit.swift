@@ -5,9 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 04/12/2025.
 //
 
+import CSS_Standard
 import PDF_Rendering
 import PDF_Standard
-import CSS_Standard
 
 extension PDF.UserSpace.Unit {
     public init(
@@ -39,7 +39,7 @@ extension PDF.UserSpace.Unit {
     public init(
         _ relativeSize: W3C_CSS_Fonts.RelativeSize,
         currentSize: PDF.UserSpace.Unit
-    ){
+    ) {
         let ratio = 1.2
         switch relativeSize {
         case .smaller:
@@ -55,10 +55,10 @@ extension PDF.UserSpace.Unit {
         _ lengthPercentage: LengthPercentage,
         currentSize: PDF.UserSpace.Unit,
         baseFontSize: PDF.UserSpace.Unit
-    ){
+    ) {
         switch lengthPercentage {
         case .length(let length):
-            self =  PDF.UserSpace.Unit(length, currentSize: currentSize, baseFontSize: baseFontSize)
+            self = PDF.UserSpace.Unit(length, currentSize: currentSize, baseFontSize: baseFontSize)
         case .percentage(let percentage):
             // Percentage of current font size
             self = currentSize * (percentage.value / 100.0)
@@ -74,7 +74,7 @@ extension PDF.UserSpace.Unit {
         _ length: Length,
         currentSize: PDF.UserSpace.Unit,
         baseFontSize: PDF.UserSpace.Unit
-    ){
+    ) {
         switch length {
         case .length(let value, let unit):
             switch unit {
