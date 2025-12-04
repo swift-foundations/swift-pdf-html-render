@@ -1,35 +1,39 @@
 // Refactor Tests.swift
 // Tests for the two-phase HTML → PDF transformation
 
-import Testing
+import CSS
 import Foundation
 import HTML_Rendering
 import PDF_Rendering
+import Testing
+
 @testable import HTML_PDF_Rendering
 
-@Suite("PDF.HTML.View Tests")
-struct PDFHTMLViewTests {
+@Suite
+struct `PDF.HTML.View Tests` {
 
     // MARK: - Basic Transformation
 
-    @Test("String transforms to PDF content")
-    func stringTransformation() {
+    @Test
+    func `String transforms to PDF content`() {
         let html = "Hello, World!"
-        let (pages, _) = PDF.HTML.pages(from: html)
+        let (pages, _) = PDF.HTML.pages {
+            html
+        }
 
         // Should have at least one page
         #expect(pages.count >= 1)
     }
 
-    @Test("Paragraph transforms with spacing")
-    func paragraphTransformation() {
+    @Test
+    func `Paragraph transforms with spacing`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "Test paragraph" }
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages(html: TestView.init)
 
         // Should have operations
         let ops = pages.first ?? []
@@ -40,15 +44,15 @@ struct PDFHTMLViewTests {
         #expect(textOps.count >= 1)
     }
 
-    @Test("Heading transforms with larger font")
-    func headingTransformation() {
+    @Test
+    func `Heading transforms with larger font`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 H1 { "Big Heading" }
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages(html: TestView.init)
         let ops = pages.first ?? []
 
         // Should have text operations
@@ -69,8 +73,8 @@ struct PDFHTMLViewTests {
 
     // MARK: - Inline Flow
 
-    @Test("Inline elements stay on same line")
-    func inlineFlow() {
+    @Test
+    func `Inline elements stay on same line`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph {
@@ -81,7 +85,7 @@ struct PDFHTMLViewTests {
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages(html: TestView.init)
         let ops = pages.first ?? []
 
         // Get all text operations
@@ -91,12 +95,15 @@ struct PDFHTMLViewTests {
         }
 
         // All text should be on the same Y position (same line)
-        let yPositions = Set(textOps.map { Int($0.position.y) })
-        #expect(yPositions.count == 1, "Expected all text on same line, got Y positions: \(yPositions)")
+        let yPositions = Set(textOps.map { Int($0.position.y.value.value) })
+        #expect(
+            yPositions.count == 1,
+            "Expected all text on same line, got Y positions: \(yPositions)"
+        )
     }
 
-    @Test("Bold applies correct font variant")
-    func boldFont() {
+    @Test
+    func `Bold applies correct font variant`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph {
@@ -105,7 +112,7 @@ struct PDFHTMLViewTests {
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages(html: TestView.init)
         let ops = pages.first ?? []
 
         let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
@@ -121,8 +128,8 @@ struct PDFHTMLViewTests {
         }
     }
 
-    @Test("Italic applies correct font variant")
-    func italicFont() {
+    @Test
+    func `Italic applies correct font variant`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph {
@@ -131,7 +138,9 @@ struct PDFHTMLViewTests {
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages {
+            TestView()
+        }
         let ops = pages.first ?? []
 
         let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
@@ -147,8 +156,8 @@ struct PDFHTMLViewTests {
         }
     }
 
-    @Test("Bold + Italic combines correctly")
-    func boldItalicFont() {
+    @Test
+    func `Bold + Italic combines correctly`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph {
@@ -159,7 +168,7 @@ struct PDFHTMLViewTests {
             }
         }
 
-        let (pages, _) = PDF.HTML.pages(from: TestView())
+        let (pages, _) = PDF.HTML.pages(html: TestView.init)
         let ops = pages.first ?? []
 
         let textOps = ops.compactMap { op -> PDF.Render.TextOperation? in
@@ -177,8 +186,8 @@ struct PDFHTMLViewTests {
 
     // MARK: - Document Creation
 
-    @Test("PDF.Document can be created from HTML")
-    func documentCreation() {
+    @Test
+    func `PDF.Document can be created from HTML`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 H1 { "Title" }
@@ -186,58 +195,64 @@ struct PDFHTMLViewTests {
             }
         }
 
-        let doc = PDF.Document(TestView(), title: "Test")
+        let doc = PDF.Document(info: .init(title: "Test")) {
+            TestView()
+        }
 
         #expect(doc.pages.count >= 1)
         #expect(doc.info?.title == "Test")
     }
 
-    @Test("PDF bytes can be generated from HTML")
-    func bytesGeneration() {
+    @Test
+    func `PDF bytes can be generated from HTML`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "Hello PDF" }
             }
         }
 
-        let doc = PDF.Document(TestView())
+        let doc = PDF.Document { TestView() }
         let bytes = [UInt8](doc)
 
         // Should start with %PDF
-        #expect(bytes.count > 0)
-        #expect(bytes.starts(with: [0x25, 0x50, 0x44, 0x46])) // %PDF
+        #expect(!bytes.isEmpty)
+        #expect(bytes.starts(with: [.ascii.percentSign, .ascii.P, .ascii.D, .ascii.F]))
     }
 
     // MARK: - Configuration
 
-    @Test("Configuration affects heading sizes")
-    func configurationHeadingSizes() {
+    @Test
+    func `Configuration affects heading sizes`() {
         let config = PDF.HTML.Configuration(defaultFontSize: 14)
 
-        #expect(config.headingSize(level: 1) == 28) // 14 * 2.0
-        #expect(config.headingSize(level: 2) == 21) // 14 * 1.5
-        #expect(config.headingSize(level: 3) == 14 * 1.17)
+        #expect(config.headingSize(level: 1) == 28)  // 14 * 2.0
+        #expect(config.headingSize(level: 2) == 21)  // 14 * 1.5
+        // Note: Integer literals work via ExpressibleByIntegerLiteral, but computed
+        // Double expressions like `14 * 1.17` require explicit wrapping in Unit.
+        // This is a quirk of Swift Testing's #expect macro - a regular `if` statement
+        // would handle the implicit BinaryFloatingPoint conversion correctly.
+        #expect(config.headingSize(level: 3) == PDF.UserSpace.Unit(14 * 1.17))
     }
 
-    @Test("Configuration affects content dimensions")
-    func configurationDimensions() {
+    @Test
+    func `Configuration affects content dimensions`() {
         let config = PDF.HTML.Configuration(
             paperSize: .a4,
-            margins: .init(top: 72, left: 72, bottom: 72, right: 72)
+            margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
         )
 
-        #expect(config.contentWidth == PDF.PaperSize.a4.width - 144)
-        #expect(config.contentHeight == PDF.PaperSize.a4.height - 144)
+        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width.value - 144)
+        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height.value - 144)
     }
 }
 
 // MARK: - Comprehensive Test
 
-@Suite("Comprehensive PDF.HTML.View Tests")
-struct ComprehensivePDFHTMLViewTests {
+@Suite
+struct `Comprehensive PDF.HTML.View Tests` {
 
-    @Test("Complex document renders correctly")
-    func complexDocument() throws {
+    @Test
+    func `Complex document renders correctly`() throws {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
                 Article {
@@ -247,6 +262,7 @@ struct ComprehensivePDFHTMLViewTests {
 
                     Section {
                         H2 { "Introduction" }
+                            .css.color(.red)
                         Paragraph {
                             "This is a "
                             StrongImportance { "comprehensive" }
@@ -275,11 +291,14 @@ struct ComprehensivePDFHTMLViewTests {
             }
         }
 
-        let doc = PDF.Document.init(
-            ComplexView(),
-            title: "Complex Test",
-            author: "Test Suite"
-        )
+        let doc = PDF.Document(
+            info: PDF.Info(
+                title: "Complex Test",
+                author: "Test Suite"
+            )
+        ) {
+            ComplexView()
+        }
 
         let bytes = [UInt8](doc)
 

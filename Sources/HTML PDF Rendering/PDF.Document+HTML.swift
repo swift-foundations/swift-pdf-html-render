@@ -14,31 +14,33 @@ extension PDF.Document {
     /// let bytes = [UInt8](doc)
     /// ```
     public init<H: HTML_Renderable.HTML.View>(
-        _ html: H,
-        title: String? = nil,
-        author: String? = nil,
-        configuration: PDF.HTML.Configuration = .init()
+        info: ISO_32000.Document.Info? = nil,
+        configuration: PDF.HTML.Configuration = .init(),
+        @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
         // Transform HTML to PDF render operations
-        let (pageOperations, pageAnnotations) = PDF.HTML.pages(from: html, configuration: configuration)
+        let (pageOperations, pageAnnotations) = PDF.HTML.pages(
+            configuration: configuration,
+            html: html
+        )
 
         // Build pages from operations
         var pages: [PDF.Page] = []
         for (i, ops) in pageOperations.enumerated() {
             let annotations = i < pageAnnotations.count ? pageAnnotations[i] : []
-            pages.append(PDF.Page(
-                mediaBox: configuration.mediaBox,
-                operations: ops,
-                annotations: annotations
-            ))
+            pages.append(
+                PDF.Page(
+                    mediaBox: configuration.mediaBox,
+                    operations: ops,
+                    annotations: annotations
+                )
+            )
         }
 
         // Create document
         self.init(
             pages: pages,
-            info: (title != nil || author != nil)
-                ? .init(title: title, author: author)
-                : nil
+            info: info
         )
     }
 }

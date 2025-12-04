@@ -5,20 +5,46 @@ import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
 import Renderable
+import W3C_CSS_Shared
 
 extension PDF {
     /// Namespace for HTML to PDF rendering
     public enum HTML {}
 }
 
-// MARK: - Internal Tag Renderer Protocol
+// MARK: - Style Modifier Protocol
 
 extension PDF.HTML {
-    /// Internal protocol for tags that provide custom PDF styling.
+    /// Protocol for CSS properties that can modify PDF rendering context.
     ///
-    /// Tags conform to this to define style changes (font, size, color) for PDF rendering.
+    /// CSS property types conform to this protocol to define how they affect
+    /// PDF rendering. This enables the same `.inlineStyle(...)` API used for
+    /// HTML to also affect PDF output.
+    ///
+    /// Example conformance:
+    /// ```swift
+    /// extension FontWeight: PDF.HTML.StyleModifier {
+    ///     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
+    ///         if self == .bold { context.font = context.font.bold }
+    ///     }
+    /// }
+    /// ```
+    public protocol StyleModifier {
+        /// Apply this style to the PDF rendering context.
+        func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration)
+    }
+}
+
+// MARK: - Tag Renderer Protocol (Internal)
+
+extension PDF.HTML {
+    /// Internal protocol for tags that provide intrinsic PDF styling.
+    ///
+    /// Tags conform to this to define intrinsic style changes (font, size, color)
+    /// that mirror browser user-agent stylesheets. For example, `<h1>` is bold
+    /// and 2em size, `<em>` is italic.
+    ///
     /// The save/restore of style state is handled by HTML.Element.
-    /// This is an implementation detail - not part of the public API.
     internal protocol TagRenderer {
         /// Apply tag-specific styling to the context.
         static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration)
@@ -35,8 +61,8 @@ extension PDF.HTML {
     ///   - configuration: Configuration for the rendering
     /// - Returns: A tuple of (operations per page, annotations per page)
     public static func pages<H: HTML_Renderable.HTML.View>(
-        from html: H,
-        configuration: PDF.HTML.Configuration = .init()
+        configuration: PDF.HTML.Configuration = .init(),
+        @HTML.Builder html: () -> H,
     ) -> (pages: [[PDF.Render.Operation]], annotations: [[PDF.Annotation]]) {
         var context = PDF.Context(
             mediaBox: configuration.mediaBox,
@@ -53,13 +79,13 @@ extension PDF.HTML {
         var buffer: [PDF.Render.Operation] = []
 
         // Render HTML to PDF
-        PDF.HTML.render(html, into: &buffer, context: &context, configuration: configuration)
+        PDF.HTML.render(html(), into: &buffer, context: &context, configuration: configuration)
 
         // Flush any remaining inline runs
         _ = context.flushInlineRuns()
 
         // Add buffer contents to current page operations
-        context.addOperations(buffer)
+        context.add(buffer)
 
         // Return all pages
         return (context.getAllPages(), context.getAllAnnotations())
@@ -70,7 +96,10 @@ extension PDF.HTML {
 
 extension PDF.HTML {
     /// Render content as a block element (flushes inline runs before and after).
-    public static func renderBlock<Buffer: RangeReplaceableCollection, C: HTML_Renderable.HTML.View>(
+    public static func renderBlock<
+        Buffer: RangeReplaceableCollection,
+        C: HTML_Renderable.HTML.View
+    >(
         _ content: C?,
         into buffer: inout Buffer,
         context: inout PDF.Context,
@@ -83,7 +112,7 @@ extension PDF.HTML {
 
         // Add spacing before
         if beforeSpacing > 0 {
-            context.advanceY(beforeSpacing)
+            context.advance(PDF.UserSpace.Y(PDF.UserSpace.Unit(beforeSpacing)))
         }
 
         // Render content
@@ -96,12 +125,15 @@ extension PDF.HTML {
 
         // Add spacing after
         if afterSpacing > 0 {
-            context.advanceY(afterSpacing)
+            context.advance(PDF.UserSpace.Y(PDF.UserSpace.Unit(afterSpacing)))
         }
     }
 
     /// Render content inline (no flush).
-    public static func renderInline<Buffer: RangeReplaceableCollection, C: HTML_Renderable.HTML.View>(
+    public static func renderInline<
+        Buffer: RangeReplaceableCollection,
+        C: HTML_Renderable.HTML.View
+    >(
         _ content: C?,
         into buffer: inout Buffer,
         context: inout PDF.Context,

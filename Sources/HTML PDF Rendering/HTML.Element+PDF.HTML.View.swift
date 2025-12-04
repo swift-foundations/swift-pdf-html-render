@@ -16,9 +16,19 @@ extension HTML.Element: PDF.HTML.View where Content: HTML.View {
         func renderWithFlow() {
             switch Tag.flow {
             case .block:
-                PDF.HTML.renderBlock(view.content, into: &buffer, context: &context, configuration: configuration)
+                PDF.HTML.renderBlock(
+                    view.content,
+                    into: &buffer,
+                    context: &context,
+                    configuration: configuration
+                )
             case .inline:
-                PDF.HTML.renderInline(view.content, into: &buffer, context: &context, configuration: configuration)
+                PDF.HTML.renderInline(
+                    view.content,
+                    into: &buffer,
+                    context: &context,
+                    configuration: configuration
+                )
             }
         }
 

@@ -2,8 +2,8 @@
 // Public exports for HTML PDF Rendering Refactor
 
 @_exported import HTML_Renderable
-@_exported import PDF_Rendering
 @_exported import HTML_Standard
+@_exported import PDF_Rendering
 
 // Re-export the main entry points
 // - PDF.Content.init(_ html:) - transforms HTML to PDF content

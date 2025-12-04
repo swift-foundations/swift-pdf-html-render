@@ -1,8 +1,8 @@
 // Containers+PDF.HTML.View.swift
 // Block container elements: <div>, <section>, <article>, <header>, <footer>, <main>, <nav>, <aside>
 
-import HTML_Standard
 import HTML_Renderable
+import HTML_Standard
 import PDF_Rendering
 
 // Note: Container rendering is handled by HTML.Element via flow-based rendering.

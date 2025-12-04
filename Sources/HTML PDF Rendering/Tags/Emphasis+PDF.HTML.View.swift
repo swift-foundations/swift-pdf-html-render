@@ -1,8 +1,8 @@
 // Emphasis+PDF.HTML.View.swift
 // <em> element transformation - inline italic
 
-import HTML_Standard
 import HTML_Renderable
+import HTML_Standard
 import PDF_Rendering
 import WHATWG_HTML
 

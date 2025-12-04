@@ -1,8 +1,8 @@
 // Headings+PDF.HTML.View.swift
 // <h1> - <h6> element transformations
 
-import HTML_Standard
 import HTML_Renderable
+import HTML_Standard
 import PDF_Rendering
 import WHATWG_HTML
 

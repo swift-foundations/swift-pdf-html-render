@@ -43,7 +43,12 @@ extension PDF.HTML.View where Self: HTML.View, Self.Content: PDF.HTML.View {
         context: inout PDF.Context,
         configuration: PDF.HTML.Configuration
     ) where Buffer.Element == PDF.Render.Operation {
-        Self.Content._render(view.body, into: &buffer, context: &context, configuration: configuration)
+        Self.Content._render(
+            view.body,
+            into: &buffer,
+            context: &context,
+            configuration: configuration
+        )
     }
 }
 

@@ -10,59 +10,59 @@ import PDF_Standard
 extension PDF.HTML {
     public struct Configuration: Sendable {
         // MARK: - Page Layout
-        
+
         /// Paper size
-        public var paperSize: PDF.PaperSize
-        
+        public var paperSize: PDF.UserSpace.Rectangle
+
         /// Page margins
-        public var margins: PDF.EdgeInsets
-        
+        public var margins: PDF.UserSpace.EdgeInsets
+
         // MARK: - Typography
-        
+
         /// Default font
         public var defaultFont: PDF.Font
-        
+
         /// Default font size in points
-        public var defaultFontSize: Double
-        
+        public var defaultFontSize: PDF.UserSpace.Unit
+
         /// Default text color
         public var defaultColor: PDF.Color
-        
+
         /// Line height multiplier
         public var lineHeight: Double
-        
+
         // MARK: - Spacing
-        
+
         /// Paragraph spacing (multiplier of font size)
         public var paragraphSpacing: Double
-        
+
         /// Heading spacing (multiplier of heading size)
         public var headingSpacing: Double
-        
+
         // MARK: - Computed
 
         /// Media box (same as paper size, for use with PDF.Context)
-        public var mediaBox: ISO_32000.Rectangle {
+        public var mediaBox: PDF.UserSpace.Rectangle {
             paperSize
         }
 
         /// Content width (paper width minus margins)
-        public var contentWidth: Double {
-            paperSize.width - margins.left - margins.right
+        public var contentWidth: PDF.UserSpace.Unit {
+            PDF.UserSpace.Unit(paperSize.width.value) - margins.horizontal
         }
 
         /// Content height (paper height minus margins)
-        public var contentHeight: Double {
-            paperSize.height - margins.top - margins.bottom
+        public var contentHeight: PDF.UserSpace.Unit {
+            PDF.UserSpace.Unit(paperSize.height.value) - margins.vertical
         }
-        
+
         // MARK: - Init
-        
+
         public init(
-            paperSize: PDF.PaperSize = .a4,
-            margins: PDF.EdgeInsets = .init(all: 72),
+            paperSize: PDF.UserSpace.Rectangle = .a4,
+            margins: PDF.UserSpace.EdgeInsets = .init(all: 72),
             defaultFont: PDF.Font = .helvetica,
-            defaultFontSize: Double = 12,
+            defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
             lineHeight: Double = 1.4,
             paragraphSpacing: Double = 0.5,
@@ -77,11 +77,11 @@ extension PDF.HTML {
             self.paragraphSpacing = paragraphSpacing
             self.headingSpacing = headingSpacing
         }
-        
+
         // MARK: - Heading Sizes
-        
+
         /// Font size for heading level (1-6)
-        public func headingSize(level: Int) -> Double {
+        public func headingSize(level: Int) -> PDF.UserSpace.Unit {
             switch level {
             case 1: return defaultFontSize * 2.0
             case 2: return defaultFontSize * 1.5

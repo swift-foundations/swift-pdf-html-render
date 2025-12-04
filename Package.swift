@@ -5,8 +5,11 @@ import PackageDescription
 let package = Package(
     name: "swift-html-pdf-rendering",
     platforms: [
-        .macOS(.v15),
-        .iOS(.v18),
+        .macOS(.v26),
+        .iOS(.v26),
+        .tvOS(.v26),
+        .watchOS(.v26),
+        .visionOS(.v26),
     ],
     products: [
         .library(name: "HTML PDF Rendering", targets: ["HTML PDF Rendering"]),
@@ -20,6 +23,7 @@ let package = Package(
         .package(path: "/Users/coen/Developer/swift-standards/swift-w3c-css"),
         .package(path: "/Users/coen/Developer/swift-standards/swift-standards"),
         .package(path: "/Users/coen/Developer/swift-standards/swift-iso-9899"),
+        .package(path: "/Users/coen/Developer/swift-standards/swift-iec-61966"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
 //        .package(
 //            url: "https://github.com/coenttb/swift-html-to-pdf",
@@ -40,6 +44,7 @@ let package = Package(
                 .product(name: "W3C CSS", package: "swift-w3c-css"),
                 .product(name: "Standards", package: "swift-standards"),
                 .product(name: "ISO 9899", package: "swift-iso-9899"),
+                .product(name: "IEC 61966", package: "swift-iec-61966"),
             ]
         ),
 //        .target(
