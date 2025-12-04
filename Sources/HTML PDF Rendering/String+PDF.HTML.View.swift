@@ -15,7 +15,9 @@ extension String: PDF.HTML.View {
             text: view,
             font: context.font,
             fontSize: context.fontSize,
-            color: context.color
+            color: context.color,
+            textDecoration: context.textDecoration,
+            backgroundColor: context.textBackgroundColor
         )
         context.appendInlineRun(run)
     }

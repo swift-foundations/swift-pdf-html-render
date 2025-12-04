@@ -5,8 +5,8 @@ import HTML_Renderable
 import PDF_Rendering
 import WHATWG_HTML
 
-extension OrderedList: PDF.HTML.TagRenderer {
-    static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        // TODO: Add list indentation and number markers
+extension OrderedList: PDF.HTML.ListContainer {
+    static func listType() -> PDF.Context.ListType {
+        .ordered(startNumber: 1)
     }
 }

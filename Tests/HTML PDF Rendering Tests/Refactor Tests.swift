@@ -252,48 +252,84 @@ struct `PDF.HTML.View Tests` {
 struct `Comprehensive PDF.HTML.View Tests` {
 
     @Test
-    func `Complex document renders correctly`() throws {
+    func `document showing all elements and properties`() throws {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
-                Article {
-                    Header {
-                        H1 { "Document Title" }
-                    }
+                // ===== PHASE 1: TEXT STYLING =====
+                H1 { "All HTML Elements Demo" }
 
-                    Section {
-                        H2 { "Introduction" }
-                            .css.color(.red)
-                        Paragraph {
-                            "This is a "
-                            StrongImportance { "comprehensive" }
-                            " test of the "
-                            Emphasis { "two-phase transformation" }
-                            " approach."
-                        }
-                    }
+                H2 { "1. Text Styling" }
 
-                    Section {
-                        H2 { "Details" }
-                        Paragraph { "More content here." }
-                        Paragraph {
-                            "With "
-                            StrongImportance {
-                                Emphasis { "bold italic" }
-                            }
-                            " text."
-                        }
-                    }
+                Paragraph {
+                    "Normal text, "
+                    StrongImportance { "bold" }
+                    ", "
+                    Emphasis { "italic" }
+                    ", "
+                    StrongImportance { Emphasis { "bold italic" } }
+                    ", "
+                    Code { "code" }
+                    ", "
+                    Mark { "highlighted" }
+                    ", "
+                    Strikethrough { "strikethrough" }
+                    ", "
+                    UnarticulatedAnnotation { "underline" }
+                    "."
+                }
 
-                    Footer {
-                        Paragraph { "End of document" }
-                    }
+                // ===== PHASE 2: BLOCK ELEMENTS =====
+                H2 { "2. Block Elements" }
+
+                Paragraph { "A blockquote follows:" }
+                BlockQuote {
+                    Paragraph { "This is a block quotation with left indentation. It should wrap properly within the indented area." }
+                }
+
+                Paragraph { "A preformatted block follows:" }
+                PreformattedText {
+                    "func hello() {\n    print(\"Hello, World!\")\n}"
+                }
+
+                Paragraph { "A horizontal rule follows:" }
+                ThematicBreak()
+
+                // ===== PHASE 3: LISTS =====
+                H2 { "3. Lists" }
+
+                Paragraph { "An unordered list:" }
+                UnorderedList {
+                    ListItem { "First bullet item" }
+                    ListItem { "Second bullet item" }
+                    ListItem { "Third bullet item" }
+                }
+
+                Paragraph { "An ordered list:" }
+                OrderedList {
+                    ListItem { "First numbered item" }
+                    ListItem { "Second numbered item" }
+                    ListItem { "Third numbered item" }
+                }
+
+                // ===== PHASE 4: HEADINGS =====
+                H2 { "4. All Heading Levels" }
+                H1 { "Heading 1" }
+                H2 { "Heading 2" }
+                H3 { "Heading 3" }
+                H4 { "Heading 4" }
+                H5 { "Heading 5" }
+                H6 { "Heading 6" }
+
+                // ===== CONCLUSION =====
+                Paragraph {
+                    Emphasis { "End of demo." }
                 }
             }
         }
 
         let doc = PDF.Document(
             info: .init(
-                title: "Complex Test",
+                title: "All Elements Demo",
                 author: "Test Suite"
             )
         ) {

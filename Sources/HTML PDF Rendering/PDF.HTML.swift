@@ -49,6 +49,21 @@ extension PDF.HTML {
         /// Apply tag-specific styling to the context.
         static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration)
     }
+
+    /// Protocol for list container tags (ul, ol) that manage list context.
+    internal protocol ListContainer {
+        /// Get the list type for this container.
+        static func listType() -> PDF.Context.ListType
+    }
+
+    /// Protocol for list item tags that render markers.
+    internal protocol ListItemRenderer {
+        /// Render the list marker and return the marker width.
+        static func renderMarker(
+            context: inout PDF.Context,
+            configuration: PDF.HTML.Configuration
+        ) -> PDF.UserSpace.Width
+    }
 }
 
 // MARK: - Main Entry Point
@@ -96,9 +111,10 @@ extension PDF.HTML {
 
 extension PDF.HTML {
     /// Render content as a block element (flushes inline runs before and after).
+    @inlinable
     public static func renderBlock<
         Buffer: RangeReplaceableCollection,
-        C: HTML_Renderable.HTML.View
+        C: PDF.HTML.View
     >(
         _ content: C?,
         into buffer: inout Buffer,
@@ -117,7 +133,7 @@ extension PDF.HTML {
 
         // Render content
         if let content {
-            render(content, into: &buffer, context: &context, configuration: configuration)
+            C._render(content, into: &buffer, context: &context, configuration: configuration)
         }
 
         // Flush inline runs from content
@@ -130,9 +146,10 @@ extension PDF.HTML {
     }
 
     /// Render content inline (no flush).
+    @inlinable
     public static func renderInline<
         Buffer: RangeReplaceableCollection,
-        C: HTML_Renderable.HTML.View
+        C: PDF.HTML.View
     >(
         _ content: C?,
         into buffer: inout Buffer,
@@ -140,7 +157,7 @@ extension PDF.HTML {
         configuration: PDF.HTML.Configuration
     ) where Buffer.Element == PDF.Render.Operation {
         if let content {
-            render(content, into: &buffer, context: &context, configuration: configuration)
+            C._render(content, into: &buffer, context: &context, configuration: configuration)
         }
     }
 }
