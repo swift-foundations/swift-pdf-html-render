@@ -292,7 +292,7 @@ struct `Comprehensive PDF.HTML.View Tests` {
         }
 
         let doc = PDF.Document(
-            info: PDF.Info(
+            info: .init(
                 title: "Complex Test",
                 author: "Test Suite"
             )

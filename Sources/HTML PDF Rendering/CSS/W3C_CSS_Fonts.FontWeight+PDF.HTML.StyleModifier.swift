@@ -4,7 +4,7 @@
 import PDF_Rendering
 import W3C_CSS_Fonts
 
-extension FontWeight: PDF.HTML.StyleModifier {
+extension W3C_CSS_Fonts.FontWeight: PDF.HTML.StyleModifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .bold, .bolder:
