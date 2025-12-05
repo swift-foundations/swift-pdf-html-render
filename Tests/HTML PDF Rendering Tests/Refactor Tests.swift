@@ -315,6 +315,46 @@ private struct TextStylingDemo: HTML.View {
             UnarticulatedAnnotation { "underline" }
             "."
         }
+        Paragraph {
+            "H"
+            Subscript { "2" }
+            "O, E=mc"
+            Superscript { "2" }
+            "."
+        }
+        Paragraph {
+            "Read "
+            Cite { "1984" }
+            " by George Orwell."
+        }
+        Paragraph {
+            "Press "
+            KeyboardInput { "Ctrl+C" }
+            " to copy."
+        }
+        Paragraph {
+            "Output: "
+            Samp { "Hello, World!" }
+        }
+        Paragraph {
+            "Let "
+            Variable { "x" }
+            " = 5."
+        }
+        Paragraph {
+            "The "
+            Definition { "DOM" }
+            " is the Document Object Model."
+        }
+        Paragraph {
+            "The "
+            Abbreviation { "HTML" }
+            " specification."
+        }
+        Paragraph {
+            "She said, "
+            InlineQuotation { "Hello!" }
+        }
     }
 }
 
@@ -490,6 +530,18 @@ private struct InlineStyleDemo: HTML.View {
             ", "
             ContentSpan { "normal" }
                 .css.fontStyle(.normal)
+            "."
+        }
+        Paragraph {
+            "Font size: "
+            ContentSpan { "small" }
+                .css.fontSize(.absoluteSize(.small))
+            ", "
+            ContentSpan { "large" }
+                .css.fontSize(.absoluteSize(.large))
+            ", "
+            ContentSpan { "x-large" }
+                .css.fontSize(.absoluteSize(.xLarge))
             "."
         }
         ContentDivision {
