@@ -234,6 +234,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
+        // Check for page break BEFORE starting the row - ensure entire row fits
+        let lineHeight = PDF.UserSpace.Height(context.pdf.lineHeightPoints)
+        context.pdf.checkPageBreak(needing: lineHeight)
+
         // Reset column index for this row
         context.tableContext?.currentColumn = 0
         context.tableContext?.rowY = context.pdf.y
@@ -246,8 +250,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             Content._render(content, into: &buffer, context: &context)
         }
 
-        // Flush and move to next line
-        _ = context.pdf.flushInlineRuns()
+        // DON'T flush here - cells handle their own flushing
 
         // Restore X and advance to next row
         context.pdf.x = savedX
@@ -260,9 +263,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         into buffer: inout Buffer,
         context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
-        // Flush any pending inline runs
-        _ = context.pdf.flushInlineRuns()
-
         guard let tableContext = context.tableContext else {
             // Not in a table context, fall through to default rendering
             if let content = view.content {
@@ -274,37 +274,55 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Get current column position
         let columnIndex = tableContext.currentColumn
         let cellX = tableContext.xForColumn(columnIndex)
-        let cellWidth = tableContext.cellWidth
 
         // Save state
-        let savedX = context.pdf.x
-        let savedWidth = context.pdf.availableWidth
         let savedFont = context.pdf.font
-        let savedY = context.pdf.y
-
-        // Set position and width for this cell
-        context.pdf.x = PDF.UserSpace.X(cellX.value + tableContext.cellPadding)
-        context.pdf.availableWidth = cellWidth
-        context.pdf.y = tableContext.rowY  // Align all cells in row to same Y
+        let savedColor = context.pdf.color
 
         // Apply th styling if this is a header cell
         if let tagRenderer = Tag.self as? any PDF.HTML.TagRenderer.Type {
             tagRenderer.applyStyle(to: &context.pdf, configuration: context.configuration)
         }
 
-        // Render cell content inline
+        // Render cell content directly at position (no page break checking)
+        // Calculate baseline Y for this row
+        let baselineY = PDF.UserSpace.Y(
+            PDF.UserSpace.Unit(tableContext.rowY.value) +
+            context.pdf.font.metrics.ascender(atSize: context.pdf.fontSize)
+        )
+
+        // Build cell text by collecting inline runs
         if let content = view.content {
+            // Temporarily collect text into inline runs
+            let savedRuns = context.pdf.inlineRuns
+            context.pdf.inlineRuns = []
+
             Content._render(content, into: &buffer, context: &context)
+
+            // Render the collected text directly at cell position
+            let cellText = context.pdf.inlineRuns.map { $0.text }.joined()
+            if !cellText.isEmpty {
+                context.pdf.add(.text(PDF.Render.TextOperation(
+                    text: cellText,
+                    position: PDF.UserSpace.Coordinate(
+                        x: PDF.UserSpace.X(cellX.value + tableContext.cellPadding),
+                        y: baselineY
+                    ),
+                    font: context.pdf.font,
+                    size: context.pdf.fontSize,
+                    color: context.pdf.color
+                )))
+            }
+
+            // Restore inline runs (don't accumulate cell content)
+            context.pdf.inlineRuns = savedRuns
         }
-        _ = context.pdf.flushInlineRuns()
 
         // Advance to next column
         context.tableContext?.currentColumn = columnIndex + 1
 
-        // Restore state (but keep Y progress from cell)
-        context.pdf.x = savedX
-        context.pdf.availableWidth = savedWidth
+        // Restore style state
         context.pdf.font = savedFont
-        context.pdf.y = savedY  // Will be advanced by row
+        context.pdf.color = savedColor
     }
 }
