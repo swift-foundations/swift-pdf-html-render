@@ -87,6 +87,44 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             marginBottom = 0
         }
 
+        // If there's deferred content (from page-break-after: avoid) and we're rendering a block element
+        if Tag.flow == .block, let deferred = context.deferredKeepWithNextRender {
+            // Clear deferred content - we're handling it now
+            context.deferredKeepWithNextRender = nil
+
+            // If the deferred header is very tall (> 90% of page), skip sticky behavior
+            // Can't keep it with next content if header alone takes most of the page
+            let availablePageHeight = context.pdf.availableHeight
+            if deferred.measuredHeight.value > availablePageHeight.value * 0.9 {
+                // Just render the header without sticky behavior
+                var deferredBuffer: [PDF.Render.Operation] = []
+                deferred.render(&deferredBuffer, &context)
+                buffer.append(contentsOf: deferredBuffer)
+                renderWithFlow(marginTop: marginTop, marginBottom: marginBottom)
+                return
+            }
+
+            // Calculate minimum content height (at least one line + top margin)
+            let oneLineHeight = PDF.UserSpace.Height(context.pdf.lineHeightPoints)
+            let minContentHeight = marginTop + oneLineHeight.value
+            let totalNeeded = PDF.UserSpace.Height(deferred.measuredHeight.value + minContentHeight)
+
+            // Check if header + minimum content fits on current page
+            if context.pdf.wouldExceedPage(adding: totalNeeded) {
+                // Start new page BEFORE rendering the header
+                context.pdf.startNewPage()
+            }
+
+            // Now render the deferred header
+            var deferredBuffer: [PDF.Render.Operation] = []
+            deferred.render(&deferredBuffer, &context)
+            buffer.append(contentsOf: deferredBuffer)
+
+            // Continue with normal rendering of this element (with margins and flow)
+            renderWithFlow(marginTop: marginTop, marginBottom: marginBottom)
+            return
+        }
+
         // Check if Tag provides custom styling
         if let tagRenderer = Tag.self as? any PDF.HTML.TagRenderer.Type {
             // Save current style and layout state

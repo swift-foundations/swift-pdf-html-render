@@ -252,6 +252,133 @@ struct `PDF.HTML.View Tests` {
 struct `Comprehensive PDF.HTML.View Tests` {
 
     @Test
+    func `sticky header stays with following content`() throws {
+        // Create content that pushes sticky header to near bottom of page
+        struct StickyHeaderTest: HTML.View {
+            var body: some HTML.View {
+                // Filler content to approach bottom of first page (40 lines should fill most of a page)
+                Paragraph { "Filler line 1." }
+                Paragraph { "Filler line 2." }
+                Paragraph { "Filler line 3." }
+                Paragraph { "Filler line 4." }
+                Paragraph { "Filler line 5." }
+                Paragraph { "Filler line 6." }
+                Paragraph { "Filler line 7." }
+                Paragraph { "Filler line 8." }
+                Paragraph { "Filler line 9." }
+                Paragraph { "Filler line 10." }
+                Paragraph { "Filler line 11." }
+                Paragraph { "Filler line 12." }
+                Paragraph { "Filler line 13." }
+                Paragraph { "Filler line 14." }
+                Paragraph { "Filler line 15." }
+                Paragraph { "Filler line 16." }
+                Paragraph { "Filler line 17." }
+                Paragraph { "Filler line 18." }
+                Paragraph { "Filler line 19." }
+                Paragraph { "Filler line 20." }
+                Paragraph { "Filler line 21." }
+                Paragraph { "Filler line 22." }
+                Paragraph { "Filler line 23." }
+                Paragraph { "Filler line 24." }
+                Paragraph { "Filler line 25." }
+                Paragraph { "Filler line 26." }
+                Paragraph { "Filler line 27." }
+                Paragraph { "Filler line 28." }
+                Paragraph { "Filler line 29." }
+                Paragraph { "Filler line 30." }
+                Paragraph { "Filler line 31." }
+                Paragraph { "Filler line 32." }
+                Paragraph { "Filler line 33." }
+                Paragraph { "Filler line 34." }
+                Paragraph { "Filler line 35." }
+                Paragraph { "Filler line 36." }
+                Paragraph { "Filler line 37." }
+                Paragraph { "Filler line 38." }
+                Paragraph { "Filler line 39." }
+                Paragraph { "Filler line 40." }
+
+                // Sticky header - should move to next page if not enough room
+                H2 { "STICKY HEADER TEST" }
+                    .css.pageBreakAfter(.avoid)
+
+                // Following content that must stay with header
+                Paragraph { "This paragraph must stay on the same page as the header." }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages {
+            StickyHeaderTest()
+        }
+
+        // Find which page has "STICKY HEADER TEST"
+        var headerPage: Int?
+        var contentPage: Int?
+
+        for (pageIndex, page) in pages.enumerated() {
+            for op in page {
+                if case .text(let textOp) = op {
+                    if textOp.text.contains("STICKY") {
+                        headerPage = pageIndex
+                        print("Found header on page \(pageIndex + 1) at Y=\(textOp.position.y)")
+                    }
+                    if textOp.text.contains("must stay") {
+                        contentPage = pageIndex
+                        print("Found content on page \(pageIndex + 1) at Y=\(textOp.position.y)")
+                    }
+                }
+            }
+        }
+
+        // Header and following content must be on the same page
+        #expect(headerPage != nil, "Should find the sticky header")
+        #expect(contentPage != nil, "Should find the following content")
+        #expect(headerPage == contentPage, "Sticky header and following content must be on the same page (header: page \(String(describing: headerPage.map { $0 + 1 })), content: page \(String(describing: contentPage.map { $0 + 1 })))")
+    }
+
+    @Test
+    func `NDA sticky headers work correctly`() throws {
+        // Test just the NDA demo to verify sticky headers work
+        let (pages, _) = PDF.HTML.pages {
+            NDADemo()
+        }
+
+        // Find all ARTICLE headers and their following content
+        var articlePositions: [(article: String, page: Int, y: PDF.UserSpace.Unit)] = []
+
+        for (pageIndex, page) in pages.enumerated() {
+            for op in page {
+                if case .text(let textOp) = op {
+                    if textOp.text.contains("ARTICLE") {
+                        articlePositions.append((textOp.text, pageIndex, textOp.position.y.value))
+                        print("Page \(pageIndex + 1): '\(textOp.text)' at Y=\(textOp.position.y.value)")
+                    }
+                }
+            }
+        }
+
+        // Check that no ARTICLE header is orphaned at the very bottom of a page
+        // (We consider "near bottom" as Y > 700 for a standard 792pt page with 72pt margins)
+        let pageHeight: PDF.UserSpace.Unit = 792.0 - 72.0 - 72.0  // 648 points usable
+        let bottomThreshold: PDF.UserSpace.Unit = 72.0 + pageHeight - 50.0  // Last 50 points of usable area
+
+        for pos in articlePositions {
+            let isNearBottom = pos.y > bottomThreshold
+            if isNearBottom {
+                // Check if there's content after this header on the same page
+                let hasContentAfter = pages[pos.page].contains { op in
+                    if case .text(let textOp) = op {
+                        return textOp.position.y.value > pos.y && !textOp.text.contains("ARTICLE")
+                    }
+                    return false
+                }
+                print("Header '\(pos.article)' at Y=\(pos.y) near bottom, hasContentAfter=\(hasContentAfter)")
+                #expect(hasContentAfter, "ARTICLE header near bottom should have content after it on same page")
+            }
+        }
+    }
+
+    @Test
     func `document showing all elements and properties`() throws {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
@@ -538,8 +665,9 @@ private struct NDADemo: HTML.View {
             "(Discloser and Recipient are collectively referred to as the \"Parties\")"
         }
 
-        // Recitals
+        // Recitals - sticky header (won't be orphaned at bottom of page)
         H2 { "RECITALS" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "WHEREAS" }
@@ -556,8 +684,9 @@ private struct NDADemo: HTML.View {
             ", in consideration of the mutual covenants and agreements set forth herein, and for other good and valuable consideration, the receipt and sufficiency of which are hereby acknowledged, the Parties agree as follows:"
         }
 
-        // Article 1
+        // Article 1 - sticky header
         H2 { "ARTICLE 1: DEFINITIONS" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "1.1 \"Confidential Information\"" }
@@ -571,8 +700,9 @@ private struct NDADemo: HTML.View {
             ListItem { "Any other information designated as \"Confidential\" at the time of disclosure." }
         }
 
-        // Article 2
+        // Article 2 - sticky header
         H2 { "ARTICLE 2: OBLIGATIONS OF RECIPIENT" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "2.1 Non-Disclosure." }
@@ -590,8 +720,9 @@ private struct NDADemo: HTML.View {
             " The Recipient shall protect the Confidential Information using the same degree of care it uses to protect its own confidential information, but in no event less than reasonable care."
         }
 
-        // Article 3
+        // Article 3 - sticky header
         H2 { "ARTICLE 3: TERM AND TERMINATION" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "3.1 Term." }
@@ -609,8 +740,9 @@ private struct NDADemo: HTML.View {
             " years following termination."
         }
 
-        // Article 4
+        // Article 4 - sticky header
         H2 { "ARTICLE 4: GENERAL PROVISIONS" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "4.1 Governing Law." }
@@ -630,8 +762,9 @@ private struct NDADemo: HTML.View {
             " This Agreement may not be amended or modified except by a written instrument signed by both Parties."
         }
 
-        // Signature block
+        // Signature block - sticky header
         H2 { "SIGNATURES" }
+            .css.pageBreakAfter(.avoid)
 
         Paragraph {
             StrongImportance { "IN WITNESS WHEREOF" }

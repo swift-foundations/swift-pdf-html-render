@@ -30,11 +30,68 @@ extension PDF.HTML {
         /// collapsed with the top margin of the next block element.
         public var pendingBottomMargin: PDF.UserSpace.Unit = 0
 
+        /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
+        ///
+        /// When an element with `page-break-after: avoid` is encountered, instead of
+        /// rendering immediately, we store a closure that will render the element.
+        /// When the next block element is rendered, we check if the deferred header
+        /// plus at least one line of content fits on the current page. If not, we
+        /// start a new page before rendering the deferred content.
+        public var deferredKeepWithNextRender: DeferredRender?
+
+        /// Deferred render operation for sticky headers
+        public struct DeferredRender: @unchecked Sendable {
+            /// Closure that renders the deferred content
+            ///
+            /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
+            /// The closure captures generic view types that aren't Sendable.
+            public let render: (inout [PDF.Render.Operation], inout PDF.HTML.Context) -> Void
+            /// Measured height of the deferred content
+            public let measuredHeight: PDF.UserSpace.Height
+        }
+
+        /// Snapshot of PDF context state for restoration during deferred rendering
+        public struct PDFContextSnapshot: Sendable {
+            public let font: PDF.Font
+            public let fontSize: PDF.UserSpace.Unit
+            public let color: PDF.Color
+            public let textDecoration: PDF.TextDecoration
+            public let textBackgroundColor: PDF.Color?
+            public let x: PDF.UserSpace.X
+            public let availableWidth: PDF.UserSpace.Width
+
+            public init(from context: PDF.Context) {
+                self.font = context.font
+                self.fontSize = context.fontSize
+                self.color = context.color
+                self.textDecoration = context.textDecoration
+                self.textBackgroundColor = context.textBackgroundColor
+                self.x = context.x
+                self.availableWidth = context.availableWidth
+            }
+
+            public func restore(to context: inout PDF.Context) {
+                context.font = font
+                context.fontSize = fontSize
+                context.color = color
+                context.textDecoration = textDecoration
+                context.textBackgroundColor = textBackgroundColor
+                context.x = x
+                context.availableWidth = availableWidth
+            }
+        }
+
+        /// Flag indicating the current element should avoid page break after it.
+        /// Set by `page-break-after: avoid` CSS property.
+        public var avoidPageBreakAfter: Bool = false
+
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
             self.pdf = pdf
             self.configuration = configuration
             self.tableContext = nil
             self.pendingBottomMargin = 0
+            self.deferredKeepWithNextRender = nil
+            self.avoidPageBreakAfter = false
         }
 
         /// Apply collapsed margin between blocks.

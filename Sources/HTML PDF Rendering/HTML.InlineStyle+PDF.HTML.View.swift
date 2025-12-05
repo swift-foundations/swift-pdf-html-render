@@ -34,14 +34,75 @@ extension HTML.InlineStyle: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.color = savedColor
         }
 
-        // Apply the style if the property conforms to StyleModifier
+        // Check if this is a page-break-after: avoid style
+        var shouldAvoidPageBreakAfter = false
         if let style = view.style {
+            // Check for PDF context modifier
             if let modifier = style.property as? any PDF.HTML.StyleModifier {
                 modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
+            // Check for HTML context modifier (for page-break-after, etc.)
+            if let htmlModifier = style.property as? any PDF.HTML.HTMLContextStyleModifier {
+                htmlModifier.apply(to: &context)
+            }
+            // Check if this is page-break-after: avoid
+            if context.avoidPageBreakAfter {
+                shouldAvoidPageBreakAfter = true
+                context.avoidPageBreakAfter = false  // Reset the flag
+            }
         }
 
-        // Render the wrapped content
-        Content._render(view.content, into: &buffer, context: &context)
+        if shouldAvoidPageBreakAfter {
+            // Capture context snapshot for restoration during deferred render
+            let snapshot = PDF.HTML.Context.PDFContextSnapshot(from: context.pdf)
+            let configuration = context.configuration
+
+            // Measure the content height without rendering (measurement mode suppresses operations)
+            // We need to create a fresh HTML context inside the measure closure to avoid access conflicts
+            // Copy pending margin state to get accurate height including collapsed margins
+            let pendingBottomMargin = context.pendingBottomMargin
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                var tempBuffer: [PDF.Render.Operation] = []
+                Content._render(view.content, into: &tempBuffer, context: &tempHTMLContext)
+                _ = tempHTMLContext.pdf.flushInlineRuns()
+                // Write back the Y position to measureContext so the measure function can calculate height
+                measureContext.y = tempHTMLContext.pdf.y
+            }
+
+            // Check if there's already deferred content (consecutive sticky headers)
+            if let existingDeferred = context.deferredKeepWithNextRender {
+                // Chain: combine heights and render in sequence
+                let combinedHeight = PDF.UserSpace.Height(
+                    existingDeferred.measuredHeight.value + measuredHeight.value
+                )
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { buffer, ctx in
+                        // Render existing deferred content first
+                        existingDeferred.render(&buffer, &ctx)
+                        // Then render this content
+                        snapshot.restore(to: &ctx.pdf)
+                        Content._render(view.content, into: &buffer, context: &ctx)
+                        _ = ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: combinedHeight
+                )
+            } else {
+                // Store deferred render closure (NOT executed yet)
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { buffer, ctx in
+                        snapshot.restore(to: &ctx.pdf)
+                        Content._render(view.content, into: &buffer, context: &ctx)
+                        _ = ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: measuredHeight
+                )
+            }
+        } else {
+            // Normal rendering
+            Content._render(view.content, into: &buffer, context: &context)
+        }
     }
 }

@@ -34,6 +34,15 @@ extension PDF.HTML {
         /// Apply this style to the PDF rendering context.
         func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration)
     }
+
+    /// Protocol for CSS properties that need access to the full HTML rendering context.
+    ///
+    /// Use this for properties like `page-break-after: avoid` that need to affect
+    /// the HTML-level rendering state (e.g., deferred content for sticky headers).
+    public protocol HTMLContextStyleModifier {
+        /// Apply this style to the HTML rendering context.
+        func apply(to context: inout PDF.HTML.Context)
+    }
 }
 
 // MARK: - Tag Renderer Protocol (Internal)
@@ -144,6 +153,12 @@ extension PDF.HTML {
         // Render HTML to PDF using static dispatch
         H._render(html(), into: &buffer, context: &context)
 
+        // Handle any remaining deferred content (e.g., sticky header at end of document)
+        if let deferred = context.deferredKeepWithNextRender {
+            context.deferredKeepWithNextRender = nil
+            deferred.render(&buffer, &context)
+        }
+
         // Flush any remaining inline runs
         _ = context.pdf.flushInlineRuns()
 
@@ -189,6 +204,12 @@ extension PDF.HTML {
 
         // Render using dynamic dispatch
         renderHTMLView(html(), into: &buffer, context: &context)
+
+        // Handle any remaining deferred content (e.g., sticky header at end of document)
+        if let deferred = context.deferredKeepWithNextRender {
+            context.deferredKeepWithNextRender = nil
+            deferred.render(&buffer, &context)
+        }
 
         // Flush any remaining inline runs
         _ = context.pdf.flushInlineRuns()
