@@ -20,9 +20,68 @@ extension PDF.HTML {
         /// The immutable rendering configuration
         public let configuration: PDF.HTML.Configuration
 
+        /// Active table layout context (nil when not in a table)
+        public var tableContext: TableContext?
+
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
             self.pdf = pdf
             self.configuration = configuration
+            self.tableContext = nil
+        }
+    }
+}
+
+// MARK: - Table Layout Support
+
+extension PDF.HTML {
+    /// Context for table layout
+    public struct TableContext {
+        /// X position where the table starts
+        public var tableX: PDF.UserSpace.X
+
+        /// Total width available for the table
+        public var tableWidth: PDF.UserSpace.Width
+
+        /// Number of columns (determined from first row)
+        public var columnCount: Int
+
+        /// Width of each column (equal distribution)
+        public var columnWidth: PDF.UserSpace.Width {
+            guard columnCount > 0 else { return tableWidth }
+            return PDF.UserSpace.Width(tableWidth.value / PDF.UserSpace.Unit(columnCount))
+        }
+
+        /// Current column index (0-based)
+        public var currentColumn: Int
+
+        /// Y position of current row start
+        public var rowY: PDF.UserSpace.Y
+
+        /// Cell padding
+        public var cellPadding: PDF.UserSpace.Unit
+
+        public init(
+            tableX: PDF.UserSpace.X,
+            tableWidth: PDF.UserSpace.Width,
+            columnCount: Int = 3,
+            cellPadding: PDF.UserSpace.Unit = 4
+        ) {
+            self.tableX = tableX
+            self.tableWidth = tableWidth
+            self.columnCount = columnCount
+            self.currentColumn = 0
+            self.rowY = 0
+            self.cellPadding = cellPadding
+        }
+
+        /// Get X position for current column
+        public func xForColumn(_ column: Int) -> PDF.UserSpace.X {
+            PDF.UserSpace.X(tableX.value + columnWidth.value * PDF.UserSpace.Unit(column))
+        }
+
+        /// Get available width for a cell (column width minus padding)
+        public var cellWidth: PDF.UserSpace.Width {
+            PDF.UserSpace.Width(columnWidth.value - cellPadding * 2)
         }
     }
 }

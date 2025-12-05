@@ -23,6 +23,32 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
+        // Check if this is a table container - needs special handling
+        if Tag.self is any PDF.HTML.TableContainer.Type {
+            renderTableContainer(view, into: &buffer, context: &context)
+            return
+        }
+
+        // Check if this is a table row
+        if Tag.self is any PDF.HTML.TableRowContainer.Type {
+            renderTableRow(view, into: &buffer, context: &context)
+            return
+        }
+
+        // Check if this is a table cell
+        if Tag.self is any PDF.HTML.TableCellContainer.Type {
+            renderTableCell(view, into: &buffer, context: &context)
+            return
+        }
+
+        // Table section containers (thead, tbody, tfoot) - just pass through to content
+        if Tag.self is any PDF.HTML.TableSectionContainer.Type {
+            if let content = view.content {
+                Content._render(content, into: &buffer, context: &context)
+            }
+            return
+        }
+
         // Helper to render based on Tag.flow
         func renderWithFlow() {
             switch Tag.flow {
@@ -152,5 +178,125 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Flush content
         _ = context.pdf.flushInlineRuns()
+    }
+
+    // MARK: - Table Rendering
+
+    /// Render a table container
+    private static func renderTableContainer<Buffer: RangeReplaceableCollection>(
+        _ view: Self,
+        into buffer: inout Buffer,
+        context: inout PDF.HTML.Context
+    ) where Buffer.Element == PDF.Render.Operation {
+        // Flush any pending inline runs
+        _ = context.pdf.flushInlineRuns()
+
+        // Create table context with default 3 columns (will be updated by first row)
+        let tableContext = PDF.HTML.TableContext(
+            tableX: context.pdf.x,
+            tableWidth: context.pdf.availableWidth,
+            columnCount: 3
+        )
+        context.tableContext = tableContext
+
+        // Render table content
+        if let content = view.content {
+            Content._render(content, into: &buffer, context: &context)
+        }
+
+        // Flush and clean up table context
+        _ = context.pdf.flushInlineRuns()
+        context.tableContext = nil
+    }
+
+    /// Render a table row
+    private static func renderTableRow<Buffer: RangeReplaceableCollection>(
+        _ view: Self,
+        into buffer: inout Buffer,
+        context: inout PDF.HTML.Context
+    ) where Buffer.Element == PDF.Render.Operation {
+        // Flush any pending inline runs
+        _ = context.pdf.flushInlineRuns()
+
+        guard context.tableContext != nil else {
+            // Not in a table context, fall through to default rendering
+            if let content = view.content {
+                PDF.HTML.renderBlock(content, into: &buffer, context: &context)
+            }
+            return
+        }
+
+        // Reset column index for this row
+        context.tableContext?.currentColumn = 0
+        context.tableContext?.rowY = context.pdf.y
+
+        // Save original X position
+        let savedX = context.pdf.x
+
+        // Render row content (cells will position themselves)
+        if let content = view.content {
+            Content._render(content, into: &buffer, context: &context)
+        }
+
+        // Flush and move to next line
+        _ = context.pdf.flushInlineRuns()
+
+        // Restore X and advance to next row
+        context.pdf.x = savedX
+        context.pdf.advanceLine()
+    }
+
+    /// Render a table cell (td or th)
+    private static func renderTableCell<Buffer: RangeReplaceableCollection>(
+        _ view: Self,
+        into buffer: inout Buffer,
+        context: inout PDF.HTML.Context
+    ) where Buffer.Element == PDF.Render.Operation {
+        // Flush any pending inline runs
+        _ = context.pdf.flushInlineRuns()
+
+        guard let tableContext = context.tableContext else {
+            // Not in a table context, fall through to default rendering
+            if let content = view.content {
+                PDF.HTML.renderInline(content, into: &buffer, context: &context)
+            }
+            return
+        }
+
+        // Get current column position
+        let columnIndex = tableContext.currentColumn
+        let cellX = tableContext.xForColumn(columnIndex)
+        let cellWidth = tableContext.cellWidth
+
+        // Save state
+        let savedX = context.pdf.x
+        let savedWidth = context.pdf.availableWidth
+        let savedFont = context.pdf.font
+        let savedY = context.pdf.y
+
+        // Set position and width for this cell
+        context.pdf.x = PDF.UserSpace.X(cellX.value + tableContext.cellPadding)
+        context.pdf.availableWidth = cellWidth
+        context.pdf.y = tableContext.rowY  // Align all cells in row to same Y
+
+        // Apply th styling if this is a header cell
+        if let tagRenderer = Tag.self as? any PDF.HTML.TagRenderer.Type {
+            tagRenderer.applyStyle(to: &context.pdf, configuration: context.configuration)
+        }
+
+        // Render cell content inline
+        if let content = view.content {
+            Content._render(content, into: &buffer, context: &context)
+        }
+        _ = context.pdf.flushInlineRuns()
+
+        // Advance to next column
+        context.tableContext?.currentColumn = columnIndex + 1
+
+        // Restore state (but keep Y progress from cell)
+        context.pdf.x = savedX
+        context.pdf.availableWidth = savedWidth
+        context.pdf.font = savedFont
+        context.pdf.y = savedY  // Will be advanced by row
     }
 }

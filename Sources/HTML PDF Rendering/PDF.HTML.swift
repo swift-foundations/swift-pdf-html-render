@@ -64,6 +64,20 @@ extension PDF.HTML {
             configuration: PDF.HTML.Configuration
         ) -> PDF.UserSpace.Width
     }
+
+    // MARK: - Table Protocols
+
+    /// Protocol for table container tags (table)
+    internal protocol TableContainer {}
+
+    /// Protocol for table row tags (tr)
+    internal protocol TableRowContainer {}
+
+    /// Protocol for table cell tags (td, th)
+    internal protocol TableCellContainer {}
+
+    /// Protocol for table section tags (thead, tbody, tfoot) - pass through
+    internal protocol TableSectionContainer {}
 }
 
 // MARK: - Main Entry Point
