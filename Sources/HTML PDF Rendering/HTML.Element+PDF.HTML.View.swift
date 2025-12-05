@@ -1,6 +1,7 @@
 // HTML.Element+PDF.HTML.View.swift
 // HTML.Element rendering using WHATWG_HTML.Element.flow
 
+import CSS_Standard
 import HTML_Renderable
 import PDF_Rendering
 import WHATWG_HTML
@@ -55,14 +56,35 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
-        // Helper to render based on Tag.flow
-        func renderWithFlow() {
+        // Helper to render based on Tag.flow with margin collapsing
+        func renderWithFlow(marginTop: PDF.UserSpace.Unit = 0, marginBottom: PDF.UserSpace.Unit = 0) {
             switch Tag.flow {
             case .block:
+                // Apply collapsed margins (CSS margin collapsing)
+                context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
                 PDF.HTML.renderBlock(view.content, into: &buffer, context: &context)
             case .inline:
                 PDF.HTML.renderInline(view.content, into: &buffer, context: &context)
             }
+        }
+
+        // Check for block margins (WebKit UA stylesheet defaults)
+        let marginTop: PDF.UserSpace.Unit
+        let marginBottom: PDF.UserSpace.Unit
+        if let blockMargins = Tag.self as? any PDF.HTML.BlockMargins.Type {
+            marginTop = PDF.UserSpace.Unit(
+                blockMargins.marginTop,
+                currentSize: context.pdf.fontSize,
+                baseFontSize: context.configuration.defaultFontSize
+            )
+            marginBottom = PDF.UserSpace.Unit(
+                blockMargins.marginBottom,
+                currentSize: context.pdf.fontSize,
+                baseFontSize: context.configuration.defaultFontSize
+            )
+        } else {
+            marginTop = 0
+            marginBottom = 0
         }
 
         // Check if Tag provides custom styling
@@ -80,8 +102,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Apply tag-specific style
             tagRenderer.applyStyle(to: &context.pdf, configuration: context.configuration)
 
-            // Render with flow
-            renderWithFlow()
+            // Render with flow and margins
+            renderWithFlow(marginTop: marginTop, marginBottom: marginBottom)
 
             // Restore style and layout state
             context.pdf.font = savedFont
@@ -93,8 +115,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.availableWidth = savedAvailableWidth
             context.pdf.preserveWhitespace = savedPreserveWhitespace
         } else {
-            // Default: just render with flow
-            renderWithFlow()
+            // Default: just render with flow and margins
+            renderWithFlow(marginTop: marginTop, marginBottom: marginBottom)
         }
     }
 

@@ -23,10 +23,48 @@ extension PDF.HTML {
         /// Active table layout context (nil when not in a table)
         public var tableContext: TableContext?
 
+        /// Pending bottom margin from previous block element (for margin collapsing).
+        ///
+        /// In CSS, adjacent vertical margins collapse - only the larger margin is used.
+        /// This tracks the bottom margin of the previous block element so it can be
+        /// collapsed with the top margin of the next block element.
+        public var pendingBottomMargin: PDF.UserSpace.Unit = 0
+
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
             self.pdf = pdf
             self.configuration = configuration
             self.tableContext = nil
+            self.pendingBottomMargin = 0
+        }
+
+        /// Apply collapsed margin between blocks.
+        ///
+        /// CSS margin collapsing: adjacent vertical margins collapse to the larger value.
+        /// This method applies the effective margin (max of pending bottom and new top),
+        /// then stores the new bottom margin for the next element.
+        ///
+        /// - Parameters:
+        ///   - topMargin: Top margin of the current element
+        ///   - bottomMargin: Bottom margin of the current element (stored for next collapse)
+        public mutating func applyCollapsedMargin(top topMargin: PDF.UserSpace.Unit, bottom bottomMargin: PDF.UserSpace.Unit) {
+            // Collapse: use max of pending bottom margin and current top margin
+            let collapsedMargin = max(pendingBottomMargin, topMargin)
+
+            // Apply the collapsed margin (only if there's something to apply)
+            if collapsedMargin > 0 {
+                pdf.advance(PDF.UserSpace.Y(collapsedMargin))
+            }
+
+            // Store the bottom margin for collapsing with next element
+            pendingBottomMargin = bottomMargin
+        }
+
+        /// Reset margin collapsing state.
+        ///
+        /// Call this when starting a new formatting context (e.g., new page,
+        /// entering a block formatting context like a table cell).
+        public mutating func resetMarginCollapsing() {
+            pendingBottomMargin = 0
         }
     }
 }

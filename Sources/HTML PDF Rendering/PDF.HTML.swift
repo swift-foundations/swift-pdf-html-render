@@ -1,6 +1,7 @@
 // PDF.HTML.swift
 // Namespace and helpers for HTML to PDF rendering
 
+import CSS_Standard
 import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
@@ -78,6 +79,19 @@ extension PDF.HTML {
 
     /// Protocol for table section tags (thead, tbody, tfoot) - pass through
     internal protocol TableSectionContainer {}
+
+    // MARK: - Block Element Margins Protocol
+
+    /// Protocol for block elements that have intrinsic margins (like WebKit UA stylesheet).
+    ///
+    /// Block elements like headings, paragraphs, lists have default top/bottom margins.
+    /// These margins are applied before/after the element content.
+    internal protocol BlockMargins {
+        /// Top margin using CSS length/percentage
+        static var marginTop: LengthPercentage { get }
+        /// Bottom margin using CSS length/percentage
+        static var marginBottom: LengthPercentage { get }
+    }
 
     // MARK: - Void Element Protocol
 

@@ -267,6 +267,7 @@ struct `Comprehensive PDF.HTML.View Tests` {
                 NestedListDemo()
                 InlineStyleDemo()
                 Paragraph { Emphasis { "End of demo." } }
+                NDADemo()
             }
         }
 
@@ -355,12 +356,11 @@ private struct TextStylingDemo: HTML.View {
             "She said, "
             InlineQuotation { "Hello!" }
         }
-        // BR void element requires special handling - skipped for now
-        // Paragraph {
-        //     "Line 1"
-        //     BR()()
-        //     "Line 2 (after BR)"
-        // }
+        Paragraph {
+            "Line 1"
+            BR()
+            "Line 2 (after BR)"
+        }
         Paragraph {
             "Meeting at "
             Time { "2024-01-15" }
@@ -500,6 +500,171 @@ private struct NestedListDemo: HTML.View {
                 }
             }
             ListItem { "Item 3" }
+        }
+    }
+}
+
+private struct NDADemo: HTML.View {
+    var body: some HTML.View {
+        // Page break before NDA section
+        ContentDivision {
+            H1 { "NON-DISCLOSURE AGREEMENT" }
+                .css.textAlign(.center)
+        }
+        .css.pageBreakBefore(.always)
+
+        Paragraph {
+            StrongImportance { "THIS NON-DISCLOSURE AGREEMENT" }
+            " (the \"Agreement\") is entered into as of "
+            ContentSpan { "[DATE]" }
+                .css.textDecoration(.underline)
+            " by and between:"
+        }
+
+        // Parties
+        Paragraph {
+            StrongImportance { "DISCLOSING PARTY:" }
+            BR()
+            "[Company Name], a [State] corporation, with its principal place of business at [Address] (\"Discloser\")"
+        }
+
+        Paragraph {
+            StrongImportance { "RECEIVING PARTY:" }
+            BR()
+            "[Recipient Name], an individual/entity located at [Address] (\"Recipient\")"
+        }
+
+        Paragraph {
+            "(Discloser and Recipient are collectively referred to as the \"Parties\")"
+        }
+
+        // Recitals
+        H2 { "RECITALS" }
+
+        Paragraph {
+            StrongImportance { "WHEREAS" }
+            ", the Discloser possesses certain confidential and proprietary information relating to [describe business/technology/project] (the \"Purpose\"); and"
+        }
+
+        Paragraph {
+            StrongImportance { "WHEREAS" }
+            ", the Recipient desires to receive certain Confidential Information for the Purpose; and"
+        }
+
+        Paragraph {
+            StrongImportance { "NOW, THEREFORE" }
+            ", in consideration of the mutual covenants and agreements set forth herein, and for other good and valuable consideration, the receipt and sufficiency of which are hereby acknowledged, the Parties agree as follows:"
+        }
+
+        // Article 1
+        H2 { "ARTICLE 1: DEFINITIONS" }
+
+        Paragraph {
+            StrongImportance { "1.1 \"Confidential Information\"" }
+            " means any and all information or data, whether oral, written, electronic, or visual, that is disclosed by the Discloser to the Recipient, including but not limited to:"
+        }
+
+        OrderedList {
+            ListItem { "Trade secrets, inventions, ideas, processes, formulas, source code, and software;" }
+            ListItem { "Business plans, financial information, and customer lists;" }
+            ListItem { "Technical data, know-how, and research findings;" }
+            ListItem { "Any other information designated as \"Confidential\" at the time of disclosure." }
+        }
+
+        // Article 2
+        H2 { "ARTICLE 2: OBLIGATIONS OF RECIPIENT" }
+
+        Paragraph {
+            StrongImportance { "2.1 Non-Disclosure." }
+            " The Recipient agrees to hold and maintain the Confidential Information in strict confidence and shall not, without the prior written approval of the Discloser:"
+        }
+
+        OrderedList {
+            ListItem { "Disclose any Confidential Information to any third parties;" }
+            ListItem { "Use the Confidential Information for any purpose other than the Purpose;" }
+            ListItem { "Copy or reproduce the Confidential Information except as necessary for the Purpose." }
+        }
+
+        Paragraph {
+            StrongImportance { "2.2 Standard of Care." }
+            " The Recipient shall protect the Confidential Information using the same degree of care it uses to protect its own confidential information, but in no event less than reasonable care."
+        }
+
+        // Article 3
+        H2 { "ARTICLE 3: TERM AND TERMINATION" }
+
+        Paragraph {
+            StrongImportance { "3.1 Term." }
+            " This Agreement shall remain in effect for a period of "
+            ContentSpan { "[NUMBER]" }
+                .css.textDecoration(.underline)
+            " years from the Effective Date, unless earlier terminated in accordance with this Agreement."
+        }
+
+        Paragraph {
+            StrongImportance { "3.2 Survival." }
+            " The confidentiality obligations under this Agreement shall survive termination and continue for a period of "
+            ContentSpan { "[NUMBER]" }
+                .css.textDecoration(.underline)
+            " years following termination."
+        }
+
+        // Article 4
+        H2 { "ARTICLE 4: GENERAL PROVISIONS" }
+
+        Paragraph {
+            StrongImportance { "4.1 Governing Law." }
+            " This Agreement shall be governed by and construed in accordance with the laws of the State of "
+            ContentSpan { "[STATE]" }
+                .css.textDecoration(.underline)
+            ", without regard to its conflict of laws principles."
+        }
+
+        Paragraph {
+            StrongImportance { "4.2 Entire Agreement." }
+            " This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior negotiations, representations, or agreements relating thereto."
+        }
+
+        Paragraph {
+            StrongImportance { "4.3 Amendments." }
+            " This Agreement may not be amended or modified except by a written instrument signed by both Parties."
+        }
+
+        // Signature block
+        H2 { "SIGNATURES" }
+
+        Paragraph {
+            StrongImportance { "IN WITNESS WHEREOF" }
+            ", the Parties have executed this Non-Disclosure Agreement as of the date first written above."
+        }
+
+        // Signature lines
+        Paragraph {
+            StrongImportance { "DISCLOSER:" }
+        }
+        Paragraph {
+            BR()
+            "________________________________"
+            BR()
+            "Name: [Authorized Representative]"
+            BR()
+            "Title: [Title]"
+            BR()
+            "Date: _______________"
+        }
+
+        Paragraph {
+            StrongImportance { "RECIPIENT:" }
+        }
+        Paragraph {
+            BR()
+            "________________________________"
+            BR()
+            "Name: [Recipient Name]"
+            BR()
+            "Title: [Title]"
+            BR()
+            "Date: _______________"
         }
     }
 }
