@@ -256,6 +256,7 @@ struct `Comprehensive PDF.HTML.View Tests` {
         struct ComplexView: HTML.View {
             var body: some HTML.View {
                 TextStylingDemo()
+                LinksDemo()
                 BlockElementsDemo()
                 ListsDemo()
                 HeadingsDemo()
@@ -317,9 +318,24 @@ private struct TextStylingDemo: HTML.View {
     }
 }
 
+private struct LinksDemo: HTML.View {
+    var body: some HTML.View {
+        H2 { "2. Links" }
+        Paragraph {
+            "Visit "
+            Anchor(href: "https://example.com") { "Example Website" }
+            " for more info."
+        }
+        Paragraph {
+            "Contact: "
+            Anchor(href: "mailto:test@example.com") { "test@example.com" }
+        }
+    }
+}
+
 private struct BlockElementsDemo: HTML.View {
     var body: some HTML.View {
-        H2 { "2. Block Elements" }
+        H2 { "3. Block Elements" }
         BlockQuote {
             Paragraph { "This is a block quotation." }
         }
@@ -332,7 +348,7 @@ private struct BlockElementsDemo: HTML.View {
 
 private struct ListsDemo: HTML.View {
     var body: some HTML.View {
-        H2 { "3. Lists" }
+        H2 { "4. Lists" }
         UnorderedList {
             ListItem { "Bullet 1" }
             ListItem { "Bullet 2" }
@@ -346,7 +362,7 @@ private struct ListsDemo: HTML.View {
 
 private struct HeadingsDemo: HTML.View {
     var body: some HTML.View {
-        H2 { "4. Headings" }
+        H2 { "5. Headings" }
         H1 { "H1" }
         H2 { "H2" }
         H3 { "H3" }
@@ -439,13 +455,41 @@ private struct NestedListDemo: HTML.View {
 
 private struct InlineStyleDemo: HTML.View {
     var body: some HTML.View {
+        H2 { "10. CSS Styling" }
         Paragraph {
-            "Normal, "
+            "Color: "
             ContentSpan { "red" }
                 .css.color(.red)
             ", "
             ContentSpan { "blue" }
                 .css.color(.blue)
+            ", "
+            ContentSpan { "green" }
+                .css.color(.green)
+            "."
+        }
+        Paragraph {
+            "Background: "
+            ContentSpan { " highlighted " }
+                .css.backgroundColor(.yellow)
+            " text."
+        }
+        Paragraph {
+            "Font weight: "
+            ContentSpan { "bold" }
+                .css.fontWeight(.bold)
+            ", "
+            ContentSpan { "normal" }
+                .css.fontWeight(.normal)
+            "."
+        }
+        Paragraph {
+            "Font style: "
+            ContentSpan { "italic" }
+                .css.fontStyle(.italic)
+            ", "
+            ContentSpan { "normal" }
+                .css.fontStyle(.normal)
             "."
         }
         ContentDivision {
