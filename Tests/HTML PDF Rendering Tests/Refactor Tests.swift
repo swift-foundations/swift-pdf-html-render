@@ -246,6 +246,506 @@ struct `PDF.HTML.View Tests` {
     }
 }
 
+// MARK: - Sticky Header Tests
+
+@Suite("Sticky Header Tests")
+struct StickyHeaderTests {
+
+    // Helper to find text operations on each page
+    private func findText(_ needle: String, in pages: [[PDF.Render.Operation]]) -> [(page: Int, y: PDF.UserSpace.Unit)] {
+        var results: [(page: Int, y: PDF.UserSpace.Unit)] = []
+        for (pageIndex, page) in pages.enumerated() {
+            for op in page {
+                if case .text(let textOp) = op, textOp.text.contains(needle) {
+                    results.append((pageIndex, textOp.position.y.value))
+                }
+            }
+        }
+        return results
+    }
+
+    // Helper to check if two items are on the same page
+    private func assertSamePage(_ item1: String, _ item2: String, in pages: [[PDF.Render.Operation]], file: StaticString = #file, line: UInt = #line) {
+        let pos1 = findText(item1, in: pages).first
+        let pos2 = findText(item2, in: pages).first
+        #expect(pos1 != nil, "Should find '\(item1)'")
+        #expect(pos2 != nil, "Should find '\(item2)'")
+        if let p1 = pos1, let p2 = pos2 {
+            #expect(p1.page == p2.page, "'\(item1)' (page \(p1.page + 1)) and '\(item2)' (page \(p2.page + 1)) should be on same page")
+        }
+    }
+
+    @Test("Basic sticky header moves to next page with content")
+    func basicStickyHeader() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                // Fill most of page 1
+                Paragraph { "Filler 1" }
+                Paragraph { "Filler 2" }
+                Paragraph { "Filler 3" }
+                Paragraph { "Filler 4" }
+                Paragraph { "Filler 5" }
+                Paragraph { "Filler 6" }
+                Paragraph { "Filler 7" }
+                Paragraph { "Filler 8" }
+                Paragraph { "Filler 9" }
+                Paragraph { "Filler 10" }
+                Paragraph { "Filler 11" }
+                Paragraph { "Filler 12" }
+                Paragraph { "Filler 13" }
+                Paragraph { "Filler 14" }
+                Paragraph { "Filler 15" }
+                Paragraph { "Filler 16" }
+                Paragraph { "Filler 17" }
+                Paragraph { "Filler 18" }
+                Paragraph { "Filler 19" }
+                Paragraph { "Filler 20" }
+                Paragraph { "Filler 21" }
+                Paragraph { "Filler 22" }
+                Paragraph { "Filler 23" }
+                Paragraph { "Filler 24" }
+                Paragraph { "Filler 25" }
+                Paragraph { "Filler 26" }
+                Paragraph { "Filler 27" }
+                Paragraph { "Filler 28" }
+                Paragraph { "Filler 29" }
+                Paragraph { "Filler 30" }
+                Paragraph { "Filler 31" }
+                Paragraph { "Filler 32" }
+                Paragraph { "Filler 33" }
+                Paragraph { "Filler 34" }
+                Paragraph { "Filler 35" }
+                Paragraph { "Filler 36" }
+                Paragraph { "Filler 37" }
+                Paragraph { "Filler 38" }
+                Paragraph { "Filler 39" }
+                Paragraph { "Filler 40" }
+
+                H2 { "STICKY_HEADER" }
+                    .css.pageBreakAfter(.avoid)
+
+                Paragraph { "FOLLOWING_CONTENT" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+        assertSamePage("STICKY_HEADER", "FOLLOWING_CONTENT", in: pages)
+    }
+
+    @Test("Sticky header with plenty of room stays on current page")
+    func stickyHeaderFitsOnPage() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph { "Some content before" }
+
+                H2 { "HEADER_FITS" }
+                    .css.pageBreakAfter(.avoid)
+
+                Paragraph { "CONTENT_FITS" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Both should be on page 1
+        let headerPos = findText("HEADER_FITS", in: pages).first
+        let contentPos = findText("CONTENT_FITS", in: pages).first
+
+        #expect(headerPos?.page == 0, "Header should be on page 1")
+        #expect(contentPos?.page == 0, "Content should be on page 1")
+    }
+
+    @Test("Consecutive sticky headers chain together")
+    func consecutiveStickyHeaders() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                // Fill most of page
+                Paragraph { "Filler 1" }
+                Paragraph { "Filler 2" }
+                Paragraph { "Filler 3" }
+                Paragraph { "Filler 4" }
+                Paragraph { "Filler 5" }
+                Paragraph { "Filler 6" }
+                Paragraph { "Filler 7" }
+                Paragraph { "Filler 8" }
+                Paragraph { "Filler 9" }
+                Paragraph { "Filler 10" }
+                Paragraph { "Filler 11" }
+                Paragraph { "Filler 12" }
+                Paragraph { "Filler 13" }
+                Paragraph { "Filler 14" }
+                Paragraph { "Filler 15" }
+                Paragraph { "Filler 16" }
+                Paragraph { "Filler 17" }
+                Paragraph { "Filler 18" }
+                Paragraph { "Filler 19" }
+                Paragraph { "Filler 20" }
+                Paragraph { "Filler 21" }
+                Paragraph { "Filler 22" }
+                Paragraph { "Filler 23" }
+                Paragraph { "Filler 24" }
+                Paragraph { "Filler 25" }
+                Paragraph { "Filler 26" }
+                Paragraph { "Filler 27" }
+                Paragraph { "Filler 28" }
+                Paragraph { "Filler 29" }
+                Paragraph { "Filler 30" }
+                Paragraph { "Filler 31" }
+                Paragraph { "Filler 32" }
+                Paragraph { "Filler 33" }
+                Paragraph { "Filler 34" }
+                Paragraph { "Filler 35" }
+                Paragraph { "Filler 36" }
+                Paragraph { "Filler 37" }
+                Paragraph { "Filler 38" }
+
+                // Two consecutive sticky headers
+                H2 { "FIRST_STICKY" }
+                    .css.pageBreakAfter(.avoid)
+
+                H3 { "SECOND_STICKY" }
+                    .css.pageBreakAfter(.avoid)
+
+                Paragraph { "FINAL_CONTENT" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // All three should be on the same page
+        assertSamePage("FIRST_STICKY", "SECOND_STICKY", in: pages)
+        assertSamePage("SECOND_STICKY", "FINAL_CONTENT", in: pages)
+    }
+
+    @Test("Sticky header at document end renders correctly")
+    func stickyHeaderAtDocumentEnd() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph { "Some content" }
+
+                // Sticky header with no following content
+                H2 { "ORPHAN_HEADER" }
+                    .css.pageBreakAfter(.avoid)
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Header should still be rendered
+        let headerPos = findText("ORPHAN_HEADER", in: pages)
+        #expect(!headerPos.isEmpty, "Orphan sticky header should be rendered")
+    }
+
+    @Test("Non-sticky header can be orphaned at page bottom")
+    func nonStickyHeaderCanBeOrphaned() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                // Fill most of page
+                Paragraph { "Filler 1" }
+                Paragraph { "Filler 2" }
+                Paragraph { "Filler 3" }
+                Paragraph { "Filler 4" }
+                Paragraph { "Filler 5" }
+                Paragraph { "Filler 6" }
+                Paragraph { "Filler 7" }
+                Paragraph { "Filler 8" }
+                Paragraph { "Filler 9" }
+                Paragraph { "Filler 10" }
+                Paragraph { "Filler 11" }
+                Paragraph { "Filler 12" }
+                Paragraph { "Filler 13" }
+                Paragraph { "Filler 14" }
+                Paragraph { "Filler 15" }
+                Paragraph { "Filler 16" }
+                Paragraph { "Filler 17" }
+                Paragraph { "Filler 18" }
+                Paragraph { "Filler 19" }
+                Paragraph { "Filler 20" }
+                Paragraph { "Filler 21" }
+                Paragraph { "Filler 22" }
+                Paragraph { "Filler 23" }
+                Paragraph { "Filler 24" }
+                Paragraph { "Filler 25" }
+                Paragraph { "Filler 26" }
+                Paragraph { "Filler 27" }
+                Paragraph { "Filler 28" }
+                Paragraph { "Filler 29" }
+                Paragraph { "Filler 30" }
+                Paragraph { "Filler 31" }
+                Paragraph { "Filler 32" }
+                Paragraph { "Filler 33" }
+                Paragraph { "Filler 34" }
+                Paragraph { "Filler 35" }
+                Paragraph { "Filler 36" }
+                Paragraph { "Filler 37" }
+                Paragraph { "Filler 38" }
+                Paragraph { "Filler 39" }
+                Paragraph { "Filler 40" }
+
+                // NON-sticky header (no .css.pageBreakAfter(.avoid))
+                H2 { "NORMAL_HEADER" }
+
+                Paragraph { "NORMAL_CONTENT that is long enough to wrap to multiple lines and will definitely cause a page break when combined with the header above." }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Without sticky, header and content may be on different pages
+        let headerPos = findText("NORMAL_HEADER", in: pages).first
+        let contentPos = findText("NORMAL_CONTENT", in: pages).first
+
+        #expect(headerPos != nil, "Should find header")
+        #expect(contentPos != nil, "Should find content")
+        // Note: They might be on different pages - that's expected for non-sticky
+    }
+
+    @Test("Sticky header with different heading levels")
+    func stickyHeaderDifferentLevels() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                H1 { "H1_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H1" }
+
+                H2 { "H2_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H2" }
+
+                H3 { "H3_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H3" }
+
+                H4 { "H4_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H4" }
+
+                H5 { "H5_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H5" }
+
+                H6 { "H6_STICKY" }.css.pageBreakAfter(.avoid)
+                Paragraph { "After H6" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Each heading should be on same page as its following paragraph
+        assertSamePage("H1_STICKY", "After H1", in: pages)
+        assertSamePage("H2_STICKY", "After H2", in: pages)
+        assertSamePage("H3_STICKY", "After H3", in: pages)
+        assertSamePage("H4_STICKY", "After H4", in: pages)
+        assertSamePage("H5_STICKY", "After H5", in: pages)
+        assertSamePage("H6_STICKY", "After H6", in: pages)
+    }
+
+    @Test("Sticky on non-heading block elements")
+    func stickyOnNonHeadingElements() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                // Fill most of page
+                Paragraph { "Filler 1" }
+                Paragraph { "Filler 2" }
+                Paragraph { "Filler 3" }
+                Paragraph { "Filler 4" }
+                Paragraph { "Filler 5" }
+                Paragraph { "Filler 6" }
+                Paragraph { "Filler 7" }
+                Paragraph { "Filler 8" }
+                Paragraph { "Filler 9" }
+                Paragraph { "Filler 10" }
+                Paragraph { "Filler 11" }
+                Paragraph { "Filler 12" }
+                Paragraph { "Filler 13" }
+                Paragraph { "Filler 14" }
+                Paragraph { "Filler 15" }
+                Paragraph { "Filler 16" }
+                Paragraph { "Filler 17" }
+                Paragraph { "Filler 18" }
+                Paragraph { "Filler 19" }
+                Paragraph { "Filler 20" }
+                Paragraph { "Filler 21" }
+                Paragraph { "Filler 22" }
+                Paragraph { "Filler 23" }
+                Paragraph { "Filler 24" }
+                Paragraph { "Filler 25" }
+                Paragraph { "Filler 26" }
+                Paragraph { "Filler 27" }
+                Paragraph { "Filler 28" }
+                Paragraph { "Filler 29" }
+                Paragraph { "Filler 30" }
+                Paragraph { "Filler 31" }
+                Paragraph { "Filler 32" }
+                Paragraph { "Filler 33" }
+                Paragraph { "Filler 34" }
+                Paragraph { "Filler 35" }
+                Paragraph { "Filler 36" }
+                Paragraph { "Filler 37" }
+                Paragraph { "Filler 38" }
+
+                // Sticky paragraph (unusual but should work)
+                Paragraph { "STICKY_PARA" }
+                    .css.pageBreakAfter(.avoid)
+
+                Paragraph { "AFTER_STICKY_PARA" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+        assertSamePage("STICKY_PARA", "AFTER_STICKY_PARA", in: pages)
+    }
+
+    @Test("Multiple sticky headers across document")
+    func multipleStickyHeadersAcrossDocument() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                H2 { "SECTION_1" }.css.pageBreakAfter(.avoid)
+                Paragraph { "Content for section 1 that has enough text." }
+                Paragraph { "More content for section 1." }
+                Paragraph { "Even more content for section 1." }
+                Paragraph { "Filler A1" }
+                Paragraph { "Filler A2" }
+                Paragraph { "Filler A3" }
+                Paragraph { "Filler A4" }
+                Paragraph { "Filler A5" }
+                Paragraph { "Filler A6" }
+                Paragraph { "Filler A7" }
+                Paragraph { "Filler A8" }
+                Paragraph { "Filler A9" }
+                Paragraph { "Filler A10" }
+                Paragraph { "Filler A11" }
+                Paragraph { "Filler A12" }
+                Paragraph { "Filler A13" }
+                Paragraph { "Filler A14" }
+                Paragraph { "Filler A15" }
+
+                H2 { "SECTION_2" }.css.pageBreakAfter(.avoid)
+                Paragraph { "Content for section 2." }
+                Paragraph { "Filler B1" }
+                Paragraph { "Filler B2" }
+                Paragraph { "Filler B3" }
+                Paragraph { "Filler B4" }
+                Paragraph { "Filler B5" }
+                Paragraph { "Filler B6" }
+                Paragraph { "Filler B7" }
+                Paragraph { "Filler B8" }
+                Paragraph { "Filler B9" }
+                Paragraph { "Filler B10" }
+                Paragraph { "Filler B11" }
+                Paragraph { "Filler B12" }
+                Paragraph { "Filler B13" }
+                Paragraph { "Filler B14" }
+                Paragraph { "Filler B15" }
+
+                H2 { "SECTION_3" }.css.pageBreakAfter(.avoid)
+                Paragraph { "Content for section 3." }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Each section header should be with its content
+        assertSamePage("SECTION_1", "Content for section 1", in: pages)
+        assertSamePage("SECTION_2", "Content for section 2", in: pages)
+        assertSamePage("SECTION_3", "Content for section 3", in: pages)
+    }
+
+    @Test("page-break-before moves sticky header with content to new page")
+    func pageBreakBeforeWithStickyHeader() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph { "FIRST_PAGE_CONTENT" }
+
+                H2 { "STICKY_BEFORE_BREAK" }
+                    .css.pageBreakAfter(.avoid)
+
+                // This has page-break-before which forces new page
+                // The sticky header should move WITH content to the new page
+                ContentDivision { Paragraph { "FORCED_NEW_PAGE" } }
+                    .css.pageBreakBefore(.always)
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        let firstPos = findText("FIRST_PAGE_CONTENT", in: pages).first
+        let headerPos = findText("STICKY_BEFORE_BREAK", in: pages).first
+        let contentPos = findText("FORCED_NEW_PAGE", in: pages).first
+
+        #expect(firstPos != nil)
+        #expect(headerPos != nil)
+        #expect(contentPos != nil)
+
+        // The sticky header and its content should be on the same page (new page)
+        // The first paragraph should be on page 0, header+content on page 1
+        if let f = firstPos, let h = headerPos, let c = contentPos {
+            #expect(f.page == 0, "First content should be on page 0")
+            #expect(h.page == c.page, "Sticky header should move with content to new page")
+            #expect(h.page > f.page, "Header+content should be on later page than first content")
+        }
+    }
+
+    @Test("No text corruption or duplication with sticky headers")
+    func noTextCorruption() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                // Fill page to trigger potential corruption
+                Paragraph { "Filler 1" }
+                Paragraph { "Filler 2" }
+                Paragraph { "Filler 3" }
+                Paragraph { "Filler 4" }
+                Paragraph { "Filler 5" }
+                Paragraph { "Filler 6" }
+                Paragraph { "Filler 7" }
+                Paragraph { "Filler 8" }
+                Paragraph { "Filler 9" }
+                Paragraph { "Filler 10" }
+                Paragraph { "Filler 11" }
+                Paragraph { "Filler 12" }
+                Paragraph { "Filler 13" }
+                Paragraph { "Filler 14" }
+                Paragraph { "Filler 15" }
+                Paragraph { "Filler 16" }
+                Paragraph { "Filler 17" }
+                Paragraph { "Filler 18" }
+                Paragraph { "Filler 19" }
+                Paragraph { "Filler 20" }
+                Paragraph { "Filler 21" }
+                Paragraph { "Filler 22" }
+                Paragraph { "Filler 23" }
+                Paragraph { "Filler 24" }
+                Paragraph { "Filler 25" }
+                Paragraph { "Filler 26" }
+                Paragraph { "Filler 27" }
+                Paragraph { "Filler 28" }
+                Paragraph { "Filler 29" }
+                Paragraph { "Filler 30" }
+                Paragraph { "Filler 31" }
+                Paragraph { "Filler 32" }
+                Paragraph { "Filler 33" }
+                Paragraph { "Filler 34" }
+                Paragraph { "Filler 35" }
+                Paragraph { "Filler 36" }
+                Paragraph { "Filler 37" }
+                Paragraph { "Filler 38" }
+                Paragraph { "Filler 39" }
+                Paragraph { "Filler 40" }
+
+                H2 { "UNIQUE_HEADER_TEXT_12345" }
+                    .css.pageBreakAfter(.avoid)
+
+                Paragraph { "UNIQUE_CONTENT_TEXT_67890" }
+            }
+        }
+
+        let (pages, _) = PDF.HTML.pages { TestView() }
+
+        // Count occurrences of each unique text
+        let headerMatches = findText("UNIQUE_HEADER_TEXT_12345", in: pages)
+        let contentMatches = findText("UNIQUE_CONTENT_TEXT_67890", in: pages)
+
+        // Each should appear exactly once (no duplication)
+        #expect(headerMatches.count == 1, "Header should appear exactly once, found \(headerMatches.count)")
+        #expect(contentMatches.count == 1, "Content should appear exactly once, found \(contentMatches.count)")
+    }
+}
+
 // MARK: - Comprehensive Test
 
 @Suite
