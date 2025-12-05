@@ -11,6 +11,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         into buffer: inout Buffer,
         context: inout PDF.HTML.Context
     ) where Buffer.Element == PDF.Render.Operation {
+        // Check if this is a void element (br, hr, etc.) - no content
+        if let voidRenderer = Tag.self as? any PDF.HTML.VoidElementRenderer.Type {
+            voidRenderer.render(into: &buffer, context: &context)
+            return
+        }
+
         // Check if this is a list container (ul, ol) - needs special handling
         if let listContainer = Tag.self as? any PDF.HTML.ListContainer.Type {
             renderListContainer(view, listContainer: listContainer, into: &buffer, context: &context)
@@ -64,6 +70,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Save current style and layout state
             let savedFont = context.pdf.font
             let savedFontSize = context.pdf.fontSize
+            let savedColor = context.pdf.color
             let savedTextDecoration = context.pdf.textDecoration
             let savedTextBackgroundColor = context.pdf.textBackgroundColor
             let savedX = context.pdf.x
@@ -79,6 +86,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Restore style and layout state
             context.pdf.font = savedFont
             context.pdf.fontSize = savedFontSize
+            context.pdf.color = savedColor
             context.pdf.textDecoration = savedTextDecoration
             context.pdf.textBackgroundColor = savedTextBackgroundColor
             context.pdf.x = savedX

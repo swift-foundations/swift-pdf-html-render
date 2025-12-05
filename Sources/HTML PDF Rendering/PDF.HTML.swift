@@ -78,6 +78,20 @@ extension PDF.HTML {
 
     /// Protocol for table section tags (thead, tbody, tfoot) - pass through
     internal protocol TableSectionContainer {}
+
+    // MARK: - Void Element Protocol
+
+    /// Protocol for void element tags (br, hr, img, etc.) that have no content.
+    ///
+    /// Unlike `TagRenderer` which modifies styling for content, void elements
+    /// perform their action directly without rendering any child content.
+    internal protocol VoidElementRenderer {
+        /// Render this void element's effect (e.g., line break, horizontal rule).
+        static func render<Buffer: RangeReplaceableCollection>(
+            into buffer: inout Buffer,
+            context: inout PDF.HTML.Context
+        ) where Buffer.Element == PDF.Render.Operation
+    }
 }
 
 // MARK: - Main Entry Point

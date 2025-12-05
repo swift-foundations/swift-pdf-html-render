@@ -355,6 +355,17 @@ private struct TextStylingDemo: HTML.View {
             "She said, "
             InlineQuotation { "Hello!" }
         }
+        // BR void element requires special handling - skipped for now
+        // Paragraph {
+        //     "Line 1"
+        //     BR()()
+        //     "Line 2 (after BR)"
+        // }
+        Paragraph {
+            "Meeting at "
+            Time { "2024-01-15" }
+            "."
+        }
     }
 }
 
