@@ -10,10 +10,17 @@ extension BR: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
+        // Check if there are pending inline runs
+        let hadContent = !context.pdf.inlineRuns.isEmpty
+
         // Flush any pending inline runs to render current line
+        // Note: flushInlineRuns already calls advanceLine() for each rendered line
         context.pdf.flushInlineRuns()
 
-        // Advance to the next line
-        context.pdf.advanceLine()
+        // Only advance if there was no content to flush (BR at start of line)
+        // If content was flushed, it already advanced to a new line
+        if !hadContent {
+            context.pdf.advanceLine()
+        }
     }
 }
