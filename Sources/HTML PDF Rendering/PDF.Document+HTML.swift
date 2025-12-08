@@ -19,29 +19,16 @@ extension PDF.Document {
         configuration: PDF.HTML.Configuration = .init(),
         @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
-        // Transform HTML to PDF render operations
-        let (pageOperations, pageAnnotations) = PDF.HTML.pages(
+        // Transform HTML to PDF pages
+        let pages = PDF.HTML.pages(
             configuration: configuration,
             html: html
         )
 
-        // Build pages from operations
-        var pages: [PDF.Page] = []
-        for (i, ops) in pageOperations.enumerated() {
-            let annotations = i < pageAnnotations.count ? pageAnnotations[i] : []
-            pages.append(
-                PDF.Page(
-                    mediaBox: configuration.mediaBox,
-                    operations: ops,
-                    annotations: annotations
-                )
-            )
-        }
-
         // Create document
         self.init(
-            pages: pages,
-            info: info
+            info: info,
+            pages: pages
         )
     }
 
@@ -52,29 +39,16 @@ extension PDF.Document {
         configuration: PDF.HTML.Configuration = .init(),
         @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
-        // Transform HTML to PDF render operations
-        let (pageOperations, pageAnnotations) = PDF.HTML.pages(
+        // Transform HTML to PDF pages
+        let pages = PDF.HTML.pages(
             configuration: configuration,
             html: html
         )
 
-        // Build pages from operations
-        var pages: [PDF.Page] = []
-        for (i, ops) in pageOperations.enumerated() {
-            let annotations = i < pageAnnotations.count ? pageAnnotations[i] : []
-            pages.append(
-                PDF.Page(
-                    mediaBox: configuration.mediaBox,
-                    operations: ops,
-                    annotations: annotations
-                )
-            )
-        }
-
         // Create document
         self.init(
-            pages: pages,
-            info: info
+            info: info,
+            pages: pages
         )
     }
 }

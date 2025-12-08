@@ -9,16 +9,15 @@ import Renderable
 extension _Conditional: PDF.HTML.View
 where First: PDF.HTML.View, Second: PDF.HTML.View {
     @inlinable
-    public static func _render<Buffer: RangeReplaceableCollection>(
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         switch view {
         case .first(let first):
-            First._render(first, into: &buffer, context: &context)
+            First._render(first, context: &context)
         case .second(let second):
-            Second._render(second, into: &buffer, context: &context)
+            Second._render(second, context: &context)
         }
     }
 }

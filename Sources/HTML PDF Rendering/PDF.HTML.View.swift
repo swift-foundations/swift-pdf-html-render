@@ -45,39 +45,24 @@ extension PDF.HTML {
             ///
             /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
             /// The closure captures generic view types that aren't Sendable.
-            public let render: (inout [PDF.Render.Operation], inout PDF.HTML.Context) -> Void
+            public let render: (inout PDF.HTML.Context) -> Void
             /// Measured height of the deferred content
             public let measuredHeight: PDF.UserSpace.Height
         }
 
         /// Snapshot of PDF context state for restoration during deferred rendering
         public struct PDFContextSnapshot: Sendable {
-            public let font: PDF.Font
-            public let fontSize: PDF.UserSpace.Unit
-            public let color: PDF.Color
-            public let textDecoration: PDF.TextDecoration
-            public let textBackgroundColor: PDF.Color?
-            public let x: PDF.UserSpace.X
-            public let availableWidth: PDF.UserSpace.Width
+            public let style: PDF.Context.Style.Resolved
+            public let layoutBox: PDF.UserSpace.Rectangle
 
             public init(from context: PDF.Context) {
-                self.font = context.font
-                self.fontSize = context.fontSize
-                self.color = context.color
-                self.textDecoration = context.textDecoration
-                self.textBackgroundColor = context.textBackgroundColor
-                self.x = context.x
-                self.availableWidth = context.availableWidth
+                self.style = context.style
+                self.layoutBox = context.layoutBox
             }
 
             public func restore(to context: inout PDF.Context) {
-                context.font = font
-                context.fontSize = fontSize
-                context.color = color
-                context.textDecoration = textDecoration
-                context.textBackgroundColor = textBackgroundColor
-                context.x = x
-                context.availableWidth = availableWidth
+                context.style = style
+                context.layoutBox = layoutBox
             }
         }
 
@@ -184,27 +169,25 @@ extension PDF.HTML {
 // MARK: - PDF.HTML.View Protocol
 
 extension PDF.HTML {
-    /// Protocol for types that can be rendered to PDF content operations.
+    /// Protocol for types that can be rendered to PDF content.
     ///
     /// This protocol enables static dispatch for HTML to PDF rendering,
-    /// following the same buffer-based pattern as `HTML.View` and `PDF.View`.
+    /// following the same pattern as `PDF.View` which renders directly to context.
     ///
     /// Note: This protocol does NOT extend `Renderable` because HTML types
     /// already conform to `Renderable` via `HTML.View` with different associated
     /// types (`Context == HTML.Context`, `Output == UInt8`). Having two different
     /// `Renderable` conformances would cause a conflict.
     public protocol View {
-        /// Render this view to PDF content operations.
+        /// Render this view to PDF content.
         ///
         /// - Parameters:
         ///   - view: The view to render
-        ///   - buffer: Buffer to append PDF operations to
         ///   - context: Combined context with PDF layout state and configuration
-        static func _render<Buffer: RangeReplaceableCollection>(
+        static func _render(
             _ view: Self,
-            into buffer: inout Buffer,
             context: inout PDF.HTML.Context
-        ) where Buffer.Element == PDF.Render.Operation
+        )
     }
 }
 
@@ -214,11 +197,10 @@ extension PDF.HTML.View where Self: HTML.View, Self.Content: PDF.HTML.View {
     /// Default implementation delegates to the body's render method.
     @inlinable
     @_disfavoredOverload
-    public static func _render<Buffer: RangeReplaceableCollection>(
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
-        Self.Content._render(view.body, into: &buffer, context: &context)
+    ) {
+        Self.Content._render(view.body, context: &context)
     }
 }

@@ -9,6 +9,6 @@ import WHATWG_HTML_TextSemantics
 extension WHATWG_HTML_TextSemantics.Cite: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Citations are rendered in italics (browser default)
-        context.font = context.font.italic
+        context.style.font = context.style.font.italic
     }
 }

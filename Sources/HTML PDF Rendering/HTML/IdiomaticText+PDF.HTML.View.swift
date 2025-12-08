@@ -7,6 +7,6 @@ import WHATWG_HTML
 
 extension IdiomaticText: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        context.font = context.font.italic
+        context.style.font = context.style.font.italic
     }
 }

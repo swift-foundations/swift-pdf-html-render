@@ -9,7 +9,6 @@ extension DescriptionDetails: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Add left margin indentation for description details (like browser default)
         let indent: PDF.UserSpace.Unit = 40
-        context.x = PDF.UserSpace.X(context.x.value + indent)
-        context.availableWidth = PDF.UserSpace.Width(context.availableWidth.value - indent)
+        context.layoutBox.llx = PDF.UserSpace.X(context.layoutBox.llx.value + indent)
     }
 }

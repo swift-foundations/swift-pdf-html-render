@@ -8,9 +8,9 @@ extension W3C_CSS_Fonts.FontWeight: PDF.HTML.StyleModifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .bold, .bolder:
-            context.font = context.font.bold
+            context.style.font = context.style.font.bold
         case .number(let weight) where weight >= 600:
-            context.font = context.font.bold
+            context.style.font = context.style.font.bold
         case .normal, .lighter:
             // For lighter/normal, we'd need to reset weight but keep style
             // The .regular property resets both, so this isn't perfect

@@ -8,8 +8,8 @@ import WHATWG_HTML
 
 extension H1: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        context.font = context.font.bold
-        context.fontSize = configuration.headingSize(level: 1)
+        context.style.font = context.style.font.bold
+        context.style.fontSize = configuration.headingSize(level: 1)
     }
 }
 

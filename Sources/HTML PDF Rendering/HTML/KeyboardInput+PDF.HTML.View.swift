@@ -8,6 +8,6 @@ import WHATWG_HTML
 extension KeyboardInput: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Keyboard input is rendered in monospace (browser default)
-        context.font = .courier
+        context.style.font = .courier
     }
 }

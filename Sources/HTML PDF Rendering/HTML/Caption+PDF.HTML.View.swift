@@ -8,6 +8,6 @@ import WHATWG_HTML
 extension Caption: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Captions are centered and slightly smaller - browser default styling
-        context.font = context.font.bold
+        context.style.font = context.style.font.bold
     }
 }

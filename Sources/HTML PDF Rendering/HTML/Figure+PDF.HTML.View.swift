@@ -9,7 +9,7 @@ extension Figure: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Add margin indentation for figure (browser default: 40px margins)
         let margin: PDF.UserSpace.Unit = 40
-        context.x = PDF.UserSpace.X(context.x.value + margin)
-        context.availableWidth = PDF.UserSpace.Width(context.availableWidth.value - margin * 2)
+        context.layoutBox.llx = PDF.UserSpace.X(context.layoutBox.llx.value + margin)
+        context.layoutBox.urx = PDF.UserSpace.X(context.layoutBox.urx.value - margin)
     }
 }

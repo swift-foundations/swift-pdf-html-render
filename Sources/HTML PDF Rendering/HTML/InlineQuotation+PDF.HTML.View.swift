@@ -9,6 +9,6 @@ extension InlineQuotation: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Inline quotations are typically rendered with quotes
         // For PDF, we use italic to indicate quoted text
-        context.font = context.font.italic
+        context.style.font = context.style.font.italic
     }
 }

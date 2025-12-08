@@ -8,6 +8,6 @@ import WHATWG_HTML
 extension Mark: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Yellow background highlight (standard browser behavior)
-        context.textBackgroundColor = .yellow
+        context.style.textMarkup = .highlight(PDF.Color.yellow)
     }
 }

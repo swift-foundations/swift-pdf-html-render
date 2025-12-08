@@ -10,12 +10,11 @@ import PDF_Rendering
 /// This conformance simply passes through to render the wrapped content.
 extension HTML._Attributes: PDF.HTML.View where Content: PDF.HTML.View {
     @inlinable
-    public static func _render<Buffer: RangeReplaceableCollection>(
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // HTML attributes don't affect PDF rendering - delegate to wrapped content
-        Content._render(view.content, into: &buffer, context: &context)
+        Content._render(view.content, context: &context)
     }
 }

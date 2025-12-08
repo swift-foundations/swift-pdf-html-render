@@ -12,7 +12,7 @@ extension W3C_CSS_Color.Color: PDF.HTML.StyleModifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .color(let color):
-            context.color = PDF.Color(color) ?? context.color
+            context.style.color = PDF.Color(color) ?? context.style.color
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

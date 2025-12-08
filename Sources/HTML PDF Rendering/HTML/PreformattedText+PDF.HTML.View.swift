@@ -8,7 +8,7 @@ import WHATWG_HTML
 extension PreformattedText: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Monospace font and preserve whitespace
-        context.font = .courier
+        context.style.font = .courier
         context.preserveWhitespace = true
     }
 }

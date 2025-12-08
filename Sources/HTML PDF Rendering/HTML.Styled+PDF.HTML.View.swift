@@ -1,11 +1,11 @@
-// HTML.InlineStyle+PDF.HTML.View.swift
-// PDF rendering support for HTML.InlineStyle CSS wrapper
+// HTML.Styled+PDF.HTML.View.swift
+// PDF rendering support for HTML.Styled CSS wrapper
 
 import HTML_Renderable
 import PDF_Rendering
 import W3C_CSS_Shared
 
-/// PDF rendering for HTML.InlineStyle elements.
+/// PDF rendering for HTML.Styled elements.
 ///
 /// When rendering HTML to PDF, inline styles that conform to `PDF.HTML.StyleModifier`
 /// are applied to the PDF context. This enables the same `.inlineStyle(FontWeight.bold)`
@@ -16,33 +16,28 @@ import W3C_CSS_Shared
 /// p { "Bold text" }
 ///     .inlineStyle(FontWeight.bold)  // Works for both HTML and PDF!
 /// ```
-extension HTML.InlineStyle: PDF.HTML.View where Content: PDF.HTML.View {
-    public static func _render<Buffer: RangeReplaceableCollection>(
+extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // Save current style state
-        let savedFont = context.pdf.font
-        let savedFontSize = context.pdf.fontSize
-        let savedColor = context.pdf.color
+        let savedStyle = context.pdf.style
 
         defer {
             // Restore style state after rendering content
-            context.pdf.font = savedFont
-            context.pdf.fontSize = savedFontSize
-            context.pdf.color = savedColor
+            context.pdf.style = savedStyle
         }
 
         // Check if this is a page-break-after: avoid style
         var shouldAvoidPageBreakAfter = false
-        if let style = view.style {
+        if let property = view.property {
             // Check for PDF context modifier
-            if let modifier = style.property as? any PDF.HTML.StyleModifier {
+            if let modifier = property as? any PDF.HTML.StyleModifier {
                 modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
             // Check for HTML context modifier (for page-break-after, etc.)
-            if let htmlModifier = style.property as? any PDF.HTML.HTMLContextStyleModifier {
+            if let htmlModifier = property as? any PDF.HTML.HTMLContextStyleModifier {
                 htmlModifier.apply(to: &context)
             }
             // Check if this is page-break-after: avoid
@@ -65,11 +60,10 @@ extension HTML.InlineStyle: PDF.HTML.View where Content: PDF.HTML.View {
                 var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
                 tempHTMLContext.pendingBottomMargin = pendingBottomMargin
                 snapshot.restore(to: &tempHTMLContext.pdf)
-                var tempBuffer: [PDF.Render.Operation] = []
-                Content._render(view.content, into: &tempBuffer, context: &tempHTMLContext)
-                _ = tempHTMLContext.pdf.flushInlineRuns()
+                Content._render(view.content, context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
                 // Write back the Y position to measureContext so the measure function can calculate height
-                measureContext.y = tempHTMLContext.pdf.y
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
             }
 
             // Check if there's already deferred content (consecutive sticky headers)
@@ -79,30 +73,30 @@ extension HTML.InlineStyle: PDF.HTML.View where Content: PDF.HTML.View {
                     existingDeferred.measuredHeight.value + measuredHeight.value
                 )
                 context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
-                    render: { buffer, ctx in
+                    render: { ctx in
                         // Render existing deferred content first
-                        existingDeferred.render(&buffer, &ctx)
+                        existingDeferred.render(&ctx)
                         // Then render this content
                         snapshot.restore(to: &ctx.pdf)
-                        Content._render(view.content, into: &buffer, context: &ctx)
-                        _ = ctx.pdf.flushInlineRuns()
+                        Content._render(view.content, context: &ctx)
+                        ctx.pdf.flushInlineRuns()
                     },
                     measuredHeight: combinedHeight
                 )
             } else {
                 // Store deferred render closure (NOT executed yet)
                 context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
-                    render: { buffer, ctx in
+                    render: { ctx in
                         snapshot.restore(to: &ctx.pdf)
-                        Content._render(view.content, into: &buffer, context: &ctx)
-                        _ = ctx.pdf.flushInlineRuns()
+                        Content._render(view.content, context: &ctx)
+                        ctx.pdf.flushInlineRuns()
                     },
                     measuredHeight: measuredHeight
                 )
             }
         } else {
             // Normal rendering
-            Content._render(view.content, into: &buffer, context: &context)
+            Content._render(view.content, context: &context)
         }
     }
 }

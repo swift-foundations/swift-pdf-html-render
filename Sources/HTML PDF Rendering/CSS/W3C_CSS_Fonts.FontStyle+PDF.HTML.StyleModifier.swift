@@ -8,7 +8,7 @@ extension W3C_CSS_Fonts.FontStyle: PDF.HTML.StyleModifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .italic, .oblique, .obliqueAngle:
-            context.font = context.font.italic
+            context.style.font = context.style.font.italic
         case .normal:
             // Normal style - no change needed (italic is additive)
             break

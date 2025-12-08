@@ -4,20 +4,19 @@
 import PDF_Rendering
 
 extension String: PDF.HTML.View {
-    public static func _render<Buffer: RangeReplaceableCollection>(
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // Append text as inline run (will be flushed at block boundaries)
-        let run = PDF.TextRun(
+        let run = PDF.Text.Run(
             text: view,
-            font: context.pdf.font,
-            fontSize: context.pdf.fontSize,
-            color: context.pdf.color,
-            textDecoration: context.pdf.textDecoration,
-            backgroundColor: context.pdf.textBackgroundColor
+            font: context.pdf.style.font,
+            fontSize: context.pdf.style.fontSize,
+            color: context.pdf.style.color,
+            textDecoration: context.pdf.style.textMarkup,
+            verticalOffset: context.pdf.style.verticalOffset
         )
-        context.pdf.appendInlineRun(run)
+        context.pdf.append(inline: run)
     }
 }

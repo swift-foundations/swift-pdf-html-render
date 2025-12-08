@@ -26,7 +26,7 @@ extension PDF.HTML {
     /// ```swift
     /// extension FontWeight: PDF.HTML.StyleModifier {
     ///     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-    ///         if self == .bold { context.font = context.font.bold }
+    ///         if self == .bold { context.style.font = context.style.font.bold }
     ///     }
     /// }
     /// ```
@@ -110,17 +110,14 @@ extension PDF.HTML {
     /// perform their action directly without rendering any child content.
     internal protocol VoidElementRenderer {
         /// Render this void element's effect (e.g., line break, horizontal rule).
-        static func render<Buffer: RangeReplaceableCollection>(
-            into buffer: inout Buffer,
-            context: inout PDF.HTML.Context
-        ) where Buffer.Element == PDF.Render.Operation
+        static func render(context: inout PDF.HTML.Context)
     }
 }
 
 // MARK: - Main Entry Point
 
 extension PDF.HTML {
-    /// Render HTML content into PDF render operations using static dispatch.
+    /// Render HTML content to PDF pages using static dispatch.
     ///
     /// This is the preferred entry point when the HTML type is known to conform
     /// to `PDF.HTML.View`, enabling full static dispatch throughout rendering.
@@ -128,45 +125,39 @@ extension PDF.HTML {
     /// - Parameters:
     ///   - configuration: Configuration for the rendering
     ///   - html: The HTML view to render
-    /// - Returns: A tuple of (operations per page, annotations per page)
+    /// - Returns: Array of PDF pages
     public static func pages<H: PDF.HTML.View>(
         configuration: PDF.HTML.Configuration = .init(),
-        @HTML.Builder html: () -> H,
-    ) -> (pages: [[PDF.Render.Operation]], annotations: [[PDF.Annotation]]) {
+        @HTML.Builder html: () -> H
+    ) -> [PDF.Page] {
         var pdfContext = PDF.Context(
             mediaBox: configuration.mediaBox,
             margins: configuration.margins
         )
 
         // Apply configuration defaults
-        pdfContext.font = configuration.defaultFont
-        pdfContext.fontSize = configuration.defaultFontSize
-        pdfContext.color = configuration.defaultColor
-        pdfContext.lineHeight = configuration.lineHeight
+        pdfContext.style.font = configuration.defaultFont
+        pdfContext.style.fontSize = configuration.defaultFontSize
+        pdfContext.style.color = configuration.defaultColor
+        pdfContext.style.lineHeight = configuration.lineHeight
 
         // Create combined context
         var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
 
-        // Buffer for collecting operations
-        var buffer: [PDF.Render.Operation] = []
-
         // Render HTML to PDF using static dispatch
-        H._render(html(), into: &buffer, context: &context)
+        H._render(html(), context: &context)
 
         // Handle any remaining deferred content (e.g., sticky header at end of document)
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(&buffer, &context)
+            deferred.render(&context)
         }
 
         // Flush any remaining inline runs
-        _ = context.pdf.flushInlineRuns()
-
-        // Add buffer contents to current page operations
-        context.pdf.add(buffer)
+        context.pdf.flushInlineRuns()
 
         // Return all pages
-        return (context.pdf.getAllPages(), context.pdf.getAllAnnotations())
+        return context.pdf.pages
     }
 
     /// Render any HTML.View to PDF using dynamic dispatch.
@@ -179,46 +170,40 @@ extension PDF.HTML {
     /// - Parameters:
     ///   - configuration: Configuration for the rendering
     ///   - html: The HTML view to render
-    /// - Returns: A tuple of (operations per page, annotations per page)
+    /// - Returns: Array of PDF pages
     @_disfavoredOverload
     public static func pages<H: HTML.View>(
         configuration: PDF.HTML.Configuration = .init(),
-        @HTML.Builder html: () -> H,
-    ) -> (pages: [[PDF.Render.Operation]], annotations: [[PDF.Annotation]]) {
+        @HTML.Builder html: () -> H
+    ) -> [PDF.Page] {
         var pdfContext = PDF.Context(
             mediaBox: configuration.mediaBox,
             margins: configuration.margins
         )
 
         // Apply configuration defaults
-        pdfContext.font = configuration.defaultFont
-        pdfContext.fontSize = configuration.defaultFontSize
-        pdfContext.color = configuration.defaultColor
-        pdfContext.lineHeight = configuration.lineHeight
+        pdfContext.style.font = configuration.defaultFont
+        pdfContext.style.fontSize = configuration.defaultFontSize
+        pdfContext.style.color = configuration.defaultColor
+        pdfContext.style.lineHeight = configuration.lineHeight
 
         // Create combined context
         var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
 
-        // Buffer for collecting operations
-        var buffer: [PDF.Render.Operation] = []
-
         // Render using dynamic dispatch
-        renderHTMLView(html(), into: &buffer, context: &context)
+        renderHTMLView(html(), context: &context)
 
         // Handle any remaining deferred content (e.g., sticky header at end of document)
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(&buffer, &context)
+            deferred.render(&context)
         }
 
         // Flush any remaining inline runs
-        _ = context.pdf.flushInlineRuns()
-
-        // Add buffer contents to current page operations
-        context.pdf.add(buffer)
+        context.pdf.flushInlineRuns()
 
         // Return all pages
-        return (context.pdf.getAllPages(), context.pdf.getAllAnnotations())
+        return context.pdf.pages
     }
 
     /// Dynamic dispatch helper for rendering any HTML.View.
@@ -229,14 +214,13 @@ extension PDF.HTML {
     /// Note: Swift's runtime type checking doesn't work with conditional conformances
     /// on variadic generics (`_Tuple`), so we handle _Tuple specially by iterating
     /// its content.
-    public static func renderHTMLView<Buffer: RangeReplaceableCollection>(
+    public static func renderHTMLView(
         _ view: some HTML.View,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // Inner helper to open existentials
         func renderPDFView<V: PDF.HTML.View>(_ v: V) {
-            V._render(v, into: &buffer, context: &context)
+            V._render(v, context: &context)
         }
 
         // Try static dispatch if type conforms to PDF.HTML.View
@@ -248,13 +232,13 @@ extension PDF.HTML {
         // Handle _Tuple specially - Swift can't verify variadic conditional conformances at runtime
         // We use a marker protocol to enable dynamic rendering of tuple elements
         if let tuple = view as? any _TupleContent {
-            tuple._renderEachElementDynamically(into: &buffer, context: &context)
+            tuple._renderEachElementDynamically(context: &context)
             return
         }
 
         // Fallback: render the body recursively
         func renderBody<V: HTML.View>(_ v: V) {
-            renderHTMLView(v.body, into: &buffer, context: &context)
+            renderHTMLView(v.body, context: &context)
         }
         renderBody(view)
     }
@@ -268,10 +252,7 @@ extension PDF.HTML {
 /// don't work correctly for conditional conformances on variadic generics.
 public protocol _TupleContent {
     /// Render each element of the tuple using dynamic dispatch.
-    func _renderEachElementDynamically<Buffer: RangeReplaceableCollection>(
-        into buffer: inout Buffer,
-        context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation
+    func _renderEachElementDynamically(context: inout PDF.HTML.Context)
 }
 
 // MARK: - Block and Inline Helpers
@@ -279,18 +260,14 @@ public protocol _TupleContent {
 extension PDF.HTML {
     /// Render content as a block element (flushes inline runs before and after).
     @inlinable
-    public static func renderBlock<
-        Buffer: RangeReplaceableCollection,
-        C: PDF.HTML.View
-    >(
+    public static func renderBlock<C: PDF.HTML.View>(
         _ content: C?,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context,
         beforeSpacing: Double = 0,
         afterSpacing: Double = 0
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // Flush pending inline runs
-        _ = context.pdf.flushInlineRuns()
+        context.pdf.flushInlineRuns()
 
         // Add spacing before
         if beforeSpacing > 0 {
@@ -299,11 +276,11 @@ extension PDF.HTML {
 
         // Render content
         if let content {
-            C._render(content, into: &buffer, context: &context)
+            C._render(content, context: &context)
         }
 
         // Flush inline runs from content
-        _ = context.pdf.flushInlineRuns()
+        context.pdf.flushInlineRuns()
 
         // Add spacing after
         if afterSpacing > 0 {
@@ -313,16 +290,12 @@ extension PDF.HTML {
 
     /// Render content inline (no flush).
     @inlinable
-    public static func renderInline<
-        Buffer: RangeReplaceableCollection,
-        C: PDF.HTML.View
-    >(
+    public static func renderInline<C: PDF.HTML.View>(
         _ content: C?,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         if let content {
-            C._render(content, into: &buffer, context: &context)
+            C._render(content, context: &context)
         }
     }
 }

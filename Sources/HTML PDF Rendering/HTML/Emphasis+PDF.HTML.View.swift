@@ -10,6 +10,6 @@ import WHATWG_HTML
 
 extension Emphasis: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        context.font = context.font.italic
+        context.style.font = context.style.font.italic
     }
 }

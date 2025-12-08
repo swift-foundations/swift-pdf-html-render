@@ -11,12 +11,11 @@ import PDF_Rendering
 /// This enables `.css.color(.red)` style chains to render correctly to PDF.
 extension CSS: PDF.HTML.View where Base: PDF.HTML.View {
     @inlinable
-    public static func _render<Buffer: RangeReplaceableCollection>(
+    public static func _render(
         _ view: Self,
-        into buffer: inout Buffer,
         context: inout PDF.HTML.Context
-    ) where Buffer.Element == PDF.Render.Operation {
+    ) {
         // CSS wrapper is passthrough - render the base
-        Base._render(view.base, into: &buffer, context: &context)
+        Base._render(view.base, context: &context)
     }
 }

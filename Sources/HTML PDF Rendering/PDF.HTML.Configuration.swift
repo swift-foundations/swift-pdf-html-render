@@ -1,6 +1,7 @@
 // PDF.HTML.Configuration.swift
 // Configuration for HTML to PDF transformation
 
+import Geometry
 import PDF_Rendering
 import PDF_Standard
 
@@ -29,7 +30,7 @@ extension PDF.HTML {
         public var defaultColor: PDF.Color
 
         /// Line height multiplier
-        public var lineHeight: Double
+        public var lineHeight: Scale<1>
 
         // MARK: - Spacing
 
@@ -64,7 +65,7 @@ extension PDF.HTML {
             defaultFont: PDF.Font = .helvetica,
             defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
-            lineHeight: Double = 1.4,
+            lineHeight: Scale<1> = 1.4,
             paragraphSpacing: Double = 0.5,
             headingSpacing: Double = 0.8
         ) {

@@ -13,6 +13,6 @@ extension ListItem: PDF.HTML.ListItemRenderer {
         // Marker rendering is handled in HTML.Element+PDF.HTML.View
         // This method returns the marker width for positioning
         let marker = context.nextListMarker()
-        return PDF.UserSpace.Width(context.font.stringWidth(marker + " ", atSize: context.fontSize))
+        return PDF.UserSpace.Width(context.style.font.stringWidth(marker + " ", atSize: context.style.fontSize))
     }
 }

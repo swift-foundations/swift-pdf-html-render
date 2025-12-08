@@ -8,6 +8,6 @@ import WHATWG_HTML
 extension Definition: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Definitions are rendered in italics (browser default)
-        context.font = context.font.italic
+        context.style.font = context.style.font.italic
     }
 }
