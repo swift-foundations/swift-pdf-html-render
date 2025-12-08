@@ -51,18 +51,22 @@ extension PDF.HTML {
         }
 
         /// Snapshot of PDF context state for restoration during deferred rendering
+        ///
+        /// **Important**: Only captures and restores **style** (font, color, etc.),
+        /// NOT the layout position. The deferred content should render at the
+        /// current Y position when the closure executes, not where the header
+        /// was originally encountered.
         public struct PDFContextSnapshot: Sendable {
             public let style: PDF.Context.Style.Resolved
-            public let layoutBox: PDF.UserSpace.Rectangle
 
             public init(from context: PDF.Context) {
                 self.style = context.style
-                self.layoutBox = context.layoutBox
             }
 
             public func restore(to context: inout PDF.Context) {
                 context.style = style
-                context.layoutBox = layoutBox
+                // NOTE: Do NOT restore layoutBox - the deferred content should
+                // render at the current position, not the original position
             }
         }
 

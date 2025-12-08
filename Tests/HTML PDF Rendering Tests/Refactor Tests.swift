@@ -8,75 +8,75 @@ import PDF_Rendering
 import Testing
 
 @testable import HTML_PDF_Rendering
-//
-//@Suite
-//struct `PDF.HTML.View Tests` {
-//
-//    // MARK: - Basic Transformation
-//
-//    @Test
-//    func `String transforms to PDF content`() {
-//        let html = "Hello, World!"
-//        let pages = PDF.HTML.pages {
-//            html
-//        }
-//
-//        // Should have at least one page
-//        #expect(pages.count >= 1)
-//    }
-//
-//    @Test
-//    func `Paragraph transforms with spacing`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph { "Test paragraph" }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages(html: TestView.init)
-//
-//        // Should have at least one page with content
-//        #expect(pages.count >= 1)
-//        #expect(!pages[0].contents.isEmpty)
-//    }
-//
-//    @Test
-//    func `Heading transforms`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                H1 { "Big Heading" }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages(html: TestView.init)
-//        #expect(pages.count >= 1)
-//        #expect(!pages[0].contents.isEmpty)
-//    }
-//
-//    // MARK: - Inline Flow
-//
-//    @Test
-//    func `Inline elements render together`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph {
-//                    "Normal "
-//                    StrongImportance { "bold" }
-//                    " normal"
-//                }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages(html: TestView.init)
-//        #expect(pages.count >= 1)
-//
-//        // Check content stream contains text
-//        let contentData = pages[0].contents.first?.data ?? []
-//        let contentString = String(decoding: contentData, as: UTF8.self)
-//        #expect(contentString.contains("Normal"))
-//        #expect(contentString.contains("bold"))
-//    }
-//
+
+@Suite
+struct `PDF.HTML.View Tests` {
+
+    // MARK: - Basic Transformation
+
+    @Test
+    func `String transforms to PDF content`() {
+        let html = "Hello, World!"
+        let pages = PDF.HTML.pages {
+            html
+        }
+
+        // Should have at least one page
+        #expect(pages.count >= 1)
+    }
+
+    @Test
+    func `Paragraph transforms with spacing`() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph { "Test paragraph" }
+            }
+        }
+
+        let pages = PDF.HTML.pages(html: TestView.init)
+
+        // Should have at least one page with content
+        #expect(pages.count >= 1)
+        #expect(!pages[0].contents.isEmpty)
+    }
+
+    @Test
+    func `Heading transforms`() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                H1 { "Big Heading" }
+            }
+        }
+
+        let pages = PDF.HTML.pages(html: TestView.init)
+        #expect(pages.count >= 1)
+        #expect(!pages[0].contents.isEmpty)
+    }
+
+    // MARK: - Inline Flow
+
+    @Test
+    func `Inline elements render together`() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph {
+                    "Normal "
+                    StrongImportance { "bold" }
+                    " normal"
+                }
+            }
+        }
+
+        let pages = PDF.HTML.pages(html: TestView.init)
+        #expect(pages.count >= 1)
+
+        // Check content stream contains text
+        let contentData = pages[0].contents.first?.data ?? []
+        let contentString = String(decoding: contentData, as: UTF8.self)
+        #expect(contentString.contains("Normal"))
+        #expect(contentString.contains("bold"))
+    }
+
 //    @Test
 //    func `Bold applies font`() {
 //        struct TestView: HTML.View {
@@ -144,64 +144,64 @@ import Testing
 //        }
 //        #expect(hasBoldItalicFont, "Should use bold-italic font for nested <strong><em>")
 //    }
-//
-//    // MARK: - Document Creation
-//
-//    @Test
-//    func `PDF.Document can be created from HTML`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                H1 { "Title" }
-//                Paragraph { "Content" }
-//            }
-//        }
-//
-//        let doc = PDF.Document(info: .init(title: "Test")) {
-//            TestView()
-//        }
-//
-//        #expect(doc.pages.count >= 1)
-//        #expect(doc.info?.title == "Test")
-//    }
-//
-//    @Test
-//    func `PDF bytes can be generated from HTML`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph { "Hello PDF" }
-//            }
-//        }
-//
-//        let doc = PDF.Document { TestView() }
-//        let bytes = [UInt8](doc)
-//
-//        // Should start with %PDF
-//        #expect(!bytes.isEmpty)
-//        #expect(bytes.starts(with: [.ascii.percentSign, .ascii.P, .ascii.D, .ascii.F]))
-//    }
-//
-//    // MARK: - Configuration
-//
-//    @Test
-//    func `Configuration affects heading sizes`() {
-//        let config = PDF.HTML.Configuration(defaultFontSize: 14)
-//
-//        #expect(config.headingSize(level: 1) == 28)  // 14 * 2.0
-//        #expect(config.headingSize(level: 2) == 21)  // 14 * 1.5
-//        #expect(config.headingSize(level: 3) == PDF.UserSpace.Unit(14 * 1.17))
-//    }
-//
-//    @Test
-//    func `Configuration affects content dimensions`() {
-//        let config = PDF.HTML.Configuration(
-//            paperSize: .a4,
-//            margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
-//        )
-//
-//        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width.value - 144)
-//        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height.value - 144)
-//    }
-//}
+
+    // MARK: - Document Creation
+
+    @Test
+    func `PDF.Document can be created from HTML`() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                H1 { "Title" }
+                Paragraph { "Content" }
+            }
+        }
+
+        let doc = PDF.Document(info: .init(title: "Test")) {
+            TestView()
+        }
+
+        #expect(doc.pages.count >= 1)
+        #expect(doc.info?.title == "Test")
+    }
+
+    @Test
+    func `PDF bytes can be generated from HTML`() {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Paragraph { "Hello PDF" }
+            }
+        }
+
+        let doc = PDF.Document { TestView() }
+        let bytes = [UInt8](doc)
+
+        // Should start with %PDF
+        #expect(!bytes.isEmpty)
+        #expect(bytes.starts(with: [.ascii.percentSign, .ascii.P, .ascii.D, .ascii.F]))
+    }
+
+    // MARK: - Configuration
+
+    @Test
+    func `Configuration affects heading sizes`() {
+        let config = PDF.HTML.Configuration(defaultFontSize: 14)
+
+        #expect(config.headingSize(level: 1) == 28)  // 14 * 2.0
+        #expect(config.headingSize(level: 2) == 21)  // 14 * 1.5
+        #expect(config.headingSize(level: 3) == PDF.UserSpace.Unit(14 * 1.17))
+    }
+
+    @Test
+    func `Configuration affects content dimensions`() {
+        let config = PDF.HTML.Configuration(
+            paperSize: .a4,
+            margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
+        )
+
+        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width.value - 144)
+        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height.value - 144)
+    }
+}
 
 // MARK: - Sticky Header Tests
 
@@ -696,6 +696,8 @@ private struct NDADemo: HTML.View {
         Paragraph {
             StrongImportance { "DISCLOSER:" }
         }
+        .css.pageBreakAfter(.avoid)
+        
         Paragraph {
             BR()
             "________________________________"
@@ -710,6 +712,8 @@ private struct NDADemo: HTML.View {
         Paragraph {
             StrongImportance { "RECIPIENT:" }
         }
+        .css.pageBreakAfter(.avoid)
+        
         Paragraph {
             BR()
             "________________________________"

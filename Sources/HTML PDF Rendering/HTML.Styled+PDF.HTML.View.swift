@@ -65,7 +65,6 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 // Write back the Y position to measureContext so the measure function can calculate height
                 measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
             }
-
             // Check if there's already deferred content (consecutive sticky headers)
             if let existingDeferred = context.deferredKeepWithNextRender {
                 // Chain: combine heights and render in sequence
