@@ -133,9 +133,67 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     ) {
         if isBlock {
             context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
-            PDF.HTML.renderBlock(view.content, context: &context)
+
+            // Handle list containers (ol, ul)
+            if let listType = listType(for: view.tagName) {
+                context.pdf.push(list: listType)
+                // Indent for list
+                let indent: PDF.UserSpace.Unit = 24
+                let savedLLX = context.pdf.layoutBox.llx
+                context.pdf.layoutBox.llx = PDF.UserSpace.X(savedLLX.value + indent)
+
+                PDF.HTML.renderBlock(view.content, context: &context)
+
+                context.pdf.layoutBox.llx = savedLLX
+                context.pdf.popList()
+            }
+            // Handle list items (li)
+            else if view.tagName == "li" {
+                // Get the marker
+                let marker = context.pdf.nextListMarker()
+
+                // Calculate marker position - to the left of content area
+                let markerWidth = context.pdf.style.font.stringWidth(marker, atSize: context.pdf.style.fontSize)
+                let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 8)
+
+                // Calculate baseline Y using the same formula as text rendering:
+                // lly is top of line box, add ascender to get baseline
+                let baselineY = PDF.UserSpace.Y(
+                    context.pdf.layoutBox.lly.value +
+                    context.pdf.style.font.metrics.ascender(atSize: context.pdf.style.fontSize)
+                )
+
+                // Emit marker at the baseline position
+                context.pdf.emitText(
+                    marker,
+                    at: PDF.UserSpace.Coordinate(x: markerX, y: baselineY),
+                    font: context.pdf.style.font,
+                    size: context.pdf.style.fontSize,
+                    color: context.pdf.style.color
+                )
+
+                // Render content
+                PDF.HTML.renderBlock(view.content, context: &context)
+            }
+            else {
+                PDF.HTML.renderBlock(view.content, context: &context)
+            }
         } else {
             PDF.HTML.renderInline(view.content, context: &context)
+        }
+    }
+
+    /// Check if tag is a list container
+    private static func isListContainer(_ tagName: String) -> Bool {
+        tagName == "ol" || tagName == "ul"
+    }
+
+    /// Get list type for a list container tag
+    private static func listType(for tagName: String) -> PDF.Context.ListType? {
+        switch tagName {
+        case "ol": return .ordered(startNumber: 1)
+        case "ul": return .unordered
+        default: return nil
         }
     }
 
@@ -242,6 +300,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "ul", "ol":
             return (.length(.em(1.0)), .length(.em(1.0)))
+        case "li":
+            return (.length(.em(0.25)), .length(.em(0.25)))
         default:
             return nil
         }

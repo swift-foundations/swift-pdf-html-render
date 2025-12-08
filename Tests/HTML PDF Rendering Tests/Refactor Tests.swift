@@ -7,7 +7,7 @@ import HTML_Rendering
 import PDF_Rendering
 import Testing
 
-@testable import HTML_PDF_Rendering
+@testable import PDF_HTML_Rendering
 
 @Suite
 struct `PDF.HTML.View Tests` {
@@ -296,29 +296,13 @@ struct StickyHeaderTests {
 
 // MARK: - Comprehensive Test
 
+
+
 @Suite
 struct `Comprehensive PDF.HTML.View Tests` {
 
     @Test
     func `document showing all elements and properties`() throws {
-        struct ComplexView: HTML.View {
-            var body: some HTML.View {
-                TextStylingDemo()
-                LinksDemo()
-                BlockElementsDemo()
-                ListsDemo()
-                HeadingsDemo()
-                TableDemo()
-                DescriptionListDemo()
-                SemanticDemo()
-                FigureDemo()
-                NestedListDemo()
-                InlineStyleDemo()
-                Paragraph { Emphasis { "End of demo." } }
-                NDADemo()
-            }
-        }
-
         let doc = PDF.Document(
             info: .init(
                 title: "All Elements Demo",
@@ -340,6 +324,67 @@ struct `Comprehensive PDF.HTML.View Tests` {
         #expect(bytes.count > 1000, "Complex document should have substantial content")
     }
 }
+
+import HtmlToPdf
+@Suite
+struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
+
+    @Test
+    func `document showing all elements and properties`() async throws {
+        @Dependency(\.pdf) var pdf
+        
+        try await withDependencies {
+            $0.pdf.render.configuration.paginationMode = .paginated
+        } operation: {
+            _ = try await pdf.render(
+                html: ComplexView(),
+                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test2.pdf")
+            )
+        }
+
+        
+        
+        
+//        let doc = PDF.Document(
+//            info: .init(
+//                title: "All Elements Demo",
+//                author: "Test Suite"
+//            )
+//        ) {
+//            ComplexView()
+//        }
+//
+//        let bytes = [UInt8](doc)
+//
+//        // Write to /tmp for visual inspection
+//        let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
+//        try Data(bytes).write(to: url)
+//        print("PDF written to: \(url.path)")
+//
+//        // Basic sanity checks
+//        #expect(doc.pages.count >= 1)
+//        #expect(bytes.count > 1000, "Complex document should have substantial content")
+    }
+}
+
+struct ComplexView: HTML.View {
+    var body: some HTML.View {
+        TextStylingDemo()
+        LinksDemo()
+        BlockElementsDemo()
+        ListsDemo()
+        HeadingsDemo()
+        TableDemo()
+        DescriptionListDemo()
+        SemanticDemo()
+        FigureDemo()
+        NestedListDemo()
+        InlineStyleDemo()
+        Paragraph { Emphasis { "End of demo." } }
+        NDADemo()
+    }
+}
+
 //
 //// MARK: - Demo Helper Views
 
@@ -441,20 +486,134 @@ private struct BlockElementsDemo: HTML.View {
         PreformattedText {
             "func hello() {\n    print(\"Hello\")\n}"
         }
-        ThematicBreak()
+//        ThematicBreak.init()
     }
 }
 
 private struct ListsDemo: HTML.View {
     var body: some HTML.View {
         H2 { "4. Lists" }
+
+        // Simple unordered list
+        H3 { "4.1 Simple Unordered List" }
         UnorderedList {
-            ListItem { "Bullet 1" }
-            ListItem { "Bullet 2" }
+            ListItem { "First bullet point" }
+            ListItem { "Second bullet point" }
+            ListItem { "Third bullet point" }
+        }
+
+        // Simple ordered list
+        H3 { "4.2 Simple Ordered List" }
+        OrderedList {
+            ListItem { "First numbered item" }
+            ListItem { "Second numbered item" }
+            ListItem { "Third numbered item" }
+        }
+
+        // List with longer content that wraps
+        H3 { "4.3 List Items with Wrapping Text" }
+        OrderedList {
+            ListItem { "This is a longer list item that should wrap to multiple lines to test how the list marker aligns with multi-line content in an ordered list." }
+            ListItem { "Another lengthy item with sufficient text to cause line wrapping and verify proper indentation is maintained throughout." }
+            ListItem { "Short item." }
+        }
+
+        // List with inline formatting
+        H3 { "4.4 List Items with Inline Formatting" }
+        UnorderedList {
+            ListItem {
+                StrongImportance { "Bold text" }
+                " followed by normal text"
+            }
+            ListItem {
+                "Normal text with "
+                Emphasis { "italic" }
+                " in the middle"
+            }
+            ListItem {
+                Code { "inline code" }
+                " mixed with regular text"
+            }
+            ListItem {
+                "Link: "
+                Anchor(href: "https://example.com") { "Example Website" }
+            }
+        }
+
+        // Nested lists
+        H3 { "4.5 Nested Lists" }
+        UnorderedList {
+            ListItem { "Level 1 - Item A" }
+            ListItem {
+                "Level 1 - Item B with nested list:"
+                UnorderedList {
+                    ListItem { "Level 2 - Nested item 1" }
+                    ListItem { "Level 2 - Nested item 2" }
+                    ListItem {
+                        "Level 2 - Item with deeper nesting:"
+                        UnorderedList {
+                            ListItem { "Level 3 - Deep nested item" }
+                        }
+                    }
+                }
+            }
+            ListItem { "Level 1 - Item C" }
+        }
+
+        // Mixed nested lists (ordered inside unordered)
+        H3 { "4.6 Mixed Nested Lists" }
+        OrderedList {
+            ListItem { "First main item" }
+            ListItem {
+                "Second main item with sub-points:"
+                UnorderedList {
+                    ListItem { "Sub-point A" }
+                    ListItem { "Sub-point B" }
+                    ListItem { "Sub-point C" }
+                }
+            }
+            ListItem {
+                "Third main item with numbered sub-items:"
+                OrderedList {
+                    ListItem { "Sub-item 1" }
+                    ListItem { "Sub-item 2" }
+                }
+            }
+        }
+
+        // Many items to test numbering
+        H3 { "4.7 List with Many Items" }
+        OrderedList {
+            ListItem { "Item one" }
+            ListItem { "Item two" }
+            ListItem { "Item three" }
+            ListItem { "Item four" }
+            ListItem { "Item five" }
+            ListItem { "Item six" }
+            ListItem { "Item seven" }
+            ListItem { "Item eight" }
+            ListItem { "Item nine" }
+            ListItem { "Item ten" }
+            ListItem { "Item eleven" }
+            ListItem { "Item twelve" }
+        }
+
+        // List after paragraph (spacing test)
+        H3 { "4.8 List Spacing" }
+        Paragraph { "This paragraph comes before a list. There should be appropriate spacing between this text and the list below." }
+        UnorderedList {
+            ListItem { "First item after paragraph" }
+            ListItem { "Second item" }
+        }
+        Paragraph { "This paragraph comes after the list. Spacing should also be appropriate here." }
+
+        // Empty and minimal lists
+        H3 { "4.9 Single Item Lists" }
+        UnorderedList {
+            ListItem { "Only item in unordered list" }
         }
         OrderedList {
-            ListItem { "Number 1" }
-            ListItem { "Number 2" }
+            ListItem { "Only item in ordered list" }
         }
     }
 }

@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  swift-html-pdf-rendering
+//  swift-pdf-html-rendering
 //
 //  Created by Coen ten Thije Boonkkamp on 04/12/2025.
 //
