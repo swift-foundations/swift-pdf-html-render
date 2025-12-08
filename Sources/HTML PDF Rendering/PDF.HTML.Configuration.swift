@@ -67,7 +67,7 @@ extension PDF.HTML {
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
             margins: PDF.UserSpace.EdgeInsets = .init(all: 72),
-            defaultFont: PDF.Font = .helvetica,
+            defaultFont: PDF.Font = .times,
             defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
