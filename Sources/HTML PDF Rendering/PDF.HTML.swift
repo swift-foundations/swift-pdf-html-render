@@ -139,7 +139,11 @@ extension PDF.HTML {
         pdfContext.style.font = configuration.defaultFont
         pdfContext.style.fontSize = configuration.defaultFontSize
         pdfContext.style.color = configuration.defaultColor
-        pdfContext.style.lineHeight = configuration.lineHeight
+        // Resolve CSS line-height to concrete multiplier for PDF rendering
+        pdfContext.style.lineHeight = Scale(configuration.resolveLineHeight(
+            for: configuration.defaultFont,
+            fontSize: configuration.defaultFontSize
+        ))
 
         // Create combined context
         var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
@@ -185,7 +189,11 @@ extension PDF.HTML {
         pdfContext.style.font = configuration.defaultFont
         pdfContext.style.fontSize = configuration.defaultFontSize
         pdfContext.style.color = configuration.defaultColor
-        pdfContext.style.lineHeight = configuration.lineHeight
+        // Resolve CSS line-height to concrete multiplier for PDF rendering
+        pdfContext.style.lineHeight = Scale(configuration.resolveLineHeight(
+            for: configuration.defaultFont,
+            fontSize: configuration.defaultFontSize
+        ))
 
         // Create combined context
         var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)

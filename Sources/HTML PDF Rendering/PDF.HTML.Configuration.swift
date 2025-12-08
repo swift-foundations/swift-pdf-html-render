@@ -4,6 +4,7 @@
 import Geometry
 import PDF_Rendering
 import PDF_Standard
+import W3C_CSS_Text
 
 /// Configuration for HTML to PDF transformation.
 ///
@@ -29,8 +30,12 @@ extension PDF.HTML {
         /// Default text color
         public var defaultColor: PDF.Color
 
-        /// Line height multiplier
-        public var lineHeight: Scale<1>
+        /// Line height (CSS line-height property)
+        ///
+        /// - `.normal`: Uses font metrics to calculate a reasonable line height
+        /// - `.multiple(1.5)`: Multiplier of font size
+        /// - `.lengthPercentage(.px(18))`: Fixed length
+        public var lineHeight: LineHeight
 
         // MARK: - Spacing
 
@@ -65,7 +70,7 @@ extension PDF.HTML {
             defaultFont: PDF.Font = .helvetica,
             defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
-            lineHeight: Scale<1> = 1.2,  // WebKit default is ~1.2 (normal)
+            lineHeight: LineHeight = .normal,
             paragraphSpacing: Double = 0.5,
             headingSpacing: Double = 0.8
         ) {
@@ -77,6 +82,47 @@ extension PDF.HTML {
             self.lineHeight = lineHeight
             self.paragraphSpacing = paragraphSpacing
             self.headingSpacing = headingSpacing
+        }
+
+        // MARK: - Line Height Resolution
+
+        /// Resolve line height to a concrete multiplier for PDF rendering.
+        ///
+        /// - Parameters:
+        ///   - font: The font being used
+        ///   - fontSize: The current font size
+        /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
+        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Unit) -> Double {
+            switch lineHeight {
+            case .normal:
+                // "normal" depends on font metrics
+                // Formula: (ascender - descender) / 1000 * factor
+                // where factor adds some leading (typically ~1.1-1.2)
+                // Browser default for most fonts is ~1.2
+                let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
+                // Add ~15% leading to match typical browser behavior
+                return metricsLineHeight * 1.15
+            case .multiple(let factor):
+                return factor
+            case .lengthPercentage(let lp):
+                // Convert to multiplier based on font size
+                switch lp {
+                case .length(let length):
+                    // For length values, calculate as multiple of font size
+                    let points = PDF.UserSpace.Unit(length, currentSize: fontSize, baseFontSize: defaultFontSize)
+                    return points.value / fontSize.value
+                case .percentage(let pct):
+                    return pct.value / 100.0
+                case .calc:
+                    // calc() can't be evaluated statically - use normal fallback
+                    let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
+                    return metricsLineHeight * 1.15
+                }
+            case .global:
+                // Global values (inherit, initial) - use normal as fallback
+                let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
+                return metricsLineHeight * 1.15
+            }
         }
 
         // MARK: - Heading Sizes
