@@ -298,6 +298,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return (.length(.em(2.33)), .length(.em(2.33)))
         case "blockquote", "figure":
             return (.length(.em(1.0)), .length(.em(1.0)))
+        case "pre":
+            return (.length(.em(1.0)), .length(.em(1.0)))
         case "ul", "ol":
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "li":

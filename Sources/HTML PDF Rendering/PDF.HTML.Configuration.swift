@@ -65,7 +65,7 @@ extension PDF.HTML {
             defaultFont: PDF.Font = .helvetica,
             defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
-            lineHeight: Scale<1> = 1.4,
+            lineHeight: Scale<1> = 1.2,  // WebKit default is ~1.2 (normal)
             paragraphSpacing: Double = 0.5,
             headingSpacing: Double = 0.8
         ) {
