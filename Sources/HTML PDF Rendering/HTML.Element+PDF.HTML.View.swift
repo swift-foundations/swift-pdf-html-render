@@ -227,10 +227,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.style.font = context.pdf.style.font.italic
 
         // Code and preformatted
-        case "code", "kbd", "samp", "var":
+        // WebKit uses a smaller monospace font relative to body text
+        case "code", "kbd", "samp":
             context.pdf.style.font = .courier
+            // WebKit's monospace is slightly smaller than body text
+            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
+        case "var":
+            // var element uses italic monospace
+            context.pdf.style.font = PDF.Font.Courier.oblique
+            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
         case "pre":
             context.pdf.style.font = .courier
+            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
             context.pdf.preserveWhitespace = true
 
         // Text decoration
@@ -242,12 +250,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.style.textMarkup = .highlight(PDF.Color.yellow)
 
         // Sub/superscript
+        // WebKit: font-size ~0.83em, vertical-align: sub/super
         case "sub":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * 0.75
-            context.pdf.style.verticalOffset = context.pdf.style.fontSize * -0.3
+            let currentSize = context.pdf.style.fontSize ?? 12
+            context.pdf.style.fontSize = currentSize * 0.83
+            // Subscript drops below baseline by about 0.1em of original size
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset ?? 0) - currentSize * 0.1
         case "sup":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * 0.75
-            context.pdf.style.verticalOffset = context.pdf.style.fontSize * 0.5
+            let currentSize = context.pdf.style.fontSize ?? 12
+            context.pdf.style.fontSize = currentSize * 0.83
+            // Superscript rises above baseline by about 0.35em of original size
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset ?? 0) + currentSize * 0.35
 
         // Small
         case "small":
@@ -259,8 +272,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.style.textMarkup = .underline
 
         // Block indentation
+        // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
-            let indent: PDF.UserSpace.Unit = 40
+            let indent: PDF.UserSpace.Unit = 30
             context.pdf.layoutBox.llx = PDF.UserSpace.X(context.pdf.layoutBox.llx.value + indent)
         case "figure":
             let margin: PDF.UserSpace.Unit = 40

@@ -97,11 +97,12 @@ extension PDF.HTML {
             case .normal:
                 // "normal" depends on font metrics
                 // Formula: (ascender - descender) / 1000 * factor
-                // where factor adds some leading (typically ~1.1-1.2)
-                // Browser default for most fonts is ~1.2
+                // WebKit's "normal" line-height is approximately 1.2 for most fonts
                 let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                // Add ~15% leading to match typical browser behavior
-                return metricsLineHeight * 1.15
+                // Scale to achieve ~1.2 final line height
+                // For Times (0.9 metrics), factor of 1.33 gives ~1.2
+                // For Helvetica (0.925 metrics), factor of 1.3 gives ~1.2
+                return metricsLineHeight * 1.33
             case .multiple(let factor):
                 return factor
             case .lengthPercentage(let lp):
@@ -116,12 +117,12 @@ extension PDF.HTML {
                 case .calc:
                     // calc() can't be evaluated statically - use normal fallback
                     let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                    return metricsLineHeight * 1.15
+                    return metricsLineHeight * 1.33
                 }
             case .global:
                 // Global values (inherit, initial) - use normal as fallback
                 let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                return metricsLineHeight * 1.15
+                return metricsLineHeight * 1.33
             }
         }
 
