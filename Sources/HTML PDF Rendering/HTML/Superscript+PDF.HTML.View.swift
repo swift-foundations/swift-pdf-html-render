@@ -11,7 +11,7 @@ extension Superscript: PDF.HTML.TagRenderer {
         // WebKit uses approximately 0.83em font-size and vertical-align: super
         let currentSize = context.style.fontSize ?? 12
         context.style.fontSize = currentSize * 0.83
-        // Superscript rises above baseline by about 0.35em of original size
-        context.style.verticalOffset = (context.style.verticalOffset ?? 0) + currentSize * 0.35
+        // Superscript rises above baseline - WebKit uses about 0.4em
+        context.style.verticalOffset = (context.style.verticalOffset ?? 0) + currentSize * 0.4
     }
 }

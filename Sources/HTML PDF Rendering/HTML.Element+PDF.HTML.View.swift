@@ -20,7 +20,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Determine if this is a block or inline element
         let isBlock = view.isBlock
 
-        // Check for block margins
+        // Save current style and horizontal bounds (NOT Y position - that must advance)
+        let savedStyle = context.pdf.style
+        let savedLLX = context.pdf.layoutBox.llx
+        let savedURX = context.pdf.layoutBox.urx
+        let savedPreserveWhitespace = context.pdf.preserveWhitespace
+
+        // Apply tag-specific style BEFORE calculating margins
+        // CSS `em` units in margins are relative to the element's own font size
+        applyTagStyle(view.tagName, context: &context)
+
+        // Check for block margins (now using the element's font size for em calculations)
         let marginTop: PDF.UserSpace.Unit
         let marginBottom: PDF.UserSpace.Unit
         if let margins = blockMargins(for: view.tagName, configuration: context.configuration) {
@@ -50,6 +60,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 // Just render the header without sticky behavior
                 deferred.render(&context)
                 renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
+                // Restore style
+                context.pdf.style = savedStyle
+                context.pdf.layoutBox.llx = savedLLX
+                context.pdf.layoutBox.urx = savedURX
+                context.pdf.preserveWhitespace = savedPreserveWhitespace
                 return
             }
 
@@ -69,17 +84,13 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Continue with normal rendering of this element
             renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
+            // Restore style
+            context.pdf.style = savedStyle
+            context.pdf.layoutBox.llx = savedLLX
+            context.pdf.layoutBox.urx = savedURX
+            context.pdf.preserveWhitespace = savedPreserveWhitespace
             return
         }
-
-        // Save current style and horizontal bounds (NOT Y position - that must advance)
-        let savedStyle = context.pdf.style
-        let savedLLX = context.pdf.layoutBox.llx
-        let savedURX = context.pdf.layoutBox.urx
-        let savedPreserveWhitespace = context.pdf.preserveWhitespace
-
-        // Apply tag-specific style
-        applyTagStyle(view.tagName, context: &context)
 
         // Render with flow and margins
         renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
@@ -231,14 +242,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         case "code", "kbd", "samp":
             context.pdf.style.font = .courier
             // WebKit's monospace is slightly smaller than body text
-            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
-        case "var":
-            // var element uses italic monospace
-            context.pdf.style.font = PDF.Font.Courier.oblique
-            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
+            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
         case "pre":
             context.pdf.style.font = .courier
-            context.pdf.style.fontSize = (context.pdf.style.fontSize ?? 12) * 0.9
+            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
             context.pdf.preserveWhitespace = true
 
         // Text decoration
@@ -252,15 +259,15 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Sub/superscript
         // WebKit: font-size ~0.83em, vertical-align: sub/super
         case "sub":
-            let currentSize = context.pdf.style.fontSize ?? 12
+            let currentSize = context.pdf.style.fontSize
             context.pdf.style.fontSize = currentSize * 0.83
-            // Subscript drops below baseline by about 0.1em of original size
-            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset ?? 0) - currentSize * 0.1
+            // Subscript drops below baseline - WebKit uses about 0.2em
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) - currentSize * 0.2
         case "sup":
-            let currentSize = context.pdf.style.fontSize ?? 12
+            let currentSize = context.pdf.style.fontSize
             context.pdf.style.fontSize = currentSize * 0.83
-            // Superscript rises above baseline by about 0.35em of original size
-            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset ?? 0) + currentSize * 0.35
+            // Superscript rises above baseline - WebKit uses about 0.4em
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) + currentSize * 0.4
 
         // Small
         case "small":
@@ -281,8 +288,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.layoutBox.llx = PDF.UserSpace.X(context.pdf.layoutBox.llx.value + margin)
             context.pdf.layoutBox.urx = PDF.UserSpace.X(context.pdf.layoutBox.urx.value - margin)
 
-        // Citation and definition
-        case "cite", "dfn":
+        // Citation, definition, and variable (all italic in WebKit)
+        case "cite", "dfn", "var":
             context.pdf.style.font = context.pdf.style.font.italic
 
         default:

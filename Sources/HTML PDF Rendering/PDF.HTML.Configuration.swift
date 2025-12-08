@@ -95,14 +95,22 @@ extension PDF.HTML {
         public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Unit) -> Double {
             switch lineHeight {
             case .normal:
-                // "normal" depends on font metrics
-                // Formula: (ascender - descender) / 1000 * factor
-                // WebKit's "normal" line-height is approximately 1.2 for most fonts
-                let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                // Scale to achieve ~1.2 final line height
-                // For Times (0.9 metrics), factor of 1.33 gives ~1.2
-                // For Helvetica (0.925 metrics), factor of 1.3 gives ~1.2
-                return metricsLineHeight * 1.33
+                // CSS "line-height: normal" uses the font's normalLineHeight
+                // which is (ascender - descender + leading) / unitsPerEm
+                //
+                // Per ISO 32000-2 Table 121, Leading is the "spacing between baselines
+                // of consecutive lines of text" with a default of 0.
+                //
+                // For Standard 14 fonts where leading is 0, we fall back to 1.15 multiplier
+                // which matches WebKit's typical behavior for Times New Roman and similar fonts.
+                let normalHeight = Double(font.metrics.normalLineHeight.value) / 1000.0
+                if font.metrics.leading.value == 0 {
+                    // No explicit leading - use WebKit-typical 1.15 multiplier
+                    let metricsLineHeight = Double(font.metrics.lineHeight.value) / 1000.0
+                    let impliedLineGap = 1.15 - metricsLineHeight
+                    return metricsLineHeight + max(0, impliedLineGap)
+                }
+                return normalHeight
             case .multiple(let factor):
                 return factor
             case .lengthPercentage(let lp):
@@ -116,13 +124,11 @@ extension PDF.HTML {
                     return pct.value / 100.0
                 case .calc:
                     // calc() can't be evaluated statically - use normal fallback
-                    let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                    return metricsLineHeight * 1.33
+                    return Double(font.metrics.normalLineHeight.value) / 1000.0
                 }
             case .global:
                 // Global values (inherit, initial) - use normal as fallback
-                let metricsLineHeight = Double(font.metrics.lineHeight) / 1000.0
-                return metricsLineHeight * 1.33
+                return Double(font.metrics.normalLineHeight.value) / 1000.0
             }
         }
 
