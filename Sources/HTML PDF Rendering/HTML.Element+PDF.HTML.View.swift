@@ -152,8 +152,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Handle list containers (ol, ul)
             if let listType = listType(for: view.tagName) {
                 context.pdf.push(list: listType)
-                // Indent for list
-                let indent: PDF.UserSpace.Unit = 24
+                // WebKit's default padding-left for ul/ol is 40px ≈ 30pt at 72dpi
+                let indent: PDF.UserSpace.Unit = 30
                 let savedLLX = context.pdf.layoutBox.llx
                 context.pdf.layoutBox.llx = PDF.UserSpace.X(savedLLX.value + indent)
 
@@ -164,17 +164,19 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             }
             // Handle list items (li)
             else if view.tagName == "li" {
-                // Get the marker
-                let marker = context.pdf.nextListMarker()
+                // Get the marker (WinAnsi encoded for PDF output)
+                let markerBytes = context.pdf.nextListMarker()
 
-                // Calculate marker position - to the left of content area
-                let markerWidth = context.pdf.style.font.stringWidth(marker, atSize: context.pdf.style.fontSize)
-                let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 8)
+                // Calculate marker position - WebKit places the marker within the padding-left area
+                // The marker should be right-aligned within that space, with a small gap before text
+                let markerWidth = context.pdf.style.font.winAnsi.width(of: markerBytes, atSize: context.pdf.style.fontSize)
+                // Position marker so its right edge is ~6pt before the content start (within the 30pt indent)
+                let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 6)
 
                 // Set pending marker to be rendered with the first line of text
                 // This ensures the marker aligns with actual text content even when
                 // the list item contains block elements with margins (like <p>)
-                context.pdf.pendingListMarker = (marker: marker, x: markerX)
+                context.pdf.pendingListMarker = (markerBytes: markerBytes, x: markerX)
 
                 // Render content - marker will be emitted when first text line renders
                 PDF.HTML.renderBlock(view.content, context: &context)

@@ -18,7 +18,9 @@ extension ListItem: PDF.HTML.ListItemRenderer {
         context: inout PDF.Context,
         configuration: PDF.HTML.Configuration
     ) -> PDF.UserSpace.Width {
-        let marker = context.nextListMarker()
-        return PDF.UserSpace.Width(context.style.font.stringWidth(marker + " ", atSize: context.style.fontSize))
+        let markerBytes = context.nextListMarker()
+        let markerWidth = context.style.font.winAnsi.width(of: markerBytes, atSize: context.style.fontSize)
+        let spaceWidth = context.style.font.winAnsi.width(of: [.ascii.space], atSize: context.style.fontSize)
+        return PDF.UserSpace.Width(markerWidth + spaceWidth)
     }
 }
