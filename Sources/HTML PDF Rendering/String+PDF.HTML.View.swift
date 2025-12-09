@@ -9,7 +9,7 @@ extension String: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         // Append text as inline run (will be flushed at block boundaries)
-        let run = PDF.Text.Run(
+        let run = PDF.Context.TextRun(
             text: view,
             font: context.pdf.style.font,
             fontSize: context.pdf.style.fontSize,
