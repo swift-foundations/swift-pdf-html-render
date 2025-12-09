@@ -167,24 +167,16 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 let markerWidth = context.pdf.style.font.stringWidth(marker, atSize: context.pdf.style.fontSize)
                 let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 8)
 
-                // Calculate baseline Y using the same formula as text rendering:
-                // lly is top of line box, add ascender to get baseline
-                let baselineY = PDF.UserSpace.Y(
-                    context.pdf.layoutBox.lly.value +
-                    context.pdf.style.font.metrics.ascender(atSize: context.pdf.style.fontSize)
-                )
+                // Set pending marker to be rendered with the first line of text
+                // This ensures the marker aligns with actual text content even when
+                // the list item contains block elements with margins (like <p>)
+                context.pdf.pendingListMarker = (marker: marker, x: markerX)
 
-                // Emit marker at the baseline position
-                context.pdf.emitText(
-                    marker,
-                    at: PDF.UserSpace.Coordinate(x: markerX, y: baselineY),
-                    font: context.pdf.style.font,
-                    size: context.pdf.style.fontSize,
-                    color: context.pdf.style.color
-                )
-
-                // Render content
+                // Render content - marker will be emitted when first text line renders
                 PDF.HTML.renderBlock(view.content, context: &context)
+
+                // Clear any remaining pending marker (in case the list item was empty)
+                context.pdf.pendingListMarker = nil
             }
             else {
                 PDF.HTML.renderBlock(view.content, context: &context)
@@ -323,8 +315,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "ul", "ol":
             return (.length(.em(1.0)), .length(.em(1.0)))
-        case "li":
-            return (.length(.em(0.25)), .length(.em(0.25)))
+        // Note: <li> has no default margins per WHATWG HTML Standard
+        // The parent <ul>/<ol> provides the 1em margins
         default:
             return nil
         }
