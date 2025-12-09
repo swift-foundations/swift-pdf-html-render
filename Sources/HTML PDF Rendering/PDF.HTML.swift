@@ -276,7 +276,6 @@ extension PDF.HTML {
     ) {
         // Flush pending inline runs
         if context.pdf.hasInlineRuns {
-            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
             context.pdf.flushInlineRuns()
         }
 
@@ -292,7 +291,6 @@ extension PDF.HTML {
 
         // Flush inline runs from content
         if context.pdf.hasInlineRuns {
-            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
             context.pdf.flushInlineRuns()
         }
 

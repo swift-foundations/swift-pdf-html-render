@@ -12,7 +12,6 @@ extension ThematicBreak: PDF.HTML.View {
     ) {
         // Flush any pending inline runs (HR is block-level)
         if context.pdf.hasInlineRuns {
-            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
             context.pdf.flushInlineRuns()
         }
 

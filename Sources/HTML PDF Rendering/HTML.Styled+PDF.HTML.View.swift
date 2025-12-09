@@ -56,11 +56,9 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             // We need to create a fresh HTML context inside the measure closure to avoid access conflicts
             // Copy pending margin state to get accurate height including collapsed margins
             let pendingBottomMargin = context.pendingBottomMargin
-            let lastRenderedHalfLeading = context.lastRenderedHalfLeading
             let measuredHeight = context.pdf.measure { measureContext in
                 var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
                 tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                tempHTMLContext.lastRenderedHalfLeading = lastRenderedHalfLeading
                 snapshot.restore(to: &tempHTMLContext.pdf)
                 Content._render(view.content, context: &tempHTMLContext)
                 tempHTMLContext.pdf.flushInlineRuns()

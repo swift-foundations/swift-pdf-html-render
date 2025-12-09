@@ -117,7 +117,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         case "hr":
             // HR is block-level - flush inline runs first
             if context.pdf.hasInlineRuns {
-                context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
                 context.pdf.flushInlineRuns()
             }
             let spacing = context.configuration.defaultFontSize * 0.5
@@ -166,7 +165,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 // (the list indent acts like padding, preventing collapse)
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = 0
-                context.lastRenderedHalfLeading = 0
 
                 PDF.HTML.renderBlock(view.content, context: &context)
 
@@ -211,9 +209,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             else {
                 PDF.HTML.renderBlock(view.content, context: &context)
             }
-
-            // Record half-leading for next margin calculation
-            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
         } else {
             // Handle inline quotation (q) with curly quotes
             if view.tagName == "q" {
