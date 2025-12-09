@@ -164,19 +164,29 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             }
             // Handle list items (li)
             else if view.tagName == "li" {
-                // Get the marker (WinAnsi encoded for PDF output)
-                let markerBytes = context.pdf.nextListMarker()
+                // Get the marker
+                let marker = context.pdf.nextListMarker()
 
-                // Calculate marker position - WebKit places the marker within the padding-left area
-                // The marker should be right-aligned within that space, with a small gap before text
-                let markerWidth = context.pdf.style.font.winAnsi.width(of: markerBytes, atSize: context.pdf.style.fontSize)
+                // Calculate marker width based on marker type
+                let markerWidth: PDF.UserSpace.Unit
+                switch marker {
+                case .text(let bytes, let font):
+                    markerWidth = font.winAnsi.width(of: bytes, atSize: context.pdf.style.fontSize)
+                case .strokedCircle(let circle, _):
+                    markerWidth = circle.radius.value * 2  // diameter
+                case .filledCircle(let circle):
+                    markerWidth = circle.radius.value * 2  // diameter
+                case .filledSquare(let rect):
+                    markerWidth = rect.width.value
+                }
+
                 // Position marker so its right edge is ~6pt before the content start (within the 30pt indent)
                 let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 6)
 
                 // Set pending marker to be rendered with the first line of text
                 // This ensures the marker aligns with actual text content even when
                 // the list item contains block elements with margins (like <p>)
-                context.pdf.pendingListMarker = (markerBytes: markerBytes, x: markerX)
+                context.pdf.pendingListMarker = (marker: marker, x: markerX)
 
                 // Render content - marker will be emitted when first text line renders
                 PDF.HTML.renderBlock(view.content, context: &context)

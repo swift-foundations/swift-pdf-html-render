@@ -18,8 +18,18 @@ extension ListItem: PDF.HTML.ListItemRenderer {
         context: inout PDF.Context,
         configuration: PDF.HTML.Configuration
     ) -> PDF.UserSpace.Width {
-        let markerBytes = context.nextListMarker()
-        let markerWidth = context.style.font.winAnsi.width(of: markerBytes, atSize: context.style.fontSize)
+        let marker = context.nextListMarker()
+        let markerWidth: PDF.UserSpace.Unit
+        switch marker {
+        case .text(let bytes, let font):
+            markerWidth = font.winAnsi.width(of: bytes, atSize: context.style.fontSize)
+        case .strokedCircle(let circle, _):
+            markerWidth = circle.radius.value * 2  // diameter
+        case .filledCircle(let circle):
+            markerWidth = circle.radius.value * 2  // diameter
+        case .filledSquare(let rect):
+            markerWidth = rect.width.value
+        }
         let spaceWidth = context.style.font.winAnsi.width(of: [.ascii.space], atSize: context.style.fontSize)
         return PDF.UserSpace.Width(markerWidth + spaceWidth)
     }
