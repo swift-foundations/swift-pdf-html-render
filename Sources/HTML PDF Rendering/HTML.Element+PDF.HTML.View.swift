@@ -31,9 +31,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         applyTagStyle(view.tagName, context: &context)
 
         // Check for block margins (now using the element's font size for em calculations)
+        // Nested lists have no margins per CSS spec
+        let isNestedList = (view.tagName == "ul" || view.tagName == "ol") && context.pdf.listDepth > 0
         let marginTop: PDF.UserSpace.Unit
         let marginBottom: PDF.UserSpace.Unit
-        if let margins = blockMargins(for: view.tagName, configuration: context.configuration) {
+        if !isNestedList, let margins = blockMargins(for: view.tagName, configuration: context.configuration) {
             marginTop = PDF.UserSpace.Unit(
                 margins.top,
                 currentSize: context.pdf.style.fontSize,
@@ -109,10 +111,15 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     ) {
         switch view.tagName {
         case "br":
+            // BR is inline, just flush and advance within the current block
             context.pdf.flushInlineRuns()
             context.pdf.advanceLine()
         case "hr":
-            context.pdf.flushInlineRuns()
+            // HR is block-level - flush inline runs first
+            if context.pdf.hasInlineRuns {
+                context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
+                context.pdf.flushInlineRuns()
+            }
             let spacing = context.configuration.defaultFontSize * 0.5
             context.pdf.advance(PDF.UserSpace.Y(spacing))
 
@@ -143,10 +150,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         if isBlock {
-            // Flush any pending inline runs BEFORE applying margins or changing indentation
-            // This ensures text from a parent element renders at the correct position
-            context.pdf.flushInlineRuns()
-
+            // applyCollapsedMargin handles flushing inline runs and half-leading tracking
             context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
 
             // Handle list containers (ol, ul)
@@ -157,7 +161,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 let savedLLX = context.pdf.layoutBox.llx
                 context.pdf.layoutBox.llx = PDF.UserSpace.X(savedLLX.value + indent)
 
+                // Reset margin collapsing for list content - CSS margins don't collapse
+                // between a parent and its first/last child when there's padding/border
+                // (the list indent acts like padding, preventing collapse)
+                let savedPendingMargin = context.pendingBottomMargin
+                context.pendingBottomMargin = 0
+                context.lastRenderedHalfLeading = 0
+
                 PDF.HTML.renderBlock(view.content, context: &context)
+
+                // Restore the pending margin for siblings after this list
+                context.pendingBottomMargin = savedPendingMargin
 
                 context.pdf.layoutBox.llx = savedLLX
                 context.pdf.popList()
@@ -197,8 +211,38 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             else {
                 PDF.HTML.renderBlock(view.content, context: &context)
             }
+
+            // Record half-leading for next margin calculation
+            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
         } else {
-            PDF.HTML.renderInline(view.content, context: &context)
+            // Handle inline quotation (q) with curly quotes
+            if view.tagName == "q" {
+                // Insert opening curly quote
+                let openQuote = PDF.Text.Run(
+                    bytes: [0x93],  // LEFT DOUBLE QUOTATION MARK in WinAnsi
+                    font: context.pdf.style.font,
+                    fontSize: context.pdf.style.fontSize,
+                    color: context.pdf.style.color,
+                    textDecoration: context.pdf.style.textMarkup,
+                    verticalOffset: context.pdf.style.verticalOffset
+                )
+                context.pdf.append(inline: openQuote)
+
+                PDF.HTML.renderInline(view.content, context: &context)
+
+                // Insert closing curly quote
+                let closeQuote = PDF.Text.Run(
+                    bytes: [0x94],  // RIGHT DOUBLE QUOTATION MARK in WinAnsi
+                    font: context.pdf.style.font,
+                    fontSize: context.pdf.style.fontSize,
+                    color: context.pdf.style.color,
+                    textDecoration: context.pdf.style.textMarkup,
+                    verticalOffset: context.pdf.style.verticalOffset
+                )
+                context.pdf.append(inline: closeQuote)
+            } else {
+                PDF.HTML.renderInline(view.content, context: &context)
+            }
         }
     }
 
@@ -330,6 +374,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         case "pre":
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "ul", "ol":
+            // Note: nested lists have no margins (handled by parent li element)
             return (.length(.em(1.0)), .length(.em(1.0)))
         // Note: <li> has no default margins per WHATWG HTML Standard
         // The parent <ul>/<ol> provides the 1em margins

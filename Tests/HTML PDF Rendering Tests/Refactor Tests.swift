@@ -493,9 +493,12 @@ private struct BlockElementsDemo: HTML.View {
 private struct ListsDemo: HTML.View {
     var body: some HTML.View {
         H2 { "4. Lists" }
+            .css.pageBreakAfter(.avoid)
 
         // Simple unordered list
         H3 { "4.1 Simple Unordered List" }
+            .css.pageBreakAfter(.avoid)
+        
         UnorderedList {
             ListItem { "First bullet point" }
             ListItem { "Second bullet point" }

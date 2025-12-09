@@ -10,8 +10,11 @@ extension ThematicBreak: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
-        // Flush any pending inline runs
-        context.pdf.flushInlineRuns()
+        // Flush any pending inline runs (HR is block-level)
+        if context.pdf.hasInlineRuns {
+            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
+            context.pdf.flushInlineRuns()
+        }
 
         // Add spacing before the rule
         let spacing = context.configuration.defaultFontSize * 0.5

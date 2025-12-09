@@ -275,7 +275,10 @@ extension PDF.HTML {
         afterSpacing: Double = 0
     ) {
         // Flush pending inline runs
-        context.pdf.flushInlineRuns()
+        if context.pdf.hasInlineRuns {
+            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
+            context.pdf.flushInlineRuns()
+        }
 
         // Add spacing before
         if beforeSpacing > 0 {
@@ -288,7 +291,10 @@ extension PDF.HTML {
         }
 
         // Flush inline runs from content
-        context.pdf.flushInlineRuns()
+        if context.pdf.hasInlineRuns {
+            context.lastRenderedHalfLeading = context.pdf.style.lineBox.halfLeading
+            context.pdf.flushInlineRuns()
+        }
 
         // Add spacing after
         if afterSpacing > 0 {

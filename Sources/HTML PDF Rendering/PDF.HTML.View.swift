@@ -21,7 +21,7 @@ extension PDF.HTML {
         public let configuration: PDF.HTML.Configuration
 
         /// Active table layout context (nil when not in a table)
-        public var tableContext: TableContext?
+        public var tableContext: Context.Table?
 
         /// Pending bottom margin from previous block element (for margin collapsing).
         ///
@@ -29,6 +29,16 @@ extension PDF.HTML {
         /// This tracks the bottom margin of the previous block element so it can be
         /// collapsed with the top margin of the next block element.
         public var pendingBottomMargin: PDF.UserSpace.Unit = 0
+
+        /// Half-leading from the last rendered block's final line.
+        ///
+        /// CSS margins are measured from content edges (ascender to descender),
+        /// but `advanceLine()` advances by the full line box height (which includes
+        /// trailing half-leading). This tracks the half-leading so we can subtract
+        /// it when applying margins between blocks.
+        ///
+        /// Set explicitly after each block finishes rendering.
+        public var lastRenderedHalfLeading: PDF.UserSpace.Unit = 0
 
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
         ///
@@ -79,6 +89,7 @@ extension PDF.HTML {
             self.configuration = configuration
             self.tableContext = nil
             self.pendingBottomMargin = 0
+            self.lastRenderedHalfLeading = 0
             self.deferredKeepWithNextRender = nil
             self.avoidPageBreakAfter = false
         }
@@ -86,23 +97,45 @@ extension PDF.HTML {
         /// Apply collapsed margin between blocks.
         ///
         /// CSS margin collapsing: adjacent vertical margins collapse to the larger value.
-        /// This method applies the effective margin (max of pending bottom and new top),
-        /// then stores the new bottom margin for the next element.
+        /// This method flushes any pending inline content, applies the effective margin
+        /// (max of pending bottom and new top), then stores the new bottom margin.
+        ///
+        /// The geometric fix: CSS margins are measured from content edges (ascender to
+        /// descender), but `advanceLine()` advances by the full line box height (which
+        /// includes trailing half-leading). We subtract the trailing half-leading to
+        /// get correct inter-block spacing.
         ///
         /// - Parameters:
         ///   - topMargin: Top margin of the current element
         ///   - bottomMargin: Bottom margin of the current element (stored for next collapse)
-        public mutating func applyCollapsedMargin(top topMargin: PDF.UserSpace.Unit, bottom bottomMargin: PDF.UserSpace.Unit) {
-            // Collapse: use max of pending bottom margin and current top margin
-            let collapsedMargin = max(pendingBottomMargin, topMargin)
-
-            // Apply the collapsed margin (only if there's something to apply)
-            if collapsedMargin > 0 {
-                pdf.advance(PDF.UserSpace.Y(collapsedMargin))
+        public mutating func applyCollapsedMargin(
+            top topMargin: PDF.UserSpace.Unit,
+            bottom bottomMargin: PDF.UserSpace.Unit
+        ) {
+            // Flush pending inline content, capturing its half-leading
+            let trailingHalfLeading: PDF.UserSpace.Unit
+            if pdf.hasInlineRuns {
+                trailingHalfLeading = pdf.style.lineBox.halfLeading
+                pdf.flushInlineRuns()
+            } else {
+                trailingHalfLeading = lastRenderedHalfLeading
             }
 
-            // Store the bottom margin for collapsing with next element
+            // CSS margin collapse: use larger of adjacent margins
+            let collapsedMargin = max(pendingBottomMargin, topMargin)
+
+            // Geometric fix: CSS margins are from content edges, but advanceLine()
+            // positioned us at line box bottom (which includes trailing half-leading).
+            // Subtract it to get correct margin spacing.
+            let advance = max(PDF.UserSpace.Unit(0), collapsedMargin - trailingHalfLeading)
+
+            if advance > 0 {
+                pdf.advance(PDF.UserSpace.Y(advance))
+            }
+
+            // Store bottom margin for next collapse, reset half-leading
             pendingBottomMargin = bottomMargin
+            lastRenderedHalfLeading = 0
         }
 
         /// Reset margin collapsing state.
@@ -111,15 +144,16 @@ extension PDF.HTML {
         /// entering a block formatting context like a table cell).
         public mutating func resetMarginCollapsing() {
             pendingBottomMargin = 0
+            lastRenderedHalfLeading = 0
         }
     }
 }
 
 // MARK: - Table Layout Support
 
-extension PDF.HTML {
+extension PDF.HTML.Context {
     /// Context for table layout
-    public struct TableContext {
+    public struct Table {
         /// X position where the table starts
         public var tableX: PDF.UserSpace.X
 
