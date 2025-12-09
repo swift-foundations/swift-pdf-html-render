@@ -143,6 +143,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         if isBlock {
+            // Flush any pending inline runs BEFORE applying margins or changing indentation
+            // This ensures text from a parent element renders at the correct position
+            context.pdf.flushInlineRuns()
+
             context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
 
             // Handle list containers (ol, ul)
