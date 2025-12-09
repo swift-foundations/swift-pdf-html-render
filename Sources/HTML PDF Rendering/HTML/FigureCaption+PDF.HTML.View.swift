@@ -7,8 +7,7 @@ import WHATWG_HTML
 
 extension FigureCaption: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        // Figure captions are typically smaller italic text
-        context.style.fontSize = context.style.fontSize * 0.85
-        context.style.font = context.style.font.italic
+        // WebKit renders figcaption as normal block text with no special styling
+        // (no italic, no font-size change - just inherits from parent)
     }
 }

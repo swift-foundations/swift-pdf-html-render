@@ -149,8 +149,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         if isBlock {
-            // applyCollapsedMargin handles flushing inline runs and half-leading tracking
-            context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
+            // Block elements must flush any pending inline content before rendering
+            if context.pdf.hasInlineRuns {
+                context.pdf.flushInlineRuns()
+            }
+
+            // Only apply margin collapsing if this element has margins.
+            // Semantic containers (article, section, header, footer, etc.) have no margins
+            // and should be "transparent" to margin collapsing per CSS spec - margins collapse
+            // between a parent and its first/last child when there's no padding/border.
+            if marginTop > 0 || marginBottom > 0 {
+                context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
+            }
 
             // Handle list containers (ol, ul)
             if let listType = listType(for: view.tagName) {
@@ -192,8 +202,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                     markerWidth = rect.width.value
                 }
 
-                // Position marker so its right edge is ~6pt before the content start (within the 30pt indent)
-                let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - 6)
+                // Position marker so its right edge has a consistent gap before text
+                // Gap is 0.5em (proportional to font size) for uniform appearance
+                let markerGap = context.pdf.style.fontSize * 0.5
+                let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - markerGap)
 
                 // Set pending marker to be rendered with the first line of text
                 // This ensures the marker aligns with actual text content even when
@@ -316,9 +328,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Superscript rises above baseline - WebKit uses about 0.4em
             context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) + currentSize * 0.4
 
-        // Small
+        // Small - WebKit default is smaller (13px base = ~0.8125em)
         case "small":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * 0.85
+            context.pdf.style.fontSize = context.pdf.style.fontSize * 0.83
 
         // Links
         case "a":
@@ -364,8 +376,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return (.length(.em(1.67)), .length(.em(1.67)))
         case "h6":
             return (.length(.em(2.33)), .length(.em(2.33)))
-        case "blockquote", "figure":
+        case "blockquote":
             return (.length(.em(1.0)), .length(.em(1.0)))
+        // Note: <figure> has no vertical margins - its children provide spacing.
+        // This matches WebKit behavior where figure acts as a transparent container
+        // for margin collapsing, with only horizontal indentation applied.
         case "pre":
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "ul", "ol":
