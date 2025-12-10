@@ -167,7 +167,28 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 renderTable(view, context: &context)
             }
             // Handle table sections (thead, tbody, tfoot)
-            else if view.tagName == "thead" || view.tagName == "tbody" || view.tagName == "tfoot" {
+            else if view.tagName == "thead" {
+                // Start capturing header cells for repetition on page breaks
+                if var tc = context.tableContext {
+                    tc.isCapturingHeader = true
+                    tc.pendingHeaderCells = []
+                    context.tableContext = tc
+                }
+
+                PDF.HTML.renderBlock(view.content, context: &context)
+
+                // Finish capturing header and store for page break repetition
+                if var tc = context.tableContext {
+                    tc.isCapturingHeader = false
+                    tc.headerCells = tc.pendingHeaderCells
+                    // Store header row height for page break calculations
+                    if !tc.rowHeights.isEmpty {
+                        tc.headerRowHeight = tc.rowHeights[0]
+                    }
+                    context.tableContext = tc
+                }
+            }
+            else if view.tagName == "tbody" || view.tagName == "tfoot" {
                 // Pass-through: table sections just render their content
                 PDF.HTML.renderBlock(view.content, context: &context)
             }
@@ -491,8 +512,21 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Calculate minimum row height (single line)
         let minRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
-        // Check if minimum row fits on current page - if not, start a new page
-        _ = context.pdf.checkPageBreak(needing: minRowHeight)
+        // For page break check: account for header repetition if headers exist
+        let headerHeight = tableCtx.headerCells != nil ? tableCtx.headerRowHeight : PDF.UserSpace.Height(0)
+        let totalNeeded = PDF.UserSpace.Height(minRowHeight.value + headerHeight.value)
+
+        // Check if row (plus header if needed) fits on current page
+        let didPageBreak = context.pdf.checkPageBreak(needing: totalNeeded)
+
+        // If page break occurred and we have stored headers, repeat them
+        if didPageBreak && tableCtx.headerCells != nil && tableCtx.columnsInitialized {
+            renderRepeatedHeader(context: &context)
+            // Refresh tableCtx after header rendering
+            if let tc = context.tableContext {
+                tableCtx = tc
+            }
+        }
 
         // Update table bounds to use current layout position for this row
         tableCtx.bounds = PDF.UserSpace.Rectangle(
@@ -767,6 +801,13 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 isHeader: isHeader,
                 textAlignment: textAlignment
             ))
+
+            // Capture header cell text for page break repetition
+            if isHeader && tc.isCapturingHeader {
+                let cellText = extractCellText(from: view.content)
+                tc.pendingHeaderCells.append(.init(text: cellText, colspan: colspan))
+            }
+
             tc.currentColumn += colspan
             context.tableContext = tc
         }
@@ -799,6 +840,184 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             bounds,
             fill: color,
             stroke: nil
+        )
+    }
+
+    // MARK: - Header Text Extraction
+
+    /// Extract plain text content from cell for header repetition
+    private static func extractCellText<CellContent>(from content: CellContent) -> String {
+        // Use Mirror to recursively find string content
+        let mirror = Mirror(reflecting: content)
+
+        // Check if it's a String directly
+        if let str = content as? String {
+            return str
+        }
+
+        // Check for HTML.Element or other containers with text
+        for child in mirror.children {
+            if let text = child.value as? String {
+                return text
+            }
+            // Recursively check nested content (using Any to avoid generic issues)
+            let nested = extractCellTextFromAny(child.value)
+            if !nested.isEmpty {
+                return nested
+            }
+        }
+
+        // Fallback: use string description if it looks like content
+        let description = String(describing: content)
+        if !description.contains("HTML.Element") && !description.contains("(") && !description.contains("<") {
+            return description
+        }
+
+        return ""
+    }
+
+    /// Helper to extract text from Any type
+    private static func extractCellTextFromAny(_ value: Any) -> String {
+        if let str = value as? String {
+            return str
+        }
+
+        let mirror = Mirror(reflecting: value)
+        for child in mirror.children {
+            if let text = child.value as? String {
+                return text
+            }
+            let nested = extractCellTextFromAny(child.value)
+            if !nested.isEmpty {
+                return nested
+            }
+        }
+
+        return ""
+    }
+
+    // MARK: - Header Row Repetition
+
+    /// Render the stored header row (called after page break)
+    private static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
+        guard var tableCtx = context.tableContext,
+              let headerCells = tableCtx.headerCells,
+              !headerCells.isEmpty else {
+            return
+        }
+
+        // Reset for header row rendering
+        tableCtx.currentColumn = 0
+        tableCtx.currentRow = 0
+        tableCtx.pendingCellBorders = []
+        tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
+
+        // Update bounds to current layout position
+        tableCtx.bounds = PDF.UserSpace.Rectangle(
+            x: tableCtx.bounds.llx,
+            y: context.pdf.layoutBox.lly,
+            width: tableCtx.bounds.width,
+            height: tableCtx.headerRowHeight
+        )
+        context.tableContext = tableCtx
+
+        // Minimum row height from stored header height
+        let minRowHeight = tableCtx.headerRowHeight.value > 0
+            ? tableCtx.headerRowHeight
+            : PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
+
+        // PRE-DRAW: Draw header backgrounds before content
+        var cellColumn = 0
+        for headerCell in headerCells {
+            let cellX = tableCtx.xForColumn(cellColumn)
+            let cellWidth = tableCtx.widthForColumns(cellColumn, count: headerCell.colspan)
+            let cellBounds = PDF.UserSpace.Rectangle(
+                x: cellX,
+                y: tableCtx.bounds.lly,
+                width: cellWidth,
+                height: minRowHeight
+            )
+
+            // Draw header background
+            if let headerBg = tableCtx.headerBackground {
+                drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+            }
+
+            cellColumn += headerCell.colspan
+        }
+
+        // RENDER: Draw header cell content
+        cellColumn = 0
+        for headerCell in headerCells {
+            let cellX = tableCtx.xForColumn(cellColumn)
+            let cellWidth = tableCtx.widthForColumns(cellColumn, count: headerCell.colspan)
+
+            // Calculate content bounds with padding
+            let cellPadding = tableCtx.cellPadding
+            let contentX = PDF.UserSpace.X(cellX.value + cellPadding)
+            let contentWidth = PDF.UserSpace.Width(cellWidth.value - cellPadding * 2)
+
+            // Vertical centering
+            let lineHeight = context.pdf.style.lineHeightPoints.value
+            let cellContentHeight = minRowHeight.value - cellPadding * 2
+            let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - lineHeight) / PDF.UserSpace.Unit(2))
+            let headerCompensation: PDF.UserSpace.Unit = 1.0
+            let contentY = PDF.UserSpace.Y(tableCtx.bounds.lly.value + cellPadding + verticalCenterOffset + headerCompensation)
+
+            // Save state, render text, restore
+            let savedLayoutBox = context.pdf.layoutBox
+            let savedStyle = context.pdf.style
+
+            // Apply bold for headers
+            context.pdf.style.font = context.pdf.style.font.bold
+
+            context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+                x: contentX,
+                y: contentY,
+                width: contentWidth,
+                height: PDF.UserSpace.Height(cellContentHeight)
+            )
+
+            // Render header text using TextRun
+            let run = PDF.Context.TextRun(
+                text: headerCell.text,
+                font: context.pdf.style.font,
+                fontSize: context.pdf.style.fontSize,
+                color: context.pdf.style.color,
+                textDecoration: context.pdf.style.textMarkup,
+                verticalOffset: context.pdf.style.verticalOffset
+            )
+            context.pdf.append(inline: run)
+            context.pdf.flushInlineRuns()
+
+            context.pdf.style = savedStyle
+            context.pdf.layoutBox = savedLayoutBox
+
+            cellColumn += headerCell.colspan
+        }
+
+        // DRAW BORDERS: After content with correct height
+        cellColumn = 0
+        for headerCell in headerCells {
+            let cellX = tableCtx.xForColumn(cellColumn)
+            let cellWidth = tableCtx.widthForColumns(cellColumn, count: headerCell.colspan)
+            let cellBounds = PDF.UserSpace.Rectangle(
+                x: cellX,
+                y: tableCtx.bounds.lly,
+                width: cellWidth,
+                height: minRowHeight
+            )
+
+            drawCellBorder(bounds: cellBounds, tableCtx: tableCtx, context: &context)
+            cellColumn += headerCell.colspan
+        }
+
+        // Advance Y position past header row
+        context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+            x: context.pdf.layoutBox.llx,
+            y: PDF.UserSpace.Y(context.pdf.layoutBox.lly.value + minRowHeight.value),
+            width: context.pdf.layoutBox.width,
+            height: PDF.UserSpace.Height(context.pdf.layoutBox.height.value - minRowHeight.value)
         )
     }
 

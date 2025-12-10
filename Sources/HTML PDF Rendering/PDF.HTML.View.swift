@@ -215,6 +215,31 @@ extension PDF.HTML.Context {
         }
         public var pendingCellBorders: [PendingCellBorder] = []
 
+        // MARK: - Repeating Headers on Page Break
+
+        /// Stored header cell content for repetition on page breaks
+        public struct HeaderCell {
+            public let text: String
+            public let colspan: Int
+
+            public init(text: String, colspan: Int = 1) {
+                self.text = text
+                self.colspan = colspan
+            }
+        }
+
+        /// Header cells captured during thead rendering (nil if no header)
+        public var headerCells: [HeaderCell]?
+
+        /// Whether we're currently inside a thead section (for capturing header content)
+        public var isCapturingHeader: Bool = false
+
+        /// Temporary storage for header cells being captured
+        public var pendingHeaderCells: [HeaderCell] = []
+
+        /// Height of the header row (for page break calculations)
+        public var headerRowHeight: PDF.UserSpace.Height = PDF.UserSpace.Height(0)
+
         // MARK: - Initialization
 
         public init(
