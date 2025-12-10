@@ -3,6 +3,7 @@
 
 import CSS_Standard
 import HTML_Renderable
+import Layout
 import PDF_Rendering
 import WHATWG_HTML
 
@@ -486,7 +487,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         PDF.HTML.renderBlock(view.content, context: &context)
 
         // Draw deferred spanning cells (rowspan > 1)
-        // These cells need borders that span multiple rows
+        // These cells need content + borders that span multiple rows
         if let tc = context.tableContext {
             for deferred in tc.deferredSpanningCells {
                 // Calculate total height across all spanned rows
@@ -514,6 +515,46 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
                 // Draw border for spanning cell
                 drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+
+                // Render content with vertical centering
+                let cellContentHeight = totalHeight - tc.cellPadding * 2
+                let lineHeight = deferred.savedStyle.lineHeightPoints.value
+                let verticalCenterOffset = max(0, (cellContentHeight - lineHeight) / PDF.UserSpace.Unit(2))
+
+                // Calculate content position with vertical centering
+                let contentY = PDF.UserSpace.Y(deferred.startY.value + tc.cellPadding + verticalCenterOffset)
+
+                // Save context state
+                let savedLayoutBox = context.pdf.layoutBox
+                let savedStyle = context.pdf.style
+
+                // Apply deferred style with alignment
+                context.pdf.style = deferred.savedStyle
+                context.pdf.style.textAlign = deferred.textAlignment
+                context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+                    x: deferred.contentX,
+                    y: contentY,
+                    width: deferred.contentWidth,
+                    height: PDF.UserSpace.Height(cellContentHeight - verticalCenterOffset)
+                )
+
+                // Render the deferred text content
+                let runs = PDF.Context.TextRun.runsWithSymbolSupport(
+                    text: deferred.contentText,
+                    font: deferred.savedStyle.font,
+                    fontSize: deferred.savedStyle.fontSize,
+                    color: deferred.savedStyle.color,
+                    textDecoration: deferred.savedStyle.textMarkup,
+                    verticalOffset: deferred.savedStyle.verticalOffset
+                )
+                for run in runs {
+                    context.pdf.append(inline: run)
+                }
+                context.pdf.flushInlineRuns()
+
+                // Restore context state
+                context.pdf.style = savedStyle
+                context.pdf.layoutBox = savedLayoutBox
             }
         }
 
@@ -799,6 +840,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Save layout state and set content bounds
         let savedLayoutBox = context.pdf.layoutBox
+        let savedTextAlign = context.pdf.style.textAlign
         context.pdf.layoutBox = PDF.UserSpace.Rectangle(
             x: contentX,
             y: contentY,
@@ -806,43 +848,81 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             height: contentHeight
         )
 
-        // Detect text alignment for border tracking (future: implement right-alignment)
-        let textAlignment: Horizontal.Alignment = .leading
+        // Parse text alignment from HTML attributes (align="right" or style="text-align: right")
+        let textAlignment: Horizontal.Alignment
+        if let alignAttr = context.attributes["align"] {
+            switch alignAttr.lowercased() {
+            case "right": textAlignment = .trailing
+            case "center": textAlignment = .center
+            default: textAlignment = .leading
+            }
+        } else {
+            textAlignment = .leading
+        }
+
+        // Apply alignment to context style for line rendering
+        context.pdf.style.textAlign = textAlignment
 
         // Track Y before content
         let contentStartY = context.pdf.layoutBox.lly
 
-        // Render cell content
-        PDF.HTML.renderInline(view.content, context: &context)
+        // For rowspan > 1 cells: defer content rendering for vertical centering
+        // For normal cells: render content immediately
+        let actualContentHeight: PDF.UserSpace.Unit
+        if rowspan > 1 {
+            // DEFER content rendering - extract text and save for later
+            let contentText = extractCellText(from: view.content)
 
-        // Flush any pending inline content
-        if context.pdf.hasInlineRuns {
-            context.pdf.flushInlineRuns()
-        }
+            // Use single line height as placeholder for row height calculation
+            actualContentHeight = context.pdf.style.lineHeightPoints.value
 
-        // Calculate actual content height used
-        let contentEndY = context.pdf.layoutBox.lly
-        let actualContentHeight = contentEndY.value - contentStartY.value
-        let cellHeight = PDF.UserSpace.Height(actualContentHeight + tableCtx.cellPadding * 2)
-
-        // Update max cell height for this row
-        if var tc = context.tableContext {
-            if cellHeight.value > tc.maxCellHeightInCurrentRow.value {
-                tc.maxCellHeightInCurrentRow = cellHeight
-            }
-            // Store pending border info (will be drawn after all cells with correct height)
-            // For rowspan > 1, defer to after all rows are rendered
-            if rowspan > 1 {
-                // Defer this spanning cell - border will be drawn after all rows
+            if var tc = context.tableContext {
+                // Defer this spanning cell - content + border will be drawn after all rows
                 tc.deferredSpanningCells.append(.init(
                     originRow: tc.totalRowsRendered,
                     column: column,
                     colspan: colspan,
                     rowspan: rowspan,
                     isHeader: isHeader,
-                    startY: tc.bounds.lly
+                    startY: tc.bounds.lly,
+                    contentWidth: contentWidth,
+                    contentX: contentX,
+                    savedStyle: context.pdf.style,
+                    contentText: contentText,
+                    textAlignment: textAlignment
                 ))
-            } else {
+
+                // Mark cells as occupied for rowspan > 1
+                tc.markSpannedCells(
+                    fromRow: tc.totalRowsRendered,
+                    column: column,
+                    rowspan: rowspan,
+                    colspan: colspan
+                )
+
+                // Capture header cell text for page break repetition
+                if isHeader && tc.isCapturingHeader {
+                    tc.pendingHeaderCells.append(.init(text: contentText, colspan: colspan))
+                }
+
+                tc.currentColumn += colspan
+                context.tableContext = tc
+            }
+        } else {
+            // NORMAL cell - render content immediately
+            PDF.HTML.renderInline(view.content, context: &context)
+
+            // Flush any pending inline content
+            if context.pdf.hasInlineRuns {
+                context.pdf.flushInlineRuns()
+            }
+
+            // Calculate actual content height used
+            let contentEndY = context.pdf.layoutBox.lly
+            actualContentHeight = contentEndY.value - contentStartY.value
+
+            // Update max cell height and store pending border
+            if var tc = context.tableContext {
                 // Normal cell - draw border after row completes
                 tc.pendingCellBorders.append(.init(
                     column: column,
@@ -851,30 +931,32 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                     isHeader: isHeader,
                     textAlignment: textAlignment
                 ))
-            }
 
-            // Capture header cell text for page break repetition
-            if isHeader && tc.isCapturingHeader {
-                let cellText = extractCellText(from: view.content)
-                tc.pendingHeaderCells.append(.init(text: cellText, colspan: colspan))
-            }
+                // Capture header cell text for page break repetition
+                if isHeader && tc.isCapturingHeader {
+                    let cellText = extractCellText(from: view.content)
+                    tc.pendingHeaderCells.append(.init(text: cellText, colspan: colspan))
+                }
 
-            // Mark cells as occupied for rowspan > 1
-            if rowspan > 1 {
-                tc.markSpannedCells(
-                    fromRow: tc.totalRowsRendered,
-                    column: column,
-                    rowspan: rowspan,
-                    colspan: colspan
-                )
+                tc.currentColumn += colspan
+                context.tableContext = tc
             }
+        }
 
-            tc.currentColumn += colspan
+        // Calculate cell height (for row height tracking)
+        let cellHeight = PDF.UserSpace.Height(actualContentHeight + tableCtx.cellPadding * 2)
+
+        // Update max cell height for this row
+        if var tc = context.tableContext {
+            if cellHeight.value > tc.maxCellHeightInCurrentRow.value {
+                tc.maxCellHeightInCurrentRow = cellHeight
+            }
             context.tableContext = tc
         }
 
-        // Restore layout state
+        // Restore layout state and text alignment
         context.pdf.layoutBox = savedLayoutBox
+        context.pdf.style.textAlign = savedTextAlign
     }
 
     /// Draw cell border

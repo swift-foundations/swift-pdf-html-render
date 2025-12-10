@@ -2,6 +2,7 @@
 // Static dispatch PDF rendering for HTML.View types
 
 import HTML_Renderable
+import Layout
 import OrderedCollections
 import PDF_Rendering
 import Rendering
@@ -223,7 +224,7 @@ extension PDF.HTML.Context {
         }
         public var pendingCellBorders: [PendingCellBorder] = []
 
-        /// Deferred spanning cells (rowspan > 1) that need borders drawn after all rows
+        /// Deferred spanning cells (rowspan > 1) that need content + borders drawn after all rows
         public struct DeferredSpanningCell {
             let originRow: Int
             let column: Int
@@ -231,6 +232,12 @@ extension PDF.HTML.Context {
             let rowspan: Int
             let isHeader: Bool
             let startY: PDF.UserSpace.Y
+            // Content rendering data for vertical centering
+            let contentWidth: PDF.UserSpace.Width
+            let contentX: PDF.UserSpace.X
+            let savedStyle: PDF.Context.Style.Resolved
+            let contentText: String
+            let textAlignment: Horizontal.Alignment
         }
         public var deferredSpanningCells: [DeferredSpanningCell] = []
 
