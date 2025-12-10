@@ -203,6 +203,17 @@ extension PDF.HTML.Context {
         /// Measurement mode - count columns without drawing
         public var measureOnly: Bool = false
 
+        /// Track the maximum cell height in the current row (for multi-line content)
+        public var maxCellHeightInCurrentRow: PDF.UserSpace.Height = PDF.UserSpace.Height(0)
+
+        /// Pending cell borders to draw after content (so we know actual row height)
+        public struct PendingCellBorder {
+            let column: Int
+            let colspan: Int
+            let isHeader: Bool
+        }
+        public var pendingCellBorders: [PendingCellBorder] = []
+
         // MARK: - Initialization
 
         public init(

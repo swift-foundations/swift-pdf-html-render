@@ -25,11 +25,11 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-iso-9899", from: "0.1.0"),
         .package(url: "https://github.com/swift-standards/swift-iec-61966", from: "0.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
-//        .package(
-//            url: "https://github.com/coenttb/swift-html-to-pdf",
-//            from: "1.0.0",
-//            traits: ["HTML"]
-//        ),
+        .package(
+            url: "https://github.com/coenttb/swift-html-to-pdf",
+            from: "1.0.0",
+            traits: ["HTML"]
+        ),
     ],
     targets: [
         .target(
@@ -50,7 +50,7 @@ let package = Package(
             name: "PDF HTML Rendering Tests",
             dependencies: [
                 "PDF HTML Rendering",
-//                .product(name: "HtmlToPdf", package: "swift-html-to-pdf"),
+                .product(name: "HtmlToPdf", package: "swift-html-to-pdf"),
                 .product(name: "HTML Rendering", package: "swift-html-rendering"),
                 .product(name: "HTML Rendering TestSupport", package: "swift-html-rendering"),
                 .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),

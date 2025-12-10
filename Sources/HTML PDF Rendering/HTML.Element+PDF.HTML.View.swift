@@ -483,29 +483,24 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
-        // Reset column position for this row
+        // Reset for this row
         tableCtx.currentColumn = 0
+        tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
+        tableCtx.pendingCellBorders = []
 
-        // Calculate default row height
-        let defaultRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
+        // Calculate minimum row height (single line)
+        let minRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
-        // Extend rowHeights array if needed
-        tableCtx.rowHeights.append(defaultRowHeight)
-
-        // Get row height (use the one we just added)
-        let rowHeight = defaultRowHeight
-
-        // Check if row fits on current page - if not, start a new page
-        _ = context.pdf.checkPageBreak(needing: rowHeight)
+        // Check if minimum row fits on current page - if not, start a new page
+        _ = context.pdf.checkPageBreak(needing: minRowHeight)
 
         // Update table bounds to use current layout position for this row
         tableCtx.bounds = PDF.UserSpace.Rectangle(
             x: tableCtx.bounds.llx,
             y: context.pdf.layoutBox.lly,
             width: tableCtx.bounds.width,
-            height: rowHeight
+            height: minRowHeight
         )
-        // Use row 0 for cell positioning (relative to current bounds.y)
         tableCtx.currentRow = 0
 
         context.tableContext = tableCtx
@@ -513,11 +508,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
 
-        // FIRST ROW: Two-pass rendering
-        // Pass 1: Measure (count columns without drawing)
-        // Pass 2: Draw with correct column widths
+        // FIRST ROW: Two-pass rendering for column counting
         if !tableCtx.columnsInitialized {
-            // Pass 1: Measurement - count columns
+            // Pass 1: Measurement - count columns only
             if var tc = context.tableContext {
                 tc.measureOnly = true
                 tc.currentColumn = 0
@@ -536,13 +529,49 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 }
                 // Reset for drawing pass
                 tc.currentColumn = 0
+                tc.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
+                tc.pendingCellBorders = []
                 context.tableContext = tc
             }
 
-            // Pass 2: Draw with correct widths
+            // Pass 2: Pre-draw backgrounds (using min height - will be redrawn if content is taller)
+            if let tc = context.tableContext {
+                for col in 0..<tc.columnCount {
+                    let cellX = tc.xForColumn(col)
+                    let cellWidth = tc.widthForColumns(col, count: 1)
+                    let cellBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: rowStartY,
+                        width: cellWidth,
+                        height: minRowHeight
+                    )
+                    // First row cells are typically headers
+                    if let headerBg = tc.headerBackground {
+                        drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+                    }
+                }
+            }
+
+            // Pass 3: Render content
             PDF.HTML.renderBlock(view.content, context: &context)
         } else {
-            // Subsequent rows: single pass rendering
+            // Subsequent rows: Draw backgrounds first, then content
+            if let tc = context.tableContext {
+                for col in 0..<tc.columnCount {
+                    let cellX = tc.xForColumn(col)
+                    let cellWidth = tc.widthForColumns(col, count: 1)
+                    let cellBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: rowStartY,
+                        width: cellWidth,
+                        height: minRowHeight
+                    )
+                    if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
+                        drawCellBackground(bounds: cellBounds, color: altColor, context: &context)
+                    }
+                }
+            }
+            // Then render content
             PDF.HTML.renderBlock(view.content, context: &context)
         }
 
@@ -551,13 +580,68 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.flushInlineRuns()
         }
 
-        // Advance Y position past this row
-        context.pdf.layoutBox.lly = PDF.UserSpace.Y(rowStartY.value + rowHeight.value)
+        // Get actual row height (max of all cells, minimum single line)
+        let actualRowHeight: PDF.UserSpace.Height
+        if let tc = context.tableContext {
+            actualRowHeight = tc.maxCellHeightInCurrentRow.value > minRowHeight.value
+                ? tc.maxCellHeightInCurrentRow
+                : minRowHeight
+        } else {
+            actualRowHeight = minRowHeight
+        }
 
-        // Increment total rows rendered
+        // If row is taller than minRowHeight, extend backgrounds to full height
+        // Then draw all cell borders with correct row height
+        if let tc = context.tableContext {
+            // Extend backgrounds if needed (draw additional strip below initial background)
+            if actualRowHeight.value > minRowHeight.value {
+                let extensionHeight = PDF.UserSpace.Height(actualRowHeight.value - minRowHeight.value)
+                let extensionY = PDF.UserSpace.Y(rowStartY.value + minRowHeight.value)
+                for pending in tc.pendingCellBorders {
+                    let cellX = tc.xForColumn(pending.column)
+                    let cellWidth = tc.widthForColumns(pending.column, count: pending.colspan)
+                    let extensionBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: extensionY,
+                        width: cellWidth,
+                        height: extensionHeight
+                    )
+                    if pending.isHeader, let headerBg = tc.headerBackground {
+                        drawCellBackground(bounds: extensionBounds, color: headerBg, context: &context)
+                    } else if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
+                        drawCellBackground(bounds: extensionBounds, color: altColor, context: &context)
+                    }
+                }
+            }
+
+            // Draw borders with full row height
+            for pending in tc.pendingCellBorders {
+                let cellX = tc.xForColumn(pending.column)
+                let cellWidth = tc.widthForColumns(pending.column, count: pending.colspan)
+                let cellBounds = PDF.UserSpace.Rectangle(
+                    x: cellX,
+                    y: rowStartY,
+                    width: cellWidth,
+                    height: actualRowHeight
+                )
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+            }
+        }
+
+        // Update rowHeights array with actual height
+        if var tc = context.tableContext {
+            tc.rowHeights.append(actualRowHeight)
+            context.tableContext = tc
+        }
+
+        // Advance Y position past this row using actual height
+        context.pdf.layoutBox.lly = PDF.UserSpace.Y(rowStartY.value + actualRowHeight.value)
+
+        // Increment total rows rendered and reset for next row
         if var tc = context.tableContext {
             tc.totalRowsRendered += 1
             tc.currentColumn = 0
+            tc.pendingCellBorders = []
             context.tableContext = tc
         }
     }
@@ -576,7 +660,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Get colspan/rowspan (default to 1)
         let colspan = 1  // TODO: Extract from HTML attributes
-        let rowspan = 1  // TODO: Extract from HTML attributes
+        _ = 1  // rowspan - TODO: Extract from HTML attributes
 
         // Get current column position
         let column = tableCtx.currentColumn
@@ -594,44 +678,43 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // DRAWING MODE: Render the cell
-        let row = tableCtx.currentRow
-
         // Skip if beyond column count
         guard column < tableCtx.columnCount else {
             return
         }
 
-        // Calculate cell bounds
-        let cellBounds = tableCtx.cellBounds(
-            row: row,
-            column: column,
-            colspan: colspan,
-            rowspan: rowspan
-        )
+        // Calculate cell bounds using Geometry types
+        let cellX = tableCtx.xForColumn(column)
+        let cellWidth = tableCtx.widthForColumns(column, count: colspan)
 
-        // Draw header background (if header and configured)
-        if isHeader, let headerBg = tableCtx.headerBackground {
-            drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
-        }
-        // Draw alternating row background (use totalRowsRendered for alternating)
-        else if let tc = context.tableContext, tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-            drawCellBackground(bounds: cellBounds, color: altColor, context: &context)
-        }
+        // Create content bounds with proper padding
+        let cellPadding = tableCtx.cellPadding
+        let contentX = PDF.UserSpace.X(cellX.value + cellPadding)
+        let contentWidth = PDF.UserSpace.Width(cellWidth.value - cellPadding * 2)
 
-        // Draw cell border
-        drawCellBorder(bounds: cellBounds, tableCtx: tableCtx, context: &context)
+        // Calculate vertical positioning for middle alignment (HTML table default)
+        // Available content height within cell
+        let cellContentHeight = tableCtx.bounds.height.value - cellPadding * 2
+        // Single line text height from font metrics
+        let textHeight = context.pdf.style.lineHeightPoints.value
+        // Vertical offset to center text (for single line; multi-line will expand)
+        let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - textHeight) / PDF.UserSpace.Unit(2))
+        // Content Y position: cell bottom + padding + centering offset
+        let contentY = PDF.UserSpace.Y(tableCtx.bounds.lly.value + cellPadding + verticalCenterOffset)
+        // Content height: remaining space for text
+        let contentHeight = PDF.UserSpace.Height(cellContentHeight - verticalCenterOffset)
 
-        // Get content bounds (with padding)
-        let contentBounds = tableCtx.contentBounds(
-            row: row,
-            column: column,
-            colspan: colspan,
-            rowspan: rowspan
-        )
-
-        // Save layout state and constrain to cell
+        // Save layout state and set content bounds
         let savedLayoutBox = context.pdf.layoutBox
-        context.pdf.layoutBox = contentBounds
+        context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+            x: contentX,
+            y: contentY,
+            width: contentWidth,
+            height: contentHeight
+        )
+
+        // Track Y before content
+        let contentStartY = context.pdf.layoutBox.lly
 
         // Render cell content
         PDF.HTML.renderInline(view.content, context: &context)
@@ -641,14 +724,24 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.flushInlineRuns()
         }
 
-        // Restore layout state
-        context.pdf.layoutBox = savedLayoutBox
+        // Calculate actual content height used
+        let contentEndY = context.pdf.layoutBox.lly
+        let actualContentHeight = contentEndY.value - contentStartY.value
+        let cellHeight = PDF.UserSpace.Height(actualContentHeight + tableCtx.cellPadding * 2)
 
-        // Advance to next column
+        // Update max cell height for this row
         if var tc = context.tableContext {
+            if cellHeight.value > tc.maxCellHeightInCurrentRow.value {
+                tc.maxCellHeightInCurrentRow = cellHeight
+            }
+            // Store pending border info (will be drawn after all cells with correct height)
+            tc.pendingCellBorders.append(.init(column: column, colspan: colspan, isHeader: isHeader))
             tc.currentColumn += colspan
             context.tableContext = tc
         }
+
+        // Restore layout state
+        context.pdf.layoutBox = savedLayoutBox
     }
 
     /// Draw cell border

@@ -325,24 +325,24 @@ struct `Comprehensive PDF.HTML.View Tests` {
     }
 }
 
-//import HtmlToPdf
-//@Suite
-//struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
-//
-//    @Test
-//    func `document showing all elements and properties`() async throws {
-//        @Dependency(\.pdf) var pdf
-//        
-//        try await withDependencies {
-//            $0.pdf.render.configuration.paginationMode = .paginated
-//        } operation: {
-//            _ = try await pdf.render(
-//                html: ComplexView(),
-//                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test2.pdf")
-//            )
-//        }
-//    }
-//}
+import HtmlToPdf
+@Suite
+struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
+
+    @Test
+    func `document showing all elements and properties`() async throws {
+        @Dependency(\.pdf) var pdf
+        
+        try await withDependencies {
+            $0.pdf.render.configuration.paginationMode = .paginated
+        } operation: {
+            _ = try await pdf.render(
+                html: ComplexView(),
+                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test-webkit.pdf")
+            )
+        }
+    }
+}
 
 struct ComplexView: HTML.View {
     var body: some HTML.View {
