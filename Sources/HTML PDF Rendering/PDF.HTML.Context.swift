@@ -21,7 +21,7 @@ extension PDF.HTML {
         public let configuration: PDF.HTML.Configuration
         
         /// Active table layout context (nil when not in a table)
-        public var tableContext: Context.Table?
+        public var table: Context.Table?
         
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
@@ -58,7 +58,7 @@ extension PDF.HTML {
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
             self.pdf = pdf
             self.configuration = configuration
-            self.tableContext = nil
+            self.table = nil
             self.pendingBottomMargin = 0
             self.deferredKeepWithNextRender = nil
             self.avoidPageBreakAfter = false
@@ -140,4 +140,28 @@ extension PDF.HTML.Context {
         public let measuredHeight: PDF.UserSpace.Height
     }
 
+}
+
+extension PDF.HTML.Context {
+    public mutating func with<T>(
+        _ keyPath: WritableKeyPath<PDF.HTML.Context, T>,
+        _ body: (inout T) -> Void
+    ) {
+        var value = self[keyPath: keyPath]
+        body(&value)
+        self[keyPath: keyPath] = value
+    }
+}
+
+extension PDF.HTML.Context {
+    public mutating func with<T>(
+        _ keyPath: WritableKeyPath<PDF.HTML.Context, T?>,
+        _ body: (inout T) -> Void
+    ) {
+        guard var value = self[keyPath: keyPath] else {
+            return
+        }
+        body(&value)
+        self[keyPath: keyPath] = value
+    }
 }

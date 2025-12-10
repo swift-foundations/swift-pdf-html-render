@@ -165,21 +165,19 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Handle table sections (thead, tbody, tfoot)
             else if view.tagName == "thead" {
                 // Start capturing header cells for repetition on page breaks
-                if var tc = context.tableContext {
+                context.with(\.table) { tc in
                     tc.header.startCapturing()
-                    context.tableContext = tc
                 }
 
                 PDF.HTML.renderBlock(view.content, context: &context)
 
                 // Finish capturing header and store for page break repetition
-                if var tc = context.tableContext {
+                context.with(\.table) { tc in
                     tc.header.finalizeCapture()
                     // Store header row height for page break calculations
                     if !tc.rowHeights.isEmpty {
                         tc.header.rowHeight = tc.rowHeights[0]
                     }
-                    context.tableContext = tc
                 }
             }
             else if view.tagName == "tbody" || view.tagName == "tfoot" {
@@ -426,7 +424,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         // Save current context state
-        let savedTableContext = context.tableContext
+        let savedTableContext = context.table
         let tableStartY = context.pdf.layoutBox.lly
 
         // Get available width and configuration
@@ -450,7 +448,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         )
 
         // Initialize table context
-        context.tableContext = PDF.HTML.Context.Table(
+        context.table = PDF.HTML.Context.Table(
             bounds: tableBounds,
             columnWidths: columnWidths,
             rowHeights: rowHeights,
@@ -461,7 +459,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             alternatingRowColor: context.configuration.tableAlternatingRowColor
         )
         // Track total rows for Y advancement
-        context.tableContext?.totalRowsRendered = 0
+        context.table?.totalRowsRendered = 0
         // Note: tableStartY will be set when first row renders (not here, to avoid capturing
         // the position before the actual table content starts)
 
@@ -473,7 +471,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Draw deferred spanning cells (rowspan > 1)
         // These cells need content + borders that span multiple rows
-        if let tc = context.tableContext {
+        if let tc = context.table {
             for deferred in tc.deferredSpanningCells {
                 // Calculate total height across all spanned rows
                 let startRow = deferred.originRow
@@ -551,7 +549,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context.pdf.advance(PDF.UserSpace.Y(context.configuration.defaultFontSize * context.configuration.horizontalGapEm))
 
         // Restore context
-        context.tableContext = savedTableContext
+        context.table = savedTableContext
     }
 
     /// Render a table row
@@ -559,7 +557,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
-        guard var tableCtx = context.tableContext else {
+        guard var tableCtx = context.table else {
             // Fallback: render as block if not in table context
             PDF.HTML.renderBlock(view.content, context: &context)
             return
@@ -616,14 +614,14 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // The new fragment starts at the top of the new page
             tableCtx.currentFragmentStartY = context.pdf.layoutBox.lly
             tableCtx.currentFragmentEndY = context.pdf.layoutBox.lly
-            context.tableContext = tableCtx
+            context.table = tableCtx
         }
 
         // If page break occurred and we have stored headers, repeat them
         if didPageBreak && tableCtx.header.hasHeader && tableCtx.columnsInitialized {
             renderRepeatedHeader(context: &context)
             // Refresh tableCtx after header rendering
-            if let tc = context.tableContext {
+            if let tc = context.table {
                 tableCtx = tc
             }
         }
@@ -637,7 +635,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         )
         tableCtx.currentRow = 0
 
-        context.tableContext = tableCtx
+        context.table = tableCtx
 
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
@@ -645,12 +643,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Track table start position from first row (not from <table> entry)
         // This ensures borders start at the actual first row, not above it
         if tableCtx.totalRowsRendered == 0 {
-            if var tc = context.tableContext {
+            context.with(\.table) { tc in
                 tc.tableStartY = rowStartY
                 // Initialize fragment tracking for the first page
                 tc.currentFragmentStartY = rowStartY
                 tc.currentFragmentEndY = rowStartY
-                context.tableContext = tc
                 tableCtx = tc
             }
         }
@@ -658,15 +655,14 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // FIRST ROW: Two-pass rendering for column counting
         if !tableCtx.columnsInitialized {
             // Pass 1: Measurement - count columns only
-            if var tc = context.tableContext {
+            context.with(\.table) { tc in
                 tc.measureOnly = true
                 tc.currentColumn = 0
-                context.tableContext = tc
             }
             PDF.HTML.renderBlock(view.content, context: &context)
 
             // After measurement, set up correct column widths
-            if var tc = context.tableContext {
+            context.with(\.table) { tc in
                 tc.measureOnly = false
                 tc.columnsInitialized = true
                 let columnCount = tc.columnWidths.count
@@ -678,11 +674,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 tc.currentColumn = 0
                 tc.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
                 tc.pendingCellBorders = []
-                context.tableContext = tc
             }
 
             // Pass 2: Pre-draw backgrounds (using min height - will be redrawn if content is taller)
-            if let tc = context.tableContext {
+            if let tc = context.table {
                 for col in 0..<tc.columnCount {
                     let cellX = tc.xForColumn(col)
                     let cellWidth = tc.widthForColumns(col, count: 1)
@@ -703,7 +698,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             PDF.HTML.renderBlock(view.content, context: &context)
         } else {
             // Subsequent rows: Draw backgrounds first, then content
-            if let tc = context.tableContext {
+            if let tc = context.table {
                 for col in 0..<tc.columnCount {
                     let cellX = tc.xForColumn(col)
                     let cellWidth = tc.widthForColumns(col, count: 1)
@@ -729,7 +724,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Get actual row height (max of all cells, minimum single line)
         let actualRowHeight: PDF.UserSpace.Height
-        if let tc = context.tableContext {
+        if let tc = context.table {
             actualRowHeight = tc.maxCellHeightInCurrentRow.value > minRowHeight.value
                 ? tc.maxCellHeightInCurrentRow
                 : minRowHeight
@@ -739,7 +734,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // If row is taller than minRowHeight, extend backgrounds to full height
         // Then draw all cell borders with correct row height
-        if let tc = context.tableContext {
+        if let tc = context.table {
             // Extend backgrounds if needed (draw additional strip below initial background)
             if actualRowHeight.value > minRowHeight.value {
                 let extensionHeight = PDF.UserSpace.Height(actualRowHeight.value - minRowHeight.value)
@@ -776,9 +771,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Update rowHeights array with actual height
-        if var tc = context.tableContext {
+        context.with(\.table) { tc in
             tc.rowHeights.append(actualRowHeight)
-            context.tableContext = tc
         }
 
         // Advance Y position past this row using actual height
@@ -786,19 +780,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context.pdf.layoutBox.lly = newY
 
         // Track table end position (updated after each row for accurate border drawing)
-        if var tc = context.tableContext {
+        context.with(\.table) { tc in
             tc.tableEndY = newY
             // Also update current fragment end for per-page border drawing
             tc.currentFragmentEndY = newY
-            context.tableContext = tc
         }
 
         // Increment total rows rendered and reset for next row
-        if var tc = context.tableContext {
+        context.with(\.table) { tc in
             tc.totalRowsRendered += 1
             tc.currentColumn = 0
             tc.pendingCellBorders = []
-            context.tableContext = tc
         }
     }
 
@@ -808,7 +800,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         isHeader: Bool,
         context: inout PDF.HTML.Context
     ) {
-        guard var tableCtx = context.tableContext else {
+        guard var tableCtx = context.table else {
             // Fallback: render as inline if not in table context
             PDF.HTML.renderInline(view.content, context: &context)
             return
@@ -820,7 +812,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Skip cells occupied by rowspan from previous rows
         tableCtx.advanceToNextAvailableColumn()
-        context.tableContext = tableCtx
+        context.table = tableCtx  // Sync after column advance
 
         // Get current column position (after skipping occupied cells)
         let column = tableCtx.currentColumn
@@ -833,7 +825,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             }
             // Advance column counter
             tableCtx.currentColumn += colspan
-            context.tableContext = tableCtx
+            context.table = tableCtx
             return
         }
 
@@ -910,7 +902,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Use single line height as placeholder for row height calculation
             actualContentHeight = context.pdf.style.lineHeightPoints.value
 
-            if var tc = context.tableContext {
+            // Capture style before entering with closure to avoid overlapping access
+            let savedStyle = context.pdf.style
+
+            context.with(\.table) { tc in
                 // Defer this spanning cell - content + border will be drawn after all rows
                 tc.deferredSpanningCells.append(.init(
                     originRow: tc.totalRowsRendered,
@@ -921,7 +916,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                     startY: tc.bounds.lly,
                     contentWidth: contentWidth,
                     contentX: contentX,
-                    savedStyle: context.pdf.style,
+                    savedStyle: savedStyle,
                     contentText: contentText,
                     textAlignment: textAlignment
                 ))
@@ -941,7 +936,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 }
 
                 tc.currentColumn += colspan
-                context.tableContext = tc
             }
         } else {
             // NORMAL cell - render content immediately
@@ -957,7 +951,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             actualContentHeight = contentEndY.value - contentStartY.value
 
             // Update max cell height and store pending border
-            if var tc = context.tableContext {
+            context.with(\.table) { tc in
                 // Normal cell - draw border after row completes
                 tc.pendingCellBorders.append(.init(
                     column: column,
@@ -974,7 +968,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 }
 
                 tc.currentColumn += colspan
-                context.tableContext = tc
             }
         }
 
@@ -982,11 +975,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let cellHeight = PDF.UserSpace.Height(actualContentHeight + tableCtx.cellPadding * 2)
 
         // Update max cell height for this row
-        if var tc = context.tableContext {
+        context.with(\.table) { tc in
             if cellHeight.value > tc.maxCellHeightInCurrentRow.value {
                 tc.maxCellHeightInCurrentRow = cellHeight
             }
-            context.tableContext = tc
         }
 
         // Restore layout state
@@ -1143,7 +1135,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
     /// Render the stored header row (called after page break)
     private static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
-        guard var tableCtx = context.tableContext,
+        guard var tableCtx = context.table,
               let headerCells = tableCtx.header.cells,
               !headerCells.isEmpty else {
             return
@@ -1162,7 +1154,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             width: tableCtx.bounds.width,
             height: tableCtx.header.rowHeight
         )
-        context.tableContext = tableCtx
+        context.table = tableCtx
 
         // Minimum row height from stored header height
         let minRowHeight = tableCtx.header.rowHeight.value > 0
@@ -1265,10 +1257,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         )
 
         // Update fragment end position to include the repeated header
-        if var tc = context.tableContext {
+        context.with(\.table) { tc in
             tc.currentFragmentEndY = newY
-            context.tableContext = tc
         }
     }
-
 }
