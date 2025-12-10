@@ -162,8 +162,25 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
             }
 
+            // Handle table containers
+            if view.tagName == "table" {
+                renderTable(view, context: &context)
+            }
+            // Handle table sections (thead, tbody, tfoot)
+            else if view.tagName == "thead" || view.tagName == "tbody" || view.tagName == "tfoot" {
+                // Pass-through: table sections just render their content
+                PDF.HTML.renderBlock(view.content, context: &context)
+            }
+            // Handle table rows (tr)
+            else if view.tagName == "tr" {
+                renderTableRow(view, context: &context)
+            }
+            // Handle table cells (td, th)
+            else if view.tagName == "td" || view.tagName == "th" {
+                renderTableCell(view, isHeader: view.tagName == "th", context: &context)
+            }
             // Handle list containers (ol, ul)
-            if let listType = listType(for: view.tagName) {
+            else if let listType = listType(for: view.tagName) {
                 context.pdf.push(list: listType)
                 // WebKit's default padding-left for ul/ol is 40px ≈ 30pt at 72dpi
                 let indent: PDF.UserSpace.Unit = 30
@@ -388,8 +405,231 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return (.length(.em(1.0)), .length(.em(1.0)))
         // Note: <li> has no default margins per WHATWG HTML Standard
         // The parent <ul>/<ol> provides the 1em margins
+        case "table":
+            return (.length(.em(1.0)), .length(.em(1.0)))
         default:
             return nil
         }
+    }
+
+    // MARK: - Table Rendering
+
+    /// Render a table element
+    private static func renderTable(
+        _ view: Self,
+        context: inout PDF.HTML.Context
+    ) {
+        // Save current context state
+        let savedTableContext = context.tableContext
+
+        // Get available width and configuration
+        let availableWidth = context.pdf.layoutBox.width
+        let cellPadding = context.configuration.tableCellPadding
+
+        // Estimate column count (default to 3 for now)
+        // TODO: Implement proper column counting by traversing table structure
+        let columnCount = 3
+        let columnWidth = columnCount > 0
+            ? PDF.UserSpace.Width(availableWidth.value / PDF.UserSpace.Unit(columnCount))
+            : availableWidth
+
+        // Create equal-width columns
+        let columnWidths = Array(repeating: columnWidth, count: columnCount)
+
+        // Estimate row height
+        let defaultRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + cellPadding * 2)
+        let rowHeights = [defaultRowHeight]  // Will be extended dynamically
+
+        // Create table bounds
+        let tableX = context.pdf.layoutBox.llx
+        let tableY = context.pdf.layoutBox.lly
+        let tableBounds = PDF.UserSpace.Rectangle(
+            x: tableX,
+            y: tableY,
+            width: availableWidth,
+            height: defaultRowHeight
+        )
+
+        // Initialize table context
+        context.tableContext = PDF.HTML.Context.Table(
+            bounds: tableBounds,
+            columnWidths: columnWidths,
+            rowHeights: rowHeights,
+            spanGrid: [],
+            cellPadding: cellPadding,
+            borderColor: context.configuration.tableBorderColor,
+            borderWidth: context.configuration.tableBorderWidth,
+            headerBackground: context.configuration.tableHeaderBackground,
+            alternatingRowColor: context.configuration.tableAlternatingRowColor
+        )
+
+        // Reset margin collapsing within table
+        context.resetMarginCollapsing()
+
+        // Render table content
+        PDF.HTML.renderBlock(view.content, context: &context)
+
+        // Advance past the table
+        if let tableCtx = context.tableContext {
+            let tableHeight = tableCtx.rowHeights.reduce(PDF.UserSpace.Unit(0)) { $0 + $1.value }
+            context.pdf.layoutBox.lly = PDF.UserSpace.Y(tableY.value + tableHeight)
+        }
+
+        // Restore context
+        context.tableContext = savedTableContext
+    }
+
+    /// Render a table row
+    private static func renderTableRow(
+        _ view: Self,
+        context: inout PDF.HTML.Context
+    ) {
+        guard var tableCtx = context.tableContext else {
+            // Fallback: render as block if not in table context
+            PDF.HTML.renderBlock(view.content, context: &context)
+            return
+        }
+
+        // Reset column position for this row
+        tableCtx.currentColumn = 0
+        context.tableContext = tableCtx
+
+        // Skip columns occupied by rowspan from previous rows
+        context.tableContext?.advanceToNextAvailableColumn()
+
+        // Save the current Y position for row start
+        let rowStartY = context.pdf.layoutBox.lly
+
+        // Get row height
+        let rowHeight: PDF.UserSpace.Height
+        if tableCtx.currentRow < tableCtx.rowHeights.count {
+            rowHeight = tableCtx.rowHeights[tableCtx.currentRow]
+        } else {
+            rowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
+        }
+
+        // Render child cells
+        PDF.HTML.renderBlock(view.content, context: &context)
+
+        // Flush any pending inline content
+        if context.pdf.hasInlineRuns {
+            context.pdf.flushInlineRuns()
+        }
+
+        // Advance Y position past this row
+        context.pdf.layoutBox.lly = PDF.UserSpace.Y(rowStartY.value + rowHeight.value)
+
+        // Advance to next row
+        if var tc = context.tableContext {
+            tc.currentRow += 1
+            tc.currentColumn = 0
+            context.tableContext = tc
+        }
+    }
+
+    /// Render a table cell (td or th)
+    private static func renderTableCell(
+        _ view: Self,
+        isHeader: Bool,
+        context: inout PDF.HTML.Context
+    ) {
+        guard var tableCtx = context.tableContext else {
+            // Fallback: render as inline if not in table context
+            PDF.HTML.renderInline(view.content, context: &context)
+            return
+        }
+
+        // Skip cells occupied by rowspan from previous rows
+        tableCtx.advanceToNextAvailableColumn()
+        context.tableContext = tableCtx
+
+        // Get colspan/rowspan (default to 1)
+        let colspan = 1  // TODO: Extract from HTML attributes
+        let rowspan = 1  // TODO: Extract from HTML attributes
+
+        // Get current position
+        let row = tableCtx.currentRow
+        let column = tableCtx.currentColumn
+
+        guard column < tableCtx.columnCount else {
+            return
+        }
+
+        // Calculate cell bounds
+        let cellBounds = tableCtx.cellBounds(
+            row: row,
+            column: column,
+            colspan: colspan,
+            rowspan: rowspan
+        )
+
+        // Draw header background (if header and configured)
+        if isHeader, let headerBg = tableCtx.headerBackground {
+            drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+        }
+        // Draw alternating row background
+        else if row % 2 == 1, let altColor = tableCtx.alternatingRowColor {
+            drawCellBackground(bounds: cellBounds, color: altColor, context: &context)
+        }
+
+        // Draw cell border
+        drawCellBorder(bounds: cellBounds, tableCtx: tableCtx, context: &context)
+
+        // Get content bounds (with padding)
+        let contentBounds = tableCtx.contentBounds(
+            row: row,
+            column: column,
+            colspan: colspan,
+            rowspan: rowspan
+        )
+
+        // Save layout state and constrain to cell
+        let savedLayoutBox = context.pdf.layoutBox
+        context.pdf.layoutBox = contentBounds
+
+        // Render cell content
+        PDF.HTML.renderInline(view.content, context: &context)
+
+        // Flush any pending inline content
+        if context.pdf.hasInlineRuns {
+            context.pdf.flushInlineRuns()
+        }
+
+        // Restore layout state
+        context.pdf.layoutBox = savedLayoutBox
+
+        // Advance to next column
+        if var tc = context.tableContext {
+            tc.currentColumn += colspan
+            tc.advanceToNextAvailableColumn()
+            context.tableContext = tc
+        }
+    }
+
+    /// Draw cell border
+    private static func drawCellBorder(
+        bounds: PDF.UserSpace.Rectangle,
+        tableCtx: PDF.HTML.Context.Table,
+        context: inout PDF.HTML.Context
+    ) {
+        context.pdf.emitRectangle(
+            bounds,
+            fill: nil,
+            stroke: tableCtx.borderColor,
+            strokeWidth: PDF.UserSpace.Width(tableCtx.borderWidth)
+        )
+    }
+
+    /// Draw cell background
+    private static func drawCellBackground(
+        bounds: PDF.UserSpace.Rectangle,
+        color: PDF.Color,
+        context: inout PDF.HTML.Context
+    ) {
+        context.pdf.emitRectangle(
+            bounds,
+            fill: color,
+            stroke: nil
+        )
     }
 }

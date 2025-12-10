@@ -45,6 +45,23 @@ extension PDF.HTML {
         /// Heading spacing (multiplier of heading size)
         public var headingSpacing: Double
 
+        // MARK: - Table Configuration
+
+        /// Cell padding for table cells
+        public var tableCellPadding: PDF.UserSpace.Unit
+
+        /// Border color for table cell edges
+        public var tableBorderColor: PDF.Color
+
+        /// Border width for table cell edges
+        public var tableBorderWidth: PDF.UserSpace.Unit
+
+        /// Background color for table header cells (nil for transparent)
+        public var tableHeaderBackground: PDF.Color?
+
+        /// Alternating row background color (nil for no alternation)
+        public var tableAlternatingRowColor: PDF.Color?
+
         // MARK: - Computed
 
         /// Media box (same as paper size, for use with PDF.Context)
@@ -72,7 +89,12 @@ extension PDF.HTML {
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
             paragraphSpacing: Double = 0.5,
-            headingSpacing: Double = 0.8
+            headingSpacing: Double = 0.8,
+            tableCellPadding: PDF.UserSpace.Unit = 4,
+            tableBorderColor: PDF.Color = .gray(0.3),
+            tableBorderWidth: PDF.UserSpace.Unit = 0.5,
+            tableHeaderBackground: PDF.Color? = .gray(0.9),
+            tableAlternatingRowColor: PDF.Color? = nil
         ) {
             self.paperSize = paperSize
             self.margins = margins
@@ -82,6 +104,11 @@ extension PDF.HTML {
             self.lineHeight = lineHeight
             self.paragraphSpacing = paragraphSpacing
             self.headingSpacing = headingSpacing
+            self.tableCellPadding = tableCellPadding
+            self.tableBorderColor = tableBorderColor
+            self.tableBorderWidth = tableBorderWidth
+            self.tableHeaderBackground = tableHeaderBackground
+            self.tableAlternatingRowColor = tableAlternatingRowColor
         }
 
         // MARK: - Line Height Resolution
