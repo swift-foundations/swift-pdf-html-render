@@ -15,21 +15,21 @@ let package = Package(
         .library(name: "PDF HTML Rendering", targets: ["PDF HTML Rendering"]),
     ],
     dependencies: [
-        .package(path: "../swift-html-rendering"),
-        .package(path: "../swift-pdf-rendering"),
-        .package(path: "../swift-css"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-html-standard"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-css-standard"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-w3c-css"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-standards"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-iso-9899"),
-        .package(path: "/Users/coen/Developer/swift-standards/swift-iec-61966"),
+        .package(url: "https://github.com/coenttb/swift-html-rendering", from: "0.1.0"),
+        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.1.0"),
+        .package(url: "https://github.com/coenttb/swift-css", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-w3c-css", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-standards", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-iso-9899", from: "0.1.0"),
+        .package(url: "https://github.com/swift-standards/swift-iec-61966", from: "0.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
-        .package(
-            url: "https://github.com/coenttb/swift-html-to-pdf",
-            from: "1.0.0",
-            traits: ["HTML"]
-        ),
+//        .package(
+//            url: "https://github.com/coenttb/swift-html-to-pdf",
+//            from: "1.0.0",
+//            traits: ["HTML"]
+//        ),
     ],
     targets: [
         .target(
@@ -50,9 +50,9 @@ let package = Package(
             name: "PDF HTML Rendering Tests",
             dependencies: [
                 "PDF HTML Rendering",
-                .product(name: "HtmlToPdf", package: "swift-html-to-pdf"),
+//                .product(name: "HtmlToPdf", package: "swift-html-to-pdf"),
                 .product(name: "HTML Rendering", package: "swift-html-rendering"),
-                .product(name: "HTML Renderable TestSupport", package: "swift-html-rendering"),
+                .product(name: "HTML Rendering TestSupport", package: "swift-html-rendering"),
                 .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
             ]
         ),

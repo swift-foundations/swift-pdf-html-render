@@ -325,47 +325,24 @@ struct `Comprehensive PDF.HTML.View Tests` {
     }
 }
 
-import HtmlToPdf
-@Suite
-struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
-
-    @Test
-    func `document showing all elements and properties`() async throws {
-        @Dependency(\.pdf) var pdf
-        
-        try await withDependencies {
-            $0.pdf.render.configuration.paginationMode = .paginated
-        } operation: {
-            _ = try await pdf.render(
-                html: ComplexView(),
-                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test2.pdf")
-            )
-        }
-
-        
-        
-        
-//        let doc = PDF.Document(
-//            info: .init(
-//                title: "All Elements Demo",
-//                author: "Test Suite"
+//import HtmlToPdf
+//@Suite
+//struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
+//
+//    @Test
+//    func `document showing all elements and properties`() async throws {
+//        @Dependency(\.pdf) var pdf
+//        
+//        try await withDependencies {
+//            $0.pdf.render.configuration.paginationMode = .paginated
+//        } operation: {
+//            _ = try await pdf.render(
+//                html: ComplexView(),
+//                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test2.pdf")
 //            )
-//        ) {
-//            ComplexView()
 //        }
-//
-//        let bytes = [UInt8](doc)
-//
-//        // Write to /tmp for visual inspection
-//        let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
-//        try Data(bytes).write(to: url)
-//        print("PDF written to: \(url.path)")
-//
-//        // Basic sanity checks
-//        #expect(doc.pages.count >= 1)
-//        #expect(bytes.count > 1000, "Complex document should have substantial content")
-    }
-}
+//    }
+//}
 
 struct ComplexView: HTML.View {
     var body: some HTML.View {

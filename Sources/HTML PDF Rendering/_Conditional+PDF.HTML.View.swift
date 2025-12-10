@@ -3,7 +3,7 @@
 
 import HTML_Renderable
 import PDF_Rendering
-import Renderable
+import Rendering
 
 /// PDF rendering for _Conditional elements (if/else branches in result builders).
 extension _Conditional: PDF.HTML.View

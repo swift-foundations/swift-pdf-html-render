@@ -3,7 +3,7 @@
 
 import HTML_Renderable
 import PDF_Rendering
-import Renderable
+import Rendering
 
 // MARK: - Static Dispatch (when all content conforms to PDF.HTML.View)
 

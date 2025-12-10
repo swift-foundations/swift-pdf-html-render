@@ -5,7 +5,7 @@ import CSS_Standard
 import HTML_Renderable
 import PDF_Rendering
 import PDF_Standard
-import Renderable
+import Rendering
 import W3C_CSS_Shared
 
 extension PDF {
