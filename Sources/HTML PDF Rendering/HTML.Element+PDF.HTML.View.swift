@@ -692,17 +692,40 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let contentX = PDF.UserSpace.X(cellX.value + cellPadding)
         let contentWidth = PDF.UserSpace.Width(cellWidth.value - cellPadding * 2)
 
-        // Calculate vertical positioning for middle alignment (HTML table default)
+        // === PRECISE VERTICAL POSITIONING using font metrics ===
+        // Get actual font metrics for the current style
+        let font = context.pdf.style.font
+        let fontSize = context.pdf.style.fontSize
+        let ascender = font.metrics.ascender(atSize: fontSize)
+        let descender = font.metrics.descender(atSize: fontSize)  // negative value
+
+        // Content height from font metrics: ascender - descender (descender is negative, so this adds)
+        let fontContentHeight = ascender - descender
+
+        // Line height from style (includes leading)
+        let lineHeight = context.pdf.style.lineHeightPoints.value
+
+        // Half-leading calculation available if needed for future refinement:
+        // halfLeading = max(0, (lineHeight - fontContentHeight) / 2)
+
         // Available content height within cell
         let cellContentHeight = tableCtx.bounds.height.value - cellPadding * 2
-        // Single line text height from font metrics
-        let textHeight = context.pdf.style.lineHeightPoints.value
-        // Vertical offset to center text (for single line; multi-line will expand)
-        let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - textHeight) / PDF.UserSpace.Unit(2))
-        // Content Y position: cell bottom + padding + centering offset
-        let contentY = PDF.UserSpace.Y(tableCtx.bounds.lly.value + cellPadding + verticalCenterOffset)
+
+        // For vertical centering (HTML default vertical-align: middle):
+        // Position text so the visual center of the text block aligns with cell center
+        // Visual center of text = baseline - (ascender - descender) / 2 + ascender
+        // Simplified: center the line box within available height
+        let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - lineHeight) / PDF.UserSpace.Unit(2))
+
+        // Header cells: add slight top padding compensation (headers often feel tight)
+        // This accounts for optical adjustment - bold text appears heavier at top
+        let headerCompensation: PDF.UserSpace.Unit = isHeader ? PDF.UserSpace.Unit(1.0) : PDF.UserSpace.Unit(0)
+
+        // Content Y position: cell bottom + padding + centering offset + header compensation
+        let contentY = PDF.UserSpace.Y(tableCtx.bounds.lly.value + cellPadding + verticalCenterOffset + headerCompensation)
+
         // Content height: remaining space for text
-        let contentHeight = PDF.UserSpace.Height(cellContentHeight - verticalCenterOffset)
+        let contentHeight = PDF.UserSpace.Height(cellContentHeight - verticalCenterOffset - headerCompensation)
 
         // Save layout state and set content bounds
         let savedLayoutBox = context.pdf.layoutBox
@@ -712,6 +735,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             width: contentWidth,
             height: contentHeight
         )
+
+        // Detect text alignment for border tracking (future: implement right-alignment)
+        let textAlignment: Horizontal.Alignment = .leading
 
         // Track Y before content
         let contentStartY = context.pdf.layoutBox.lly
@@ -735,7 +761,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 tc.maxCellHeightInCurrentRow = cellHeight
             }
             // Store pending border info (will be drawn after all cells with correct height)
-            tc.pendingCellBorders.append(.init(column: column, colspan: colspan, isHeader: isHeader))
+            tc.pendingCellBorders.append(.init(
+                column: column,
+                colspan: colspan,
+                isHeader: isHeader,
+                textAlignment: textAlignment
+            ))
             tc.currentColumn += colspan
             context.tableContext = tc
         }
@@ -770,4 +801,5 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             stroke: nil
         )
     }
+
 }

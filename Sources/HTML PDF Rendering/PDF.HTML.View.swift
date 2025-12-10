@@ -211,6 +211,7 @@ extension PDF.HTML.Context {
             let column: Int
             let colspan: Int
             let isHeader: Bool
+            let textAlignment: Horizontal.Alignment
         }
         public var pendingCellBorders: [PendingCellBorder] = []
 
