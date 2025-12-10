@@ -882,6 +882,62 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
+
+        // MARK: - 6.7 Text Alignment Table
+
+        H3 { "6.7 Text Alignment (CSS)" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableHead {
+                TableRow {
+                    TableHeader { "Product" }
+                    TableHeader { "Quantity" }
+                        .css.textAlign(.right)
+                    TableHeader { "Price" }
+                        .css.textAlign(.right)
+                    TableHeader { "Total" }
+                        .css.textAlign(.right)
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableDataCell { "Widget A" }
+                    TableDataCell { "10" }
+                        .css.textAlign(.right)
+                    TableDataCell { "$5.00" }
+                        .css.textAlign(.right)
+                    TableDataCell { "$50.00" }
+                        .css.textAlign(.right)
+                }
+                TableRow {
+                    TableDataCell { "Widget B" }
+                    TableDataCell { "25" }
+                        .css.textAlign(.right)
+                    TableDataCell { "$3.50" }
+                        .css.textAlign(.right)
+                    TableDataCell { "$87.50" }
+                        .css.textAlign(.right)
+                }
+                TableRow {
+                    TableDataCell { "Service Fee" }
+                    TableDataCell { "—" }
+                        .css.textAlign(.center)
+                    TableDataCell { "—" }
+                        .css.textAlign(.center)
+                    TableDataCell { "$15.00" }
+                        .css.textAlign(.right)
+                }
+            }
+            TableFoot {
+                TableRow {
+                    TableHeader(colspan: 3) { "Grand Total" }
+                        .css.textAlign(.right)
+                    TableDataCell { "$152.50" }
+                        .css.textAlign(.right)
+                }
+            }
+        }
     }
 }
 

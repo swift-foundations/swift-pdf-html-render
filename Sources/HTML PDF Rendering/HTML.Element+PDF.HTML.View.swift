@@ -840,7 +840,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Save layout state and set content bounds
         let savedLayoutBox = context.pdf.layoutBox
-        let savedTextAlign = context.pdf.style.textAlign
         context.pdf.layoutBox = PDF.UserSpace.Rectangle(
             x: contentX,
             y: contentY,
@@ -848,20 +847,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             height: contentHeight
         )
 
-        // Parse text alignment from HTML attributes (align="right" or style="text-align: right")
-        let textAlignment: Horizontal.Alignment
-        if let alignAttr = context.attributes["align"] {
-            switch alignAttr.lowercased() {
-            case "right": textAlignment = .trailing
-            case "center": textAlignment = .center
-            default: textAlignment = .leading
-            }
-        } else {
-            textAlignment = .leading
-        }
-
-        // Apply alignment to context style for line rendering
-        context.pdf.style.textAlign = textAlignment
+        // Text alignment comes from CSS via StyleModifier (e.g., .css.textAlign(.right))
+        // The context.pdf.style.textAlign is already set by CSS processing
+        let textAlignment = context.pdf.style.textAlign
 
         // Track Y before content
         let contentStartY = context.pdf.layoutBox.lly
@@ -954,9 +942,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.tableContext = tc
         }
 
-        // Restore layout state and text alignment
+        // Restore layout state
         context.pdf.layoutBox = savedLayoutBox
-        context.pdf.style.textAlign = savedTextAlign
     }
 
     /// Draw cell border
