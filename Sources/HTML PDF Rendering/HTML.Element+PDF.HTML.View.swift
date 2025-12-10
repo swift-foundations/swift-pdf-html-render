@@ -492,6 +492,33 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Reset column position for this row
         tableCtx.currentColumn = 0
+
+        // Calculate default row height
+        let defaultRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
+
+        // Extend rowHeights array if needed for this row
+        while tableCtx.rowHeights.count <= tableCtx.currentRow {
+            tableCtx.rowHeights.append(defaultRowHeight)
+        }
+
+        // Get row height
+        let rowHeight = tableCtx.rowHeights[tableCtx.currentRow]
+
+        // Check if row fits on current page - if not, start a new page
+        _ = context.pdf.checkPageBreak(needing: rowHeight)
+
+        // IMPORTANT: Update table bounds to use current layout position for this row
+        // This ensures cells are positioned relative to where we actually are,
+        // not where the table originally started
+        tableCtx.bounds = PDF.UserSpace.Rectangle(
+            x: tableCtx.bounds.llx,
+            y: context.pdf.layoutBox.lly,
+            width: tableCtx.bounds.width,
+            height: rowHeight
+        )
+        // Reset row tracking since we're now positioning relative to current Y
+        tableCtx.currentRow = 0
+
         context.tableContext = tableCtx
 
         // Skip columns occupied by rowspan from previous rows
@@ -499,14 +526,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
-
-        // Get row height
-        let rowHeight: PDF.UserSpace.Height
-        if tableCtx.currentRow < tableCtx.rowHeights.count {
-            rowHeight = tableCtx.rowHeights[tableCtx.currentRow]
-        } else {
-            rowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
-        }
 
         // Render child cells
         PDF.HTML.renderBlock(view.content, context: &context)
