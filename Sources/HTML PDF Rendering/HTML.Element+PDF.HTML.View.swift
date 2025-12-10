@@ -695,9 +695,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Get colspan/rowspan from HTML attributes (default to 1)
         let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
         let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
-        _ = rowspan  // TODO: Implement rowspan layout logic
 
-        // Get current column position
+        // Skip cells occupied by rowspan from previous rows
+        tableCtx.advanceToNextAvailableColumn()
+        context.tableContext = tableCtx
+
+        // Get current column position (after skipping occupied cells)
         let column = tableCtx.currentColumn
 
         // MEASUREMENT MODE: Just count columns, don't draw anything
@@ -807,6 +810,16 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             if isHeader && tc.isCapturingHeader {
                 let cellText = extractCellText(from: view.content)
                 tc.pendingHeaderCells.append(.init(text: cellText, colspan: colspan))
+            }
+
+            // Mark cells as occupied for rowspan > 1
+            if rowspan > 1 {
+                tc.markSpannedCells(
+                    fromRow: tc.totalRowsRendered,
+                    column: column,
+                    rowspan: rowspan,
+                    colspan: colspan
+                )
             }
 
             tc.currentColumn += colspan

@@ -828,6 +828,60 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
+
+        // MARK: - 6.6 Colspan/Rowspan Table
+
+        H3 { "6.6 Colspan/Rowspan Table" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableHead {
+                TableRow {
+                    TableHeader { "Category" }
+                    TableHeader(colspan: 2) { "Details" }
+                    TableHeader { "Status" }
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableHeader(rowspan: 2) { "Rendering" }
+                    TableDataCell { "Tables" }
+                    TableDataCell { "Full support" }
+                    TableDataCell { "✓" }
+                }
+                TableRow {
+                    // First column skipped due to rowspan
+                    TableDataCell { "Lists" }
+                    TableDataCell { "Full support" }
+                    TableDataCell { "✓" }
+                }
+                TableRow {
+                    TableHeader(rowspan: 3) { "Typography" }
+                    TableDataCell { "Headings" }
+                    TableDataCell { "H1-H6" }
+                    TableDataCell { "✓" }
+                }
+                TableRow {
+                    TableDataCell { "Inline styles" }
+                    TableDataCell { "Bold, italic, etc." }
+                    TableDataCell { "✓" }
+                }
+                TableRow {
+                    TableDataCell { "Links" }
+                    TableDataCell { "Clickable URLs" }
+                    TableDataCell { "✓" }
+                }
+                TableRow {
+                    TableDataCell(colspan: 3) { "Combined colspan example spanning three columns" }
+                    TableDataCell { "OK" }
+                }
+            }
+            TableFoot {
+                TableRow {
+                    TableDataCell(colspan: 4) { "All features implemented and tested" }
+                }
+            }
+        }
     }
 }
 

@@ -356,9 +356,53 @@ extension PDF.HTML.Context {
         }
 
         /// Find the next available column in the current row (skipping spanned cells)
+        ///
+        /// Uses `totalRowsRendered` as the row index since that tracks the actual
+        /// row number across the entire table (currentRow is reset per row rendering).
         public mutating func advanceToNextAvailableColumn() {
-            while currentColumn < columnCount && isOccupied(row: currentRow, column: currentColumn) {
+            while currentColumn < columnCount && isOccupied(row: totalRowsRendered, column: currentColumn) {
                 currentColumn += 1
+            }
+        }
+
+        /// Mark cells as occupied by a rowspan/colspan cell
+        ///
+        /// Called when a cell has rowspan > 1 to mark subsequent rows' cells as occupied.
+        /// The spanGrid is extended dynamically if needed.
+        public mutating func markSpannedCells(
+            fromRow originRow: Int,
+            column originColumn: Int,
+            rowspan: Int,
+            colspan: Int
+        ) {
+            let span = CellSpan(
+                originRow: originRow,
+                originColumn: originColumn,
+                rowSpan: rowspan,
+                colSpan: colspan
+            )
+
+            // Ensure spanGrid has enough rows
+            while spanGrid.count <= originRow + rowspan - 1 {
+                spanGrid.append(Array(repeating: nil, count: columnCount))
+            }
+
+            // Mark all cells covered by this span (except the origin cell itself)
+            for r in originRow..<(originRow + rowspan) {
+                // Ensure this row has enough columns
+                while spanGrid[r].count < columnCount {
+                    spanGrid[r].append(nil)
+                }
+
+                for c in originColumn..<(originColumn + colspan) {
+                    // Skip the origin cell (row 0, col 0 of the span)
+                    if r == originRow && c == originColumn {
+                        continue
+                    }
+                    if c < spanGrid[r].count {
+                        spanGrid[r][c] = span
+                    }
+                }
             }
         }
     }
