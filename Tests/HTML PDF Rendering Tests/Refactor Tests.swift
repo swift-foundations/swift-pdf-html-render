@@ -11,20 +11,20 @@ import Testing
 
 @Suite
 struct `PDF.HTML.View Tests` {
-
+    
     // MARK: - Basic Transformation
-
+    
     @Test
     func `String transforms to PDF content`() {
         let html = "Hello, World!"
         let pages = PDF.HTML.pages {
             html
         }
-
+        
         // Should have at least one page
         #expect(pages.count >= 1)
     }
-
+    
     @Test
     func `Paragraph transforms with spacing`() {
         struct TestView: HTML.View {
@@ -32,14 +32,14 @@ struct `PDF.HTML.View Tests` {
                 Paragraph { "Test paragraph" }
             }
         }
-
+        
         let pages = PDF.HTML.pages(html: TestView.init)
-
+        
         // Should have at least one page with content
         #expect(pages.count >= 1)
         #expect(!pages[0].contents.isEmpty)
     }
-
+    
     @Test
     func `Heading transforms`() {
         struct TestView: HTML.View {
@@ -47,14 +47,14 @@ struct `PDF.HTML.View Tests` {
                 H1 { "Big Heading" }
             }
         }
-
+        
         let pages = PDF.HTML.pages(html: TestView.init)
         #expect(pages.count >= 1)
         #expect(!pages[0].contents.isEmpty)
     }
-
+    
     // MARK: - Inline Flow
-
+    
     @Test
     func `Inline elements render together`() {
         struct TestView: HTML.View {
@@ -66,87 +66,87 @@ struct `PDF.HTML.View Tests` {
                 }
             }
         }
-
+        
         let pages = PDF.HTML.pages(html: TestView.init)
         #expect(pages.count >= 1)
-
+        
         // Check content stream contains text
         let contentData = pages[0].contents.first?.data ?? []
         let contentString = String(decoding: contentData, as: UTF8.self)
         #expect(contentString.contains("Normal"))
         #expect(contentString.contains("bold"))
     }
-
-//    @Test
-//    func `Bold applies font`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph {
-//                    StrongImportance { "Bold text" }
-//                }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages(html: TestView.init)
-//        #expect(pages.count >= 1)
-//
-//        // Check that Helvetica-Bold font is used
-//        let fonts = pages[0].resources.fonts
-//        let hasBoldFont = fonts.values.contains { font in
-//            font.baseFontName.contains("Bold")
-//        }
-//        #expect(hasBoldFont, "Should use bold font for <strong>")
-//    }
-//
-//    @Test
-//    func `Italic applies font`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph {
-//                    Emphasis { "Italic text" }
-//                }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages {
-//            TestView()
-//        }
-//
-//        #expect(pages.count >= 1)
-//
-//        // Check that italic/oblique font is used
-//        let fonts = pages[0].resources.fonts
-//        let hasItalicFont = fonts.values.contains { font in
-//            font.baseFontName.contains("Oblique") || font.baseFontName.contains("Italic")
-//        }
-//        #expect(hasItalicFont, "Should use italic font for <em>")
-//    }
-//
-//    @Test
-//    func `Bold + Italic combines correctly`() {
-//        struct TestView: HTML.View {
-//            var body: some HTML.View {
-//                Paragraph {
-//                    StrongImportance {
-//                        Emphasis { "Bold italic" }
-//                    }
-//                }
-//            }
-//        }
-//
-//        let pages = PDF.HTML.pages(html: TestView.init)
-//        #expect(pages.count >= 1)
-//
-//        // Check that bold-oblique font is used
-//        let fonts = pages[0].resources.fonts
-//        let hasBoldItalicFont = fonts.values.contains { font in
-//            font.baseFontName.contains("BoldOblique") || font.baseFontName.contains("BoldItalic")
-//        }
-//        #expect(hasBoldItalicFont, "Should use bold-italic font for nested <strong><em>")
-//    }
-
+    
+    //    @Test
+    //    func `Bold applies font`() {
+    //        struct TestView: HTML.View {
+    //            var body: some HTML.View {
+    //                Paragraph {
+    //                    StrongImportance { "Bold text" }
+    //                }
+    //            }
+    //        }
+    //
+    //        let pages = PDF.HTML.pages(html: TestView.init)
+    //        #expect(pages.count >= 1)
+    //
+    //        // Check that Helvetica-Bold font is used
+    //        let fonts = pages[0].resources.fonts
+    //        let hasBoldFont = fonts.values.contains { font in
+    //            font.baseFontName.contains("Bold")
+    //        }
+    //        #expect(hasBoldFont, "Should use bold font for <strong>")
+    //    }
+    //
+    //    @Test
+    //    func `Italic applies font`() {
+    //        struct TestView: HTML.View {
+    //            var body: some HTML.View {
+    //                Paragraph {
+    //                    Emphasis { "Italic text" }
+    //                }
+    //            }
+    //        }
+    //
+    //        let pages = PDF.HTML.pages {
+    //            TestView()
+    //        }
+    //
+    //        #expect(pages.count >= 1)
+    //
+    //        // Check that italic/oblique font is used
+    //        let fonts = pages[0].resources.fonts
+    //        let hasItalicFont = fonts.values.contains { font in
+    //            font.baseFontName.contains("Oblique") || font.baseFontName.contains("Italic")
+    //        }
+    //        #expect(hasItalicFont, "Should use italic font for <em>")
+    //    }
+    //
+    //    @Test
+    //    func `Bold + Italic combines correctly`() {
+    //        struct TestView: HTML.View {
+    //            var body: some HTML.View {
+    //                Paragraph {
+    //                    StrongImportance {
+    //                        Emphasis { "Bold italic" }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //
+    //        let pages = PDF.HTML.pages(html: TestView.init)
+    //        #expect(pages.count >= 1)
+    //
+    //        // Check that bold-oblique font is used
+    //        let fonts = pages[0].resources.fonts
+    //        let hasBoldItalicFont = fonts.values.contains { font in
+    //            font.baseFontName.contains("BoldOblique") || font.baseFontName.contains("BoldItalic")
+    //        }
+    //        #expect(hasBoldItalicFont, "Should use bold-italic font for nested <strong><em>")
+    //    }
+    
     // MARK: - Document Creation
-
+    
     @Test
     func `PDF.Document can be created from HTML`() {
         struct TestView: HTML.View {
@@ -155,15 +155,15 @@ struct `PDF.HTML.View Tests` {
                 Paragraph { "Content" }
             }
         }
-
+        
         let doc = PDF.Document(info: .init(title: "Test")) {
             TestView()
         }
-
+        
         #expect(doc.pages.count >= 1)
         #expect(doc.info?.title == "Test")
     }
-
+    
     @Test
     func `PDF bytes can be generated from HTML`() {
         struct TestView: HTML.View {
@@ -171,33 +171,33 @@ struct `PDF.HTML.View Tests` {
                 Paragraph { "Hello PDF" }
             }
         }
-
+        
         let doc = PDF.Document { TestView() }
         let bytes = [UInt8](doc)
-
+        
         // Should start with %PDF
         #expect(!bytes.isEmpty)
         #expect(bytes.starts(with: [.ascii.percentSign, .ascii.P, .ascii.D, .ascii.F]))
     }
-
+    
     // MARK: - Configuration
-
+    
     @Test
     func `Configuration affects heading sizes`() {
         let config = PDF.HTML.Configuration(defaultFontSize: 14)
-
+        
         #expect(config.headingSize(level: 1) == 28)  // 14 * 2.0
         #expect(config.headingSize(level: 2) == 21)  // 14 * 1.5
         #expect(config.headingSize(level: 3) == PDF.UserSpace.Unit(14 * 1.17))
     }
-
+    
     @Test
     func `Configuration affects content dimensions`() {
         let config = PDF.HTML.Configuration(
             paperSize: .a4,
             margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
         )
-
+        
         #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width.value - 144)
         #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height.value - 144)
     }
@@ -207,7 +207,7 @@ struct `PDF.HTML.View Tests` {
 
 @Suite("Sticky Header Tests")
 struct StickyHeaderTests {
-
+    
     @Test("Basic sticky header document renders")
     func basicStickyHeader() {
         struct TestView: HTML.View {
@@ -253,40 +253,40 @@ struct StickyHeaderTests {
                 Paragraph { "Filler 38" }
                 Paragraph { "Filler 39" }
                 Paragraph { "Filler 40" }
-
+                
                 H2 { "STICKY_HEADER" }
                     .css.pageBreakAfter(.avoid)
-
+                
                 Paragraph { "FOLLOWING_CONTENT" }
             }
         }
-
+        
         let pages = PDF.HTML.pages { TestView() }
-
+        
         // Should have at least one page and render without crash
         #expect(pages.count >= 1)
-
+        
         // Check that both header and content text exist in the PDF
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
         #expect(contentString.contains("STICKY_HEADER"))
         #expect(contentString.contains("FOLLOWING_CONTENT"))
     }
-
+    
     @Test("Sticky header at document end renders")
     func stickyHeaderAtDocumentEnd() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "Some content" }
-
+                
                 // Sticky header with no following content
                 H2 { "ORPHAN_HEADER" }
                     .css.pageBreakAfter(.avoid)
             }
         }
-
+        
         let pages = PDF.HTML.pages { TestView() }
-
+        
         // Header should still be rendered
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
@@ -300,7 +300,7 @@ struct StickyHeaderTests {
 
 @Suite
 struct `Comprehensive PDF.HTML.View Tests` {
-
+    
     @Test
     func `document showing all elements and properties`() throws {
         let doc = PDF.Document(
@@ -311,14 +311,14 @@ struct `Comprehensive PDF.HTML.View Tests` {
         ) {
             ComplexView()
         }
-
+        
         let bytes = [UInt8](doc)
-
+        
         // Write to /tmp for visual inspection
         let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
         try Data(bytes).write(to: url)
         print("PDF written to: \(url.path)")
-
+        
         // Basic sanity checks
         #expect(doc.pages.count >= 1)
         #expect(bytes.count > 1000, "Complex document should have substantial content")
@@ -328,7 +328,7 @@ struct `Comprehensive PDF.HTML.View Tests` {
 import HtmlToPdf
 @Suite
 struct `Comprehensive PDF.HTML.View Tests 2 htmltopdf` {
-
+    
     @Test
     func `document showing all elements and properties`() async throws {
         @Dependency(\.pdf) var pdf
@@ -463,7 +463,7 @@ private struct BlockElementsDemo: HTML.View {
         PreformattedText {
             "func hello() {\n    print(\"Hello\")\n}"
         }
-//        ThematicBreak.init()
+        //        ThematicBreak.init()
     }
 }
 
@@ -471,7 +471,7 @@ private struct ListsDemo: HTML.View {
     var body: some HTML.View {
         H2 { "4. Lists" }
             .css.pageBreakAfter(.avoid)
-
+        
         // Simple unordered list
         H3 { "4.1 Simple Unordered List" }
             .css.pageBreakAfter(.avoid)
@@ -481,7 +481,7 @@ private struct ListsDemo: HTML.View {
             ListItem { "Second bullet point" }
             ListItem { "Third bullet point" }
         }
-
+        
         // Simple ordered list
         H3 { "4.2 Simple Ordered List" }
         OrderedList {
@@ -489,7 +489,7 @@ private struct ListsDemo: HTML.View {
             ListItem { "Second numbered item" }
             ListItem { "Third numbered item" }
         }
-
+        
         // List with longer content that wraps
         H3 { "4.3 List Items with Wrapping Text" }
         OrderedList {
@@ -497,7 +497,7 @@ private struct ListsDemo: HTML.View {
             ListItem { "Another lengthy item with sufficient text to cause line wrapping and verify proper indentation is maintained throughout." }
             ListItem { "Short item." }
         }
-
+        
         // List with inline formatting
         H3 { "4.4 List Items with Inline Formatting" }
         UnorderedList {
@@ -519,7 +519,7 @@ private struct ListsDemo: HTML.View {
                 Anchor(href: "https://example.com") { "Example Website" }
             }
         }
-
+        
         // Nested lists
         H3 { "4.5 Nested Lists" }
         UnorderedList {
@@ -539,7 +539,7 @@ private struct ListsDemo: HTML.View {
             }
             ListItem { "Level 1 - Item C" }
         }
-
+        
         // Mixed nested lists (ordered inside unordered)
         H3 { "4.6 Mixed Nested Lists" }
         OrderedList {
@@ -560,7 +560,7 @@ private struct ListsDemo: HTML.View {
                 }
             }
         }
-
+        
         // Many items to test numbering
         H3 { "4.7 List with Many Items" }
         OrderedList {
@@ -577,7 +577,7 @@ private struct ListsDemo: HTML.View {
             ListItem { "Item eleven" }
             ListItem { "Item twelve" }
         }
-
+        
         // List after paragraph (spacing test)
         H3 { "4.8 List Spacing" }
         Paragraph { "This paragraph comes before a list. There should be appropriate spacing between this text and the list below." }
@@ -586,7 +586,7 @@ private struct ListsDemo: HTML.View {
             ListItem { "Second item" }
         }
         Paragraph { "This paragraph comes after the list. Spacing should also be appropriate here." }
-
+        
         // Empty and minimal lists
         H3 { "4.9 Single Item Lists" }
         UnorderedList {
@@ -614,11 +614,11 @@ private struct TableDemo: HTML.View {
     var body: some HTML.View {
         H2 { "6. Tables" }
             .css.pageBreakAfter(.avoid)
-
+        
         // Simple table
         H3 { "6.1 Simple Data Table" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             Caption { "Employee Directory" }
             TableHead {
@@ -651,11 +651,11 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
-
+        
         // Table with more columns
         H3 { "6.2 Product Inventory" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             TableHead {
                 TableRow {
@@ -704,11 +704,11 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
-
+        
         // Table with inline formatting
         H3 { "6.3 Table with Formatted Content" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             TableHead {
                 TableRow {
@@ -748,11 +748,11 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
-
+        
         // Table with footer
         H3 { "6.4 Financial Summary with Footer" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             TableHead {
                 TableRow {
@@ -799,11 +799,11 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
-
+        
         // Two-column simple table
         H3 { "6.5 Key-Value Table" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             TableBody {
                 TableRow {
@@ -828,12 +828,12 @@ private struct TableDemo: HTML.View {
                 }
             }
         }
-
+        
         // MARK: - 6.6 Colspan/Rowspan Table
-
+        
         H3 { "6.6 Colspan/Rowspan Table" }
             .css.pageBreakAfter(.avoid)
-
+        
         Table {
             TableHead {
                 TableRow {
@@ -947,7 +947,7 @@ private struct NDADemo: HTML.View {
                 .css.textAlign(.center)
         }
         .css.pageBreakBefore(.always)
-
+        
         Paragraph {
             StrongImportance { "THIS NON-DISCLOSURE AGREEMENT" }
             " (the \"Agreement\") is entered into as of "
@@ -955,83 +955,83 @@ private struct NDADemo: HTML.View {
                 .css.textDecoration(.underline)
             " by and between:"
         }
-
+        
         // Parties
         Paragraph {
             StrongImportance { "DISCLOSING PARTY:" }
             BR()
             "[Company Name], a [State] corporation, with its principal place of business at [Address] (\"Discloser\")"
         }
-
+        
         Paragraph {
             StrongImportance { "RECEIVING PARTY:" }
             BR()
             "[Recipient Name], an individual/entity located at [Address] (\"Recipient\")"
         }
-
+        
         Paragraph {
             "(Discloser and Recipient are collectively referred to as the \"Parties\")"
         }
-
+        
         // Recitals - sticky header (won't be orphaned at bottom of page)
         H2 { "RECITALS" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "WHEREAS" }
             ", the Discloser possesses certain confidential and proprietary information relating to [describe business/technology/project] (the \"Purpose\"); and"
         }
-
+        
         Paragraph {
             StrongImportance { "WHEREAS" }
             ", the Recipient desires to receive certain Confidential Information for the Purpose; and"
         }
-
+        
         Paragraph {
             StrongImportance { "NOW, THEREFORE" }
             ", in consideration of the mutual covenants and agreements set forth herein, and for other good and valuable consideration, the receipt and sufficiency of which are hereby acknowledged, the Parties agree as follows:"
         }
-
+        
         // Article 1 - sticky header
         H2 { "ARTICLE 1: DEFINITIONS" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "1.1 \"Confidential Information\"" }
             " means any and all information or data, whether oral, written, electronic, or visual, that is disclosed by the Discloser to the Recipient, including but not limited to:"
         }
-
+        
         OrderedList {
             ListItem { "Trade secrets, inventions, ideas, processes, formulas, source code, and software;" }
             ListItem { "Business plans, financial information, and customer lists;" }
             ListItem { "Technical data, know-how, and research findings;" }
             ListItem { "Any other information designated as \"Confidential\" at the time of disclosure." }
         }
-
+        
         // Article 2 - sticky header
         H2 { "ARTICLE 2: OBLIGATIONS OF RECIPIENT" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "2.1 Non-Disclosure." }
             " The Recipient agrees to hold and maintain the Confidential Information in strict confidence and shall not, without the prior written approval of the Discloser:"
         }
-
+        
         OrderedList {
             ListItem { "Disclose any Confidential Information to any third parties;" }
             ListItem { "Use the Confidential Information for any purpose other than the Purpose;" }
             ListItem { "Copy or reproduce the Confidential Information except as necessary for the Purpose." }
         }
-
+        
         Paragraph {
             StrongImportance { "2.2 Standard of Care." }
             " The Recipient shall protect the Confidential Information using the same degree of care it uses to protect its own confidential information, but in no event less than reasonable care."
         }
-
+        
         // Article 3 - sticky header
         H2 { "ARTICLE 3: TERM AND TERMINATION" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "3.1 Term." }
             " This Agreement shall remain in effect for a period of "
@@ -1039,7 +1039,7 @@ private struct NDADemo: HTML.View {
                 .css.textDecoration(.underline)
             " years from the Effective Date, unless earlier terminated in accordance with this Agreement."
         }
-
+        
         Paragraph {
             StrongImportance { "3.2 Survival." }
             " The confidentiality obligations under this Agreement shall survive termination and continue for a period of "
@@ -1047,11 +1047,11 @@ private struct NDADemo: HTML.View {
                 .css.textDecoration(.underline)
             " years following termination."
         }
-
+        
         // Article 4 - sticky header
         H2 { "ARTICLE 4: GENERAL PROVISIONS" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "4.1 Governing Law." }
             " This Agreement shall be governed by and construed in accordance with the laws of the State of "
@@ -1059,26 +1059,26 @@ private struct NDADemo: HTML.View {
                 .css.textDecoration(.underline)
             ", without regard to its conflict of laws principles."
         }
-
+        
         Paragraph {
             StrongImportance { "4.2 Entire Agreement." }
             " This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior negotiations, representations, or agreements relating thereto."
         }
-
+        
         Paragraph {
             StrongImportance { "4.3 Amendments." }
             " This Agreement may not be amended or modified except by a written instrument signed by both Parties."
         }
-
+        
         // Signature block - sticky header
         H2 { "SIGNATURES" }
             .css.pageBreakAfter(.avoid)
-
+        
         Paragraph {
             StrongImportance { "IN WITNESS WHEREOF" }
             ", the Parties have executed this Non-Disclosure Agreement as of the date first written above."
         }
-
+        
         // Signature lines
         Paragraph {
             StrongImportance { "DISCLOSER:" }
@@ -1095,7 +1095,7 @@ private struct NDADemo: HTML.View {
             BR()
             "Date: _______________"
         }
-
+        
         Paragraph {
             StrongImportance { "RECIPIENT:" }
         }

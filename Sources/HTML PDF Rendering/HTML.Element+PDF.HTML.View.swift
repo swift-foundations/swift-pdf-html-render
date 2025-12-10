@@ -485,6 +485,38 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Render table content
         PDF.HTML.renderBlock(view.content, context: &context)
 
+        // Draw deferred spanning cells (rowspan > 1)
+        // These cells need borders that span multiple rows
+        if let tc = context.tableContext {
+            for deferred in tc.deferredSpanningCells {
+                // Calculate total height across all spanned rows
+                let startRow = deferred.originRow
+                let endRow = startRow + deferred.rowspan
+                var totalHeight: PDF.UserSpace.Unit = 0
+                for rowIndex in startRow..<min(endRow, tc.rowHeights.count) {
+                    totalHeight += tc.rowHeights[rowIndex].value
+                }
+
+                // Calculate cell bounds
+                let cellX = tc.xForColumn(deferred.column)
+                let cellWidth = tc.widthForColumns(deferred.column, count: deferred.colspan)
+                let cellBounds = PDF.UserSpace.Rectangle(
+                    x: cellX,
+                    y: deferred.startY,
+                    width: cellWidth,
+                    height: PDF.UserSpace.Height(totalHeight)
+                )
+
+                // Draw background for spanning cell
+                if deferred.isHeader, let headerBg = tc.headerBackground {
+                    drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+                }
+
+                // Draw border for spanning cell
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+            }
+        }
+
         // Advance past the table - use current layoutBox position which was updated by rows
         // Add a small gap after the table
         context.pdf.advance(PDF.UserSpace.Y(context.configuration.defaultFontSize * 0.5))
@@ -799,12 +831,27 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 tc.maxCellHeightInCurrentRow = cellHeight
             }
             // Store pending border info (will be drawn after all cells with correct height)
-            tc.pendingCellBorders.append(.init(
-                column: column,
-                colspan: colspan,
-                isHeader: isHeader,
-                textAlignment: textAlignment
-            ))
+            // For rowspan > 1, defer to after all rows are rendered
+            if rowspan > 1 {
+                // Defer this spanning cell - border will be drawn after all rows
+                tc.deferredSpanningCells.append(.init(
+                    originRow: tc.totalRowsRendered,
+                    column: column,
+                    colspan: colspan,
+                    rowspan: rowspan,
+                    isHeader: isHeader,
+                    startY: tc.bounds.lly
+                ))
+            } else {
+                // Normal cell - draw border after row completes
+                tc.pendingCellBorders.append(.init(
+                    column: column,
+                    colspan: colspan,
+                    rowspan: rowspan,
+                    isHeader: isHeader,
+                    textAlignment: textAlignment
+                ))
+            }
 
             // Capture header cell text for page break repetition
             if isHeader && tc.isCapturingHeader {

@@ -217,10 +217,22 @@ extension PDF.HTML.Context {
         public struct PendingCellBorder {
             let column: Int
             let colspan: Int
+            let rowspan: Int
             let isHeader: Bool
             let textAlignment: Horizontal.Alignment
         }
         public var pendingCellBorders: [PendingCellBorder] = []
+
+        /// Deferred spanning cells (rowspan > 1) that need borders drawn after all rows
+        public struct DeferredSpanningCell {
+            let originRow: Int
+            let column: Int
+            let colspan: Int
+            let rowspan: Int
+            let isHeader: Bool
+            let startY: PDF.UserSpace.Y
+        }
+        public var deferredSpanningCells: [DeferredSpanningCell] = []
 
         // MARK: - Repeating Headers on Page Break
 

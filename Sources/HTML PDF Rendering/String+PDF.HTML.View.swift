@@ -8,8 +8,9 @@ extension String: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
-        // Append text as inline run (will be flushed at block boundaries)
-        let run = PDF.Context.TextRun(
+        // Create text runs with automatic symbol font support
+        // This handles characters like ✓ by switching to ZapfDingbats
+        let runs = PDF.Context.TextRun.runsWithSymbolSupport(
             text: view,
             font: context.pdf.style.font,
             fontSize: context.pdf.style.fontSize,
@@ -17,6 +18,10 @@ extension String: PDF.HTML.View {
             textDecoration: context.pdf.style.textMarkup,
             verticalOffset: context.pdf.style.verticalOffset
         )
-        context.pdf.append(inline: run)
+
+        // Append all runs (will be flushed at block boundaries)
+        for run in runs {
+            context.pdf.append(inline: run)
+        }
     }
 }
