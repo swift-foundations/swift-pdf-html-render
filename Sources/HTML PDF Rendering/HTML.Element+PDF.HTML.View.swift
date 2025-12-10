@@ -21,12 +21,20 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Determine if this is a block or inline element
         let isBlock = view.isBlock
 
-        // Save current style and horizontal bounds (NOT Y position - that must advance)
+        // Save element-scoped state (restored via defer)
+        // NOTE: Y position is NOT saved - it must advance through rendering
         let savedStyle = context.pdf.style
         let savedLLX = context.pdf.layoutBox.llx
         let savedURX = context.pdf.layoutBox.urx
         let savedPreserveWhitespace = context.pdf.preserveWhitespace
         let savedLinkURL = context.currentLinkURL
+        defer {
+            context.pdf.style = savedStyle
+            context.pdf.layoutBox.llx = savedLLX
+            context.pdf.layoutBox.urx = savedURX
+            context.pdf.preserveWhitespace = savedPreserveWhitespace
+            context.currentLinkURL = savedLinkURL
+        }
 
         // Apply tag-specific style BEFORE calculating margins
         // CSS `em` units in margins are relative to the element's own font size
@@ -63,18 +71,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Clear deferred content - we're handling it now
             context.deferredKeepWithNextRender = nil
 
-            // If the deferred header is very tall (> 90% of page), skip sticky behavior
+            // If the deferred header is very tall (> threshold % of page), skip sticky behavior
             let availablePageHeight = context.pdf.remainingHeight
-            if deferred.measuredHeight.value > availablePageHeight.value * 0.9 {
+            if deferred.measuredHeight.value > availablePageHeight.value * context.configuration.deferredHeaderThreshold {
                 // Just render the header without sticky behavior
                 deferred.render(&context)
                 renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
-                // Restore style
-                context.pdf.style = savedStyle
-                context.pdf.layoutBox.llx = savedLLX
-                context.pdf.layoutBox.urx = savedURX
-                context.pdf.preserveWhitespace = savedPreserveWhitespace
-                context.currentLinkURL = savedLinkURL
                 return
             }
 
@@ -94,24 +96,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Continue with normal rendering of this element
             renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
-            // Restore style
-            context.pdf.style = savedStyle
-            context.pdf.layoutBox.llx = savedLLX
-            context.pdf.layoutBox.urx = savedURX
-            context.pdf.preserveWhitespace = savedPreserveWhitespace
-            context.currentLinkURL = savedLinkURL
             return
         }
 
         // Render with flow and margins
         renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
-
-        // Restore style and horizontal bounds (Y position stays advanced)
-        context.pdf.style = savedStyle
-        context.pdf.layoutBox.llx = savedLLX
-        context.pdf.layoutBox.urx = savedURX
-        context.pdf.preserveWhitespace = savedPreserveWhitespace
-        context.currentLinkURL = savedLinkURL
     }
 
     /// Render void element (br, hr, etc.)
@@ -129,7 +118,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             if context.pdf.hasInlineRuns {
                 context.pdf.flushInlineRuns()
             }
-            let spacing = context.configuration.defaultFontSize * 0.5
+            let spacing = context.configuration.defaultFontSize * context.configuration.horizontalGapEm
             context.pdf.advance(PDF.UserSpace.Y(spacing))
 
             let layoutBox = context.pdf.layoutBox
@@ -209,7 +198,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             else if let listType = listType(for: view.tagName) {
                 context.pdf.push(list: listType)
                 // WebKit's default padding-left for ul/ol is 40px ≈ 30pt at 72dpi
-                let indent: PDF.UserSpace.Unit = 30
+                let indent = context.configuration.listIndentPoints
                 let savedLLX = context.pdf.layoutBox.llx
                 context.pdf.layoutBox.llx = PDF.UserSpace.X(savedLLX.value + indent)
 
@@ -246,8 +235,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 }
 
                 // Position marker so its right edge has a consistent gap before text
-                // Gap is 0.5em (proportional to font size) for uniform appearance
-                let markerGap = context.pdf.style.fontSize * 0.5
+                // Gap is proportional to font size for uniform appearance
+                let markerGap = context.pdf.style.fontSize * context.configuration.horizontalGapEm
                 let markerX = PDF.UserSpace.X(context.pdf.layoutBox.llx.value - markerWidth - markerGap)
 
                 // Set pending marker to be rendered with the first line of text
@@ -362,18 +351,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // WebKit: font-size ~0.83em, vertical-align: sub/super
         case "sub":
             let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * 0.83
-            // Subscript drops below baseline - WebKit uses about 0.2em
-            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) - currentSize * 0.2
+            context.pdf.style.fontSize = currentSize * context.configuration.subscriptScale
+            // Subscript drops below baseline
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) - currentSize * context.configuration.subscriptOffset
         case "sup":
             let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * 0.83
-            // Superscript rises above baseline - WebKit uses about 0.4em
-            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) + currentSize * 0.4
+            context.pdf.style.fontSize = currentSize * context.configuration.superscriptScale
+            // Superscript rises above baseline
+            context.pdf.style.verticalOffset = (context.pdf.style.verticalOffset) + currentSize * context.configuration.superscriptOffset
 
-        // Small - WebKit default is smaller (13px base = ~0.8125em)
+        // Small - WebKit default is smaller
         case "small":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * 0.83
+            context.pdf.style.fontSize = context.pdf.style.fontSize * context.configuration.smallTextScale
 
         // Links
         case "a":
@@ -383,10 +372,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Block indentation
         // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
-            let indent: PDF.UserSpace.Unit = 30
+            let indent = context.configuration.blockquoteIndentPoints
             context.pdf.layoutBox.llx = PDF.UserSpace.X(context.pdf.layoutBox.llx.value + indent)
         case "figure":
-            let margin: PDF.UserSpace.Unit = 40
+            let margin = context.configuration.figureMarginPoints
             context.pdf.layoutBox.llx = PDF.UserSpace.X(context.pdf.layoutBox.llx.value + margin)
             context.pdf.layoutBox.urx = PDF.UserSpace.X(context.pdf.layoutBox.urx.value - margin)
 
@@ -407,18 +396,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         switch tagName {
         case "p":
             return (.length(.em(1.0)), .length(.em(1.0)))
-        case "h1":
-            return (.length(.em(0.67)), .length(.em(0.67)))
-        case "h2":
-            return (.length(.em(0.83)), .length(.em(0.83)))
-        case "h3":
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        case "h4":
-            return (.length(.em(1.33)), .length(.em(1.33)))
-        case "h5":
-            return (.length(.em(1.67)), .length(.em(1.67)))
-        case "h6":
-            return (.length(.em(2.33)), .length(.em(2.33)))
+        case "h1", "h2", "h3", "h4", "h5", "h6":
+            let margin = configuration.headingMarginEm(for: tagName)
+            return (.length(.em(margin)), .length(.em(margin)))
         case "blockquote":
             return (.length(.em(1.0)), .length(.em(1.0)))
         // Note: <figure> has no vertical margins - its children provide spacing.
@@ -568,7 +548,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Advance past the table - use current layoutBox position which was updated by rows
         // Add a small gap after the table
-        context.pdf.advance(PDF.UserSpace.Y(context.configuration.defaultFontSize * 0.5))
+        context.pdf.advance(PDF.UserSpace.Y(context.configuration.defaultFontSize * context.configuration.horizontalGapEm))
 
         // Restore context
         context.tableContext = savedTableContext

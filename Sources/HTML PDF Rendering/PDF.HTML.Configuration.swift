@@ -45,6 +45,42 @@ extension PDF.HTML {
         /// Heading spacing (multiplier of heading size)
         public var headingSpacing: Double
 
+        // MARK: - Typography Scales
+
+        /// Scale factor for subscript text (default: 0.83, i.e., 83% of base size)
+        public var subscriptScale: Double
+
+        /// Scale factor for superscript text (default: 0.83)
+        public var superscriptScale: Double
+
+        /// Scale factor for <small> tag text (default: 0.83)
+        public var smallTextScale: Double
+
+        /// Vertical offset for subscript as em fraction (default: 0.2, negative direction)
+        public var subscriptOffset: Double
+
+        /// Vertical offset for superscript as em fraction (default: 0.4, positive direction)
+        public var superscriptOffset: Double
+
+        // MARK: - Block Indentation
+
+        /// List indentation in points (default: 30)
+        public var listIndentPoints: PDF.UserSpace.Unit
+
+        /// Blockquote indentation in points (default: 30)
+        public var blockquoteIndentPoints: PDF.UserSpace.Unit
+
+        /// Figure margin in points (default: 40)
+        public var figureMarginPoints: PDF.UserSpace.Unit
+
+        // MARK: - Spacing
+
+        /// Horizontal gap multiplier in em (default: 0.5, used for list markers)
+        public var horizontalGapEm: Double
+
+        /// Threshold for deferring large headers (default: 0.9, i.e., 90% of page height)
+        public var deferredHeaderThreshold: Double
+
         // MARK: - Table Configuration
 
         /// Cell padding for table cells
@@ -90,6 +126,16 @@ extension PDF.HTML {
             lineHeight: LineHeight = .normal,
             paragraphSpacing: Double = 0.5,
             headingSpacing: Double = 0.8,
+            subscriptScale: Double = 0.83,
+            superscriptScale: Double = 0.83,
+            smallTextScale: Double = 0.83,
+            subscriptOffset: Double = 0.2,
+            superscriptOffset: Double = 0.4,
+            listIndentPoints: PDF.UserSpace.Unit = 30,
+            blockquoteIndentPoints: PDF.UserSpace.Unit = 30,
+            figureMarginPoints: PDF.UserSpace.Unit = 40,
+            horizontalGapEm: Double = 0.5,
+            deferredHeaderThreshold: Double = 0.9,
             tableCellPadding: PDF.UserSpace.Unit = 4,
             tableBorderColor: PDF.Color = .gray(0.3),
             tableBorderWidth: PDF.UserSpace.Unit = 0.5,
@@ -104,6 +150,16 @@ extension PDF.HTML {
             self.lineHeight = lineHeight
             self.paragraphSpacing = paragraphSpacing
             self.headingSpacing = headingSpacing
+            self.subscriptScale = subscriptScale
+            self.superscriptScale = superscriptScale
+            self.smallTextScale = smallTextScale
+            self.subscriptOffset = subscriptOffset
+            self.superscriptOffset = superscriptOffset
+            self.listIndentPoints = listIndentPoints
+            self.blockquoteIndentPoints = blockquoteIndentPoints
+            self.figureMarginPoints = figureMarginPoints
+            self.horizontalGapEm = horizontalGapEm
+            self.deferredHeaderThreshold = deferredHeaderThreshold
             self.tableCellPadding = tableCellPadding
             self.tableBorderColor = tableBorderColor
             self.tableBorderWidth = tableBorderWidth
@@ -171,6 +227,20 @@ extension PDF.HTML {
             case 5: return defaultFontSize * 0.83
             case 6: return defaultFontSize * 0.67
             default: return defaultFontSize
+            }
+        }
+
+        /// Margin multiplier (em-based) for heading level (1-6)
+        /// Based on WebKit user-agent stylesheet defaults
+        public func headingMarginEm(for tag: String) -> Double {
+            switch tag {
+            case "h1": return 0.67
+            case "h2": return 0.83
+            case "h3": return 1.0
+            case "h4": return 1.33
+            case "h5": return 1.67
+            case "h6": return 2.33
+            default: return 1.0
             }
         }
     }

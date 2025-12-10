@@ -49,7 +49,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
 
         if shouldAvoidPageBreakAfter {
             // Capture context snapshot for restoration during deferred render
-            let snapshot = PDF.HTML.Context.PDFContextSnapshot(from: context.pdf)
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
             let configuration = context.configuration
 
             // Measure the content height without rendering (measurement mode suppresses operations)
