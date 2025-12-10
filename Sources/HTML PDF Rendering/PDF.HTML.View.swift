@@ -2,6 +2,7 @@
 // Static dispatch PDF rendering for HTML.View types
 
 import HTML_Renderable
+import OrderedCollections
 import PDF_Rendering
 import Rendering
 
@@ -22,6 +23,12 @@ extension PDF.HTML {
 
         /// Active table layout context (nil when not in a table)
         public var tableContext: Context.Table?
+
+        /// HTML attributes for the current element (colspan, rowspan, etc.)
+        ///
+        /// Populated by `HTML._Attributes` wrapper during rendering.
+        /// Used by table cell rendering to extract colspan/rowspan values.
+        public var attributes: OrderedDictionary<String, String> = [:]
 
         /// Pending bottom margin from previous block element (for margin collapsing).
         ///

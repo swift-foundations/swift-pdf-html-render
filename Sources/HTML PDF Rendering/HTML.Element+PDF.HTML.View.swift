@@ -692,9 +692,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
-        // Get colspan/rowspan (default to 1)
-        let colspan = 1  // TODO: Extract from HTML attributes
-        _ = 1  // rowspan - TODO: Extract from HTML attributes
+        // Get colspan/rowspan from HTML attributes (default to 1)
+        let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
+        let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
+        _ = rowspan  // TODO: Implement rowspan layout logic
 
         // Get current column position
         let column = tableCtx.currentColumn
