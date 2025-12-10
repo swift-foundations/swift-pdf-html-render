@@ -132,13 +132,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             let spacing = context.configuration.defaultFontSize * 0.5
             context.pdf.advance(PDF.UserSpace.Y(spacing))
 
-            let lineY = context.pdf.layoutBox.lly
-            let startX = context.pdf.layoutBox.llx
-            let endX = PDF.UserSpace.X(startX.value + context.pdf.layoutBox.width.value)
-
+            let layoutBox = context.pdf.layoutBox
             context.pdf.emitLine(
-                from: PDF.UserSpace.Coordinate(x: startX, y: lineY),
-                to: PDF.UserSpace.Coordinate(x: endX, y: lineY),
+                from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
+                to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
                 color: .gray(0.5),
                 width: 1
             )
@@ -180,8 +177,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             else if view.tagName == "thead" {
                 // Start capturing header cells for repetition on page breaks
                 if var tc = context.tableContext {
-                    tc.isCapturingHeader = true
-                    tc.pendingHeaderCells = []
+                    tc.header.startCapturing()
                     context.tableContext = tc
                 }
 
@@ -189,11 +185,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
                 // Finish capturing header and store for page break repetition
                 if var tc = context.tableContext {
-                    tc.isCapturingHeader = false
-                    tc.headerCells = tc.pendingHeaderCells
+                    tc.header.finalizeCapture()
                     // Store header row height for page break calculations
                     if !tc.rowHeights.isEmpty {
-                        tc.headerRowHeight = tc.rowHeights[0]
+                        tc.header.rowHeight = tc.rowHeights[0]
                     }
                     context.tableContext = tc
                 }
@@ -479,7 +474,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             bounds: tableBounds,
             columnWidths: columnWidths,
             rowHeights: rowHeights,
-            spanGrid: [],
             cellPadding: cellPadding,
             borderColor: context.configuration.tableBorderColor,
             borderWidth: context.configuration.tableBorderWidth,
@@ -616,7 +610,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let minRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
         // For page break check: account for header repetition if headers exist
-        let headerHeight = tableCtx.headerCells != nil ? tableCtx.headerRowHeight : PDF.UserSpace.Height(0)
+        let headerHeight = tableCtx.header.hasHeader ? tableCtx.header.rowHeight : PDF.UserSpace.Height(0)
         let totalNeeded = PDF.UserSpace.Height(minRowHeight.value + headerHeight.value)
 
         // BEFORE page break: if we would exceed the page AND have already rendered rows,
@@ -646,7 +640,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // If page break occurred and we have stored headers, repeat them
-        if didPageBreak && tableCtx.headerCells != nil && tableCtx.columnsInitialized {
+        if didPageBreak && tableCtx.header.hasHeader && tableCtx.columnsInitialized {
             renderRepeatedHeader(context: &context)
             // Refresh tableCtx after header rendering
             if let tc = context.tableContext {
@@ -953,16 +947,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 ))
 
                 // Mark cells as occupied for rowspan > 1
-                tc.markSpannedCells(
+                tc.spans.mark(
                     fromRow: tc.totalRowsRendered,
                     column: column,
                     rowspan: rowspan,
-                    colspan: colspan
+                    colspan: colspan,
+                    columnCount: tc.columnCount
                 )
 
                 // Capture header cell text for page break repetition
-                if isHeader && tc.isCapturingHeader {
-                    tc.pendingHeaderCells.append(.init(text: contentText, colspan: colspan))
+                if isHeader && tc.header.isCapturing {
+                    tc.header.addCell(.init(text: contentText, colspan: colspan))
                 }
 
                 tc.currentColumn += colspan
@@ -993,9 +988,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 ))
 
                 // Capture header cell text for page break repetition
-                if isHeader && tc.isCapturingHeader {
+                if isHeader && tc.header.isCapturing {
                     let cellText = extractCellText(from: view.content)
-                    tc.pendingHeaderCells.append(.init(text: cellText, colspan: colspan))
+                    tc.header.addCell(.init(text: cellText, colspan: colspan))
                 }
 
                 tc.currentColumn += colspan
@@ -1030,18 +1025,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let color = tableCtx.borderColor
         let width = PDF.UserSpace.Width(tableCtx.borderWidth)
 
-        // Draw left edge
+        // Draw left edge (from lower-left to upper-left)
         context.pdf.emitLine(
             from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
-            to: PDF.UserSpace.Coordinate(x: bounds.llx, y: PDF.UserSpace.Y(bounds.lly.value + bounds.height.value)),
+            to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
             color: color,
             width: width
         )
 
-        // Draw top edge
+        // Draw top edge (from lower-left to lower-right)
         context.pdf.emitLine(
             from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
-            to: PDF.UserSpace.Coordinate(x: PDF.UserSpace.X(bounds.llx.value + bounds.width.value), y: bounds.lly),
+            to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
             color: color,
             width: width
         )
@@ -1062,29 +1057,20 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         let color = tableCtx.borderColor
         let width = PDF.UserSpace.Width(tableCtx.borderWidth)
-
-        // Use table X position from bounds
-        let tableX = tableCtx.bounds.llx
-
-        // Calculate total table width from column widths
-        var tableWidth: PDF.UserSpace.Unit = 0
-        for w in tableCtx.columnWidths {
-            tableWidth += w.value
-        }
+        let tableBounds = tableCtx.bounds
 
         // Draw right edge (from fragment top to fragment bottom)
-        let rightX = PDF.UserSpace.X(tableX.value + tableWidth)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: rightX, y: fragmentStartY),
-            to: PDF.UserSpace.Coordinate(x: rightX, y: fragmentEndY),
+            from: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentStartY),
+            to: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentEndY),
             color: color,
             width: width
         )
 
         // Draw bottom edge (from table left to table right)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: tableX, y: fragmentEndY),
-            to: PDF.UserSpace.Coordinate(x: PDF.UserSpace.X(tableX.value + tableWidth), y: fragmentEndY),
+            from: PDF.UserSpace.Coordinate(x: tableBounds.llx, y: fragmentEndY),
+            to: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentEndY),
             color: color,
             width: width
         )
@@ -1112,15 +1098,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context: inout PDF.HTML.Context
     ) {
         // Inset by half the border width so border covers background edge cleanly
-        let inset = borderWidth / PDF.UserSpace.Unit(2)
-        let insetBounds = PDF.UserSpace.Rectangle(
-            x: PDF.UserSpace.X(bounds.llx.value + inset),
-            y: PDF.UserSpace.Y(bounds.lly.value + inset),
-            width: PDF.UserSpace.Width(bounds.width.value - inset * PDF.UserSpace.Unit(2)),
-            height: PDF.UserSpace.Height(bounds.height.value - inset * PDF.UserSpace.Unit(2))
-        )
+        let inset = PDF.UserSpace.Unit(borderWidth.value / 2)
         context.pdf.emitRectangle(
-            insetBounds,
+            bounds.insetBy(dx: inset, dy: inset),
             fill: color,
             stroke: nil
         )
@@ -1184,7 +1164,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     /// Render the stored header row (called after page break)
     private static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
         guard var tableCtx = context.tableContext,
-              let headerCells = tableCtx.headerCells,
+              let headerCells = tableCtx.header.cells,
               !headerCells.isEmpty else {
             return
         }
@@ -1200,13 +1180,13 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             x: tableCtx.bounds.llx,
             y: context.pdf.layoutBox.lly,
             width: tableCtx.bounds.width,
-            height: tableCtx.headerRowHeight
+            height: tableCtx.header.rowHeight
         )
         context.tableContext = tableCtx
 
         // Minimum row height from stored header height
-        let minRowHeight = tableCtx.headerRowHeight.value > 0
-            ? tableCtx.headerRowHeight
+        let minRowHeight = tableCtx.header.rowHeight.value > 0
+            ? tableCtx.header.rowHeight
             : PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
         // PRE-DRAW: Draw header backgrounds before content
