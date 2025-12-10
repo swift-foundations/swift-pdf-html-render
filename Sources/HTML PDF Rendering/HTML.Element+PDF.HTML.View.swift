@@ -509,7 +509,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
                 // Draw background for spanning cell
                 if deferred.isHeader, let headerBg = tc.headerBackground {
-                    drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
                 }
 
                 // Draw border for spanning cell
@@ -613,7 +613,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                     )
                     // First row cells are typically headers
                     if let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
                     }
                 }
             }
@@ -633,7 +633,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                         height: minRowHeight
                     )
                     if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: cellBounds, color: altColor, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
                     }
                 }
             }
@@ -673,9 +673,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                         height: extensionHeight
                     )
                     if pending.isHeader, let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: extensionBounds, color: headerBg, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
                     } else if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: extensionBounds, color: altColor, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
                     }
                 }
             }
@@ -891,14 +891,23 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         )
     }
 
-    /// Draw cell background
+    /// Draw cell background (inset by half border width to avoid overlap)
     private static func drawCellBackground(
         bounds: PDF.UserSpace.Rectangle,
         color: PDF.Color,
+        borderWidth: PDF.UserSpace.Unit = 0,
         context: inout PDF.HTML.Context
     ) {
+        // Inset by half the border width so border covers background edge cleanly
+        let inset = borderWidth / PDF.UserSpace.Unit(2)
+        let insetBounds = PDF.UserSpace.Rectangle(
+            x: PDF.UserSpace.X(bounds.llx.value + inset),
+            y: PDF.UserSpace.Y(bounds.lly.value + inset),
+            width: PDF.UserSpace.Width(bounds.width.value - inset * PDF.UserSpace.Unit(2)),
+            height: PDF.UserSpace.Height(bounds.height.value - inset * PDF.UserSpace.Unit(2))
+        )
         context.pdf.emitRectangle(
-            bounds,
+            insetBounds,
             fill: color,
             stroke: nil
         )
@@ -1001,7 +1010,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Draw header background
             if let headerBg = tableCtx.headerBackground {
-                drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
+                drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tableCtx.borderWidth, context: &context)
             }
 
             cellColumn += headerCell.colspan
