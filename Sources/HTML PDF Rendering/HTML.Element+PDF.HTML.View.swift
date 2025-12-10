@@ -26,10 +26,16 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let savedLLX = context.pdf.layoutBox.llx
         let savedURX = context.pdf.layoutBox.urx
         let savedPreserveWhitespace = context.pdf.preserveWhitespace
+        let savedLinkURL = context.currentLinkURL
 
         // Apply tag-specific style BEFORE calculating margins
         // CSS `em` units in margins are relative to the element's own font size
         applyTagStyle(view.tagName, context: &context)
+
+        // For anchor tags, extract href from attributes for clickable links
+        if view.tagName == "a" {
+            context.currentLinkURL = context.attributes["href"]
+        }
 
         // Check for block margins (now using the element's font size for em calculations)
         // Nested lists have no margins per CSS spec
@@ -68,6 +74,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 context.pdf.layoutBox.llx = savedLLX
                 context.pdf.layoutBox.urx = savedURX
                 context.pdf.preserveWhitespace = savedPreserveWhitespace
+                context.currentLinkURL = savedLinkURL
                 return
             }
 
@@ -92,6 +99,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.layoutBox.llx = savedLLX
             context.pdf.layoutBox.urx = savedURX
             context.pdf.preserveWhitespace = savedPreserveWhitespace
+            context.currentLinkURL = savedLinkURL
             return
         }
 
@@ -103,6 +111,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context.pdf.layoutBox.llx = savedLLX
         context.pdf.layoutBox.urx = savedURX
         context.pdf.preserveWhitespace = savedPreserveWhitespace
+        context.currentLinkURL = savedLinkURL
     }
 
     /// Render void element (br, hr, etc.)
@@ -479,6 +488,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         )
         // Track total rows for Y advancement
         context.tableContext?.totalRowsRendered = 0
+        // Note: tableStartY will be set when first row renders (not here, to avoid capturing
+        // the position before the actual table content starts)
 
         // Reset margin collapsing within table
         context.resetMarginCollapsing()
@@ -556,6 +567,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 context.pdf.style = savedStyle
                 context.pdf.layoutBox = savedLayoutBox
             }
+
+            // Draw the table's right and bottom borders (border-collapse)
+            drawTableRightAndBottomBorders(tableCtx: tc, context: &context)
         }
 
         // Advance past the table - use current layoutBox position which was updated by rows
@@ -582,6 +596,22 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
         tableCtx.pendingCellBorders = []
 
+        // === CALCULATE ROW-WIDE BASELINE METRICS ===
+        // To ensure consistent baseline alignment across all cells (header and data),
+        // we compute max ascent/descent for BOTH regular and bold font variants.
+        // This fixes baseline drift between bold headers and regular data cells.
+        let fontSize = context.pdf.style.fontSize
+        let regularFont = context.pdf.style.font
+        let boldFont = regularFont.bold
+
+        let regularAscent = regularFont.metrics.ascender(atSize: fontSize)
+        let regularDescent = abs(regularFont.metrics.descender(atSize: fontSize))
+        let boldAscent = boldFont.metrics.ascender(atSize: fontSize)
+        let boldDescent = abs(boldFont.metrics.descender(atSize: fontSize))
+
+        tableCtx.currentRowMaxAscent = max(regularAscent, boldAscent)
+        tableCtx.currentRowMaxDescent = max(regularDescent, boldDescent)
+
         // Calculate minimum row height (single line)
         let minRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
@@ -589,8 +619,31 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let headerHeight = tableCtx.headerCells != nil ? tableCtx.headerRowHeight : PDF.UserSpace.Height(0)
         let totalNeeded = PDF.UserSpace.Height(minRowHeight.value + headerHeight.value)
 
+        // BEFORE page break: if we would exceed the page AND have already rendered rows,
+        // draw the fragment's right and bottom borders to close this page's fragment.
+        // We must do this BEFORE checkPageBreak since we can't draw on previous pages after.
+        let willPageBreak = context.pdf.wouldExceedPage(adding: totalNeeded)
+        if willPageBreak && tableCtx.columnsInitialized && tableCtx.totalRowsRendered > 0 {
+            // Draw fragment borders for the portion on this page
+            drawFragmentRightAndBottomBorders(
+                tableCtx: tableCtx,
+                fragmentStartY: tableCtx.currentFragmentStartY,
+                fragmentEndY: tableCtx.currentFragmentEndY,
+                context: &context
+            )
+        }
+
         // Check if row (plus header if needed) fits on current page
         let didPageBreak = context.pdf.checkPageBreak(needing: totalNeeded)
+
+        // After page break, reset fragment tracking BEFORE repeating headers
+        // so the fragment includes the repeated header row
+        if didPageBreak && tableCtx.columnsInitialized {
+            // The new fragment starts at the top of the new page
+            tableCtx.currentFragmentStartY = context.pdf.layoutBox.lly
+            tableCtx.currentFragmentEndY = context.pdf.layoutBox.lly
+            context.tableContext = tableCtx
+        }
 
         // If page break occurred and we have stored headers, repeat them
         if didPageBreak && tableCtx.headerCells != nil && tableCtx.columnsInitialized {
@@ -614,6 +667,19 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
+
+        // Track table start position from first row (not from <table> entry)
+        // This ensures borders start at the actual first row, not above it
+        if tableCtx.totalRowsRendered == 0 {
+            if var tc = context.tableContext {
+                tc.tableStartY = rowStartY
+                // Initialize fragment tracking for the first page
+                tc.currentFragmentStartY = rowStartY
+                tc.currentFragmentEndY = rowStartY
+                context.tableContext = tc
+                tableCtx = tc
+            }
+        }
 
         // FIRST ROW: Two-pass rendering for column counting
         if !tableCtx.columnsInitialized {
@@ -742,7 +808,16 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Advance Y position past this row using actual height
-        context.pdf.layoutBox.lly = PDF.UserSpace.Y(rowStartY.value + actualRowHeight.value)
+        let newY = PDF.UserSpace.Y(rowStartY.value + actualRowHeight.value)
+        context.pdf.layoutBox.lly = newY
+
+        // Track table end position (updated after each row for accurate border drawing)
+        if var tc = context.tableContext {
+            tc.tableEndY = newY
+            // Also update current fragment end for per-page border drawing
+            tc.currentFragmentEndY = newY
+            context.tableContext = tc
+        }
 
         // Increment total rows rendered and reset for next row
         if var tc = context.tableContext {
@@ -803,30 +878,27 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let contentX = PDF.UserSpace.X(cellX.value + cellPadding)
         let contentWidth = PDF.UserSpace.Width(cellWidth.value - cellPadding * 2)
 
-        // === PRECISE VERTICAL POSITIONING using font metrics ===
-        // Get actual font metrics for the current style
-        let font = context.pdf.style.font
-        let fontSize = context.pdf.style.fontSize
-        let ascender = font.metrics.ascender(atSize: fontSize)
-        let descender = font.metrics.descender(atSize: fontSize)  // negative value
+        // === PRECISE VERTICAL POSITIONING using ROW-WIDE font metrics ===
+        // Use row-wide max ascent/descent to ensure consistent baseline across all cells
+        // This fixes bold/regular baseline drift in mixed header/data rows
+        let rowMaxAscent = tableCtx.currentRowMaxAscent
+        let rowMaxDescent = tableCtx.currentRowMaxDescent
 
-        // Content height from font metrics: ascender - descender (descender is negative, so this adds)
-        let fontContentHeight = ascender - descender
+        // Content height from row-wide font metrics
+        let fontContentHeight = rowMaxAscent + rowMaxDescent
 
         // Line height from style (includes leading)
         let lineHeight = context.pdf.style.lineHeightPoints.value
 
-        // Half-leading calculation available if needed for future refinement:
-        // halfLeading = max(0, (lineHeight - fontContentHeight) / 2)
+        // Use the larger of font content height or line height for consistent spacing
+        let effectiveLineHeight = max(fontContentHeight, lineHeight)
 
         // Available content height within cell
         let cellContentHeight = tableCtx.bounds.height.value - cellPadding * 2
 
         // For vertical centering (HTML default vertical-align: middle):
         // Position text so the visual center of the text block aligns with cell center
-        // Visual center of text = baseline - (ascender - descender) / 2 + ascender
-        // Simplified: center the line box within available height
-        let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - lineHeight) / PDF.UserSpace.Unit(2))
+        let verticalCenterOffset = Swift.max(PDF.UserSpace.Unit(0), (cellContentHeight - effectiveLineHeight) / PDF.UserSpace.Unit(2))
 
         // Header cells: add slight top padding compensation (headers often feel tight)
         // This accounts for optical adjustment - bold text appears heavier at top
@@ -946,17 +1018,89 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         context.pdf.layoutBox = savedLayoutBox
     }
 
-    /// Draw cell border
+    /// Draw cell border (only left and top edges to avoid double borders)
+    ///
+    /// Uses border-collapse approach: each cell draws its left and top borders.
+    /// The table's right and bottom edges are drawn once at the end.
     private static func drawCellBorder(
         bounds: PDF.UserSpace.Rectangle,
         tableCtx: PDF.HTML.Context.Table,
         context: inout PDF.HTML.Context
     ) {
-        context.pdf.emitRectangle(
-            bounds,
-            fill: nil,
-            stroke: tableCtx.borderColor,
-            strokeWidth: PDF.UserSpace.Width(tableCtx.borderWidth)
+        let color = tableCtx.borderColor
+        let width = PDF.UserSpace.Width(tableCtx.borderWidth)
+
+        // Draw left edge
+        context.pdf.emitLine(
+            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+            to: PDF.UserSpace.Coordinate(x: bounds.llx, y: PDF.UserSpace.Y(bounds.lly.value + bounds.height.value)),
+            color: color,
+            width: width
+        )
+
+        // Draw top edge
+        context.pdf.emitLine(
+            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+            to: PDF.UserSpace.Coordinate(x: PDF.UserSpace.X(bounds.llx.value + bounds.width.value), y: bounds.lly),
+            color: color,
+            width: width
+        )
+    }
+
+    /// Draw right and bottom borders for a table fragment (per-page section)
+    ///
+    /// For multi-page tables, this is called:
+    /// 1. Before each page break (to close the fragment on the current page)
+    /// 2. At the end of the table (to close the final fragment)
+    private static func drawFragmentRightAndBottomBorders(
+        tableCtx: PDF.HTML.Context.Table,
+        fragmentStartY: PDF.UserSpace.Y,
+        fragmentEndY: PDF.UserSpace.Y,
+        context: inout PDF.HTML.Context
+    ) {
+        guard tableCtx.columnWidths.count > 0 else { return }
+
+        let color = tableCtx.borderColor
+        let width = PDF.UserSpace.Width(tableCtx.borderWidth)
+
+        // Use table X position from bounds
+        let tableX = tableCtx.bounds.llx
+
+        // Calculate total table width from column widths
+        var tableWidth: PDF.UserSpace.Unit = 0
+        for w in tableCtx.columnWidths {
+            tableWidth += w.value
+        }
+
+        // Draw right edge (from fragment top to fragment bottom)
+        let rightX = PDF.UserSpace.X(tableX.value + tableWidth)
+        context.pdf.emitLine(
+            from: PDF.UserSpace.Coordinate(x: rightX, y: fragmentStartY),
+            to: PDF.UserSpace.Coordinate(x: rightX, y: fragmentEndY),
+            color: color,
+            width: width
+        )
+
+        // Draw bottom edge (from table left to table right)
+        context.pdf.emitLine(
+            from: PDF.UserSpace.Coordinate(x: tableX, y: fragmentEndY),
+            to: PDF.UserSpace.Coordinate(x: PDF.UserSpace.X(tableX.value + tableWidth), y: fragmentEndY),
+            color: color,
+            width: width
+        )
+    }
+
+    /// Draw the table's right and bottom borders (completing the border-collapse grid)
+    /// Convenience wrapper that uses the current fragment tracking properties.
+    private static func drawTableRightAndBottomBorders(
+        tableCtx: PDF.HTML.Context.Table,
+        context: inout PDF.HTML.Context
+    ) {
+        drawFragmentRightAndBottomBorders(
+            tableCtx: tableCtx,
+            fragmentStartY: tableCtx.currentFragmentStartY,
+            fragmentEndY: tableCtx.currentFragmentEndY,
+            context: &context
         )
     }
 
@@ -1152,12 +1296,19 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Advance Y position past header row
+        let newY = PDF.UserSpace.Y(context.pdf.layoutBox.lly.value + minRowHeight.value)
         context.pdf.layoutBox = PDF.UserSpace.Rectangle(
             x: context.pdf.layoutBox.llx,
-            y: PDF.UserSpace.Y(context.pdf.layoutBox.lly.value + minRowHeight.value),
+            y: newY,
             width: context.pdf.layoutBox.width,
             height: PDF.UserSpace.Height(context.pdf.layoutBox.height.value - minRowHeight.value)
         )
+
+        // Update fragment end position to include the repeated header
+        if var tc = context.tableContext {
+            tc.currentFragmentEndY = newY
+            context.tableContext = tc
+        }
     }
 
 }
