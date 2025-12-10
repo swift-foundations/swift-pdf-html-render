@@ -612,8 +612,15 @@ private struct HeadingsDemo: HTML.View {
 
 private struct TableDemo: HTML.View {
     var body: some HTML.View {
+        H2 { "6. Tables" }
+            .css.pageBreakAfter(.avoid)
+
+        // Simple table
+        H3 { "6.1 Simple Data Table" }
+            .css.pageBreakAfter(.avoid)
+
         Table {
-            Caption { "Sample Data Table" }
+            Caption { "Employee Directory" }
             TableHead {
                 TableRow {
                     TableHeader { "Name" }
@@ -631,6 +638,193 @@ private struct TableDemo: HTML.View {
                     TableDataCell { "Bob" }
                     TableDataCell { "25" }
                     TableDataCell { "Los Angeles" }
+                }
+                TableRow {
+                    TableDataCell { "Charlie" }
+                    TableDataCell { "35" }
+                    TableDataCell { "Chicago" }
+                }
+                TableRow {
+                    TableDataCell { "Diana" }
+                    TableDataCell { "28" }
+                    TableDataCell { "Houston" }
+                }
+            }
+        }
+
+        // Table with more columns
+        H3 { "6.2 Product Inventory" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableHead {
+                TableRow {
+                    TableHeader { "SKU" }
+                    TableHeader { "Product Name" }
+                    TableHeader { "Category" }
+                    TableHeader { "Price" }
+                    TableHeader { "Stock" }
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableDataCell { "A001" }
+                    TableDataCell { "Wireless Mouse" }
+                    TableDataCell { "Electronics" }
+                    TableDataCell { "$29.99" }
+                    TableDataCell { "150" }
+                }
+                TableRow {
+                    TableDataCell { "A002" }
+                    TableDataCell { "USB-C Hub" }
+                    TableDataCell { "Electronics" }
+                    TableDataCell { "$49.99" }
+                    TableDataCell { "75" }
+                }
+                TableRow {
+                    TableDataCell { "B001" }
+                    TableDataCell { "Ergonomic Chair" }
+                    TableDataCell { "Furniture" }
+                    TableDataCell { "$299.00" }
+                    TableDataCell { "25" }
+                }
+                TableRow {
+                    TableDataCell { "B002" }
+                    TableDataCell { "Standing Desk" }
+                    TableDataCell { "Furniture" }
+                    TableDataCell { "$450.00" }
+                    TableDataCell { "12" }
+                }
+                TableRow {
+                    TableDataCell { "C001" }
+                    TableDataCell { "Notebook Set" }
+                    TableDataCell { "Office Supplies" }
+                    TableDataCell { "$12.99" }
+                    TableDataCell { "500" }
+                }
+            }
+        }
+
+        // Table with inline formatting
+        H3 { "6.3 Table with Formatted Content" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableHead {
+                TableRow {
+                    TableHeader { "Feature" }
+                    TableHeader { "Status" }
+                    TableHeader { "Notes" }
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableDataCell {
+                        StrongImportance { "Authentication" }
+                    }
+                    TableDataCell { "Complete" }
+                    TableDataCell {
+                        "Supports "
+                        Code { "OAuth 2.0" }
+                        " and "
+                        Code { "JWT" }
+                    }
+                }
+                TableRow {
+                    TableDataCell {
+                        StrongImportance { "API Gateway" }
+                    }
+                    TableDataCell { "In Progress" }
+                    TableDataCell {
+                        Emphasis { "Expected Q2 2025" }
+                    }
+                }
+                TableRow {
+                    TableDataCell {
+                        StrongImportance { "Dashboard" }
+                    }
+                    TableDataCell { "Planned" }
+                    TableDataCell { "See roadmap for details" }
+                }
+            }
+        }
+
+        // Table with footer
+        H3 { "6.4 Financial Summary with Footer" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableHead {
+                TableRow {
+                    TableHeader { "Quarter" }
+                    TableHeader { "Revenue" }
+                    TableHeader { "Expenses" }
+                    TableHeader { "Profit" }
+                }
+            }
+            TableBody {
+                TableRow {
+                    TableDataCell { "Q1 2024" }
+                    TableDataCell { "$125,000" }
+                    TableDataCell { "$95,000" }
+                    TableDataCell { "$30,000" }
+                }
+                TableRow {
+                    TableDataCell { "Q2 2024" }
+                    TableDataCell { "$142,000" }
+                    TableDataCell { "$98,000" }
+                    TableDataCell { "$44,000" }
+                }
+                TableRow {
+                    TableDataCell { "Q3 2024" }
+                    TableDataCell { "$158,000" }
+                    TableDataCell { "$102,000" }
+                    TableDataCell { "$56,000" }
+                }
+                TableRow {
+                    TableDataCell { "Q4 2024" }
+                    TableDataCell { "$175,000" }
+                    TableDataCell { "$110,000" }
+                    TableDataCell { "$65,000" }
+                }
+            }
+            TableFoot {
+                TableRow {
+                    TableHeader { "Total" }
+                    TableDataCell { "$600,000" }
+                    TableDataCell { "$405,000" }
+                    TableDataCell {
+                        StrongImportance { "$195,000" }
+                    }
+                }
+            }
+        }
+
+        // Two-column simple table
+        H3 { "6.5 Key-Value Table" }
+            .css.pageBreakAfter(.avoid)
+
+        Table {
+            TableBody {
+                TableRow {
+                    TableHeader { "Version" }
+                    TableDataCell { "2.4.1" }
+                }
+                TableRow {
+                    TableHeader { "Release Date" }
+                    TableDataCell { "December 10, 2024" }
+                }
+                TableRow {
+                    TableHeader { "License" }
+                    TableDataCell { "MIT" }
+                }
+                TableRow {
+                    TableHeader { "Author" }
+                    TableDataCell { "Coen ten Thije Boonkkamp" }
+                }
+                TableRow {
+                    TableHeader { "Repository" }
+                    TableDataCell { "github.com/coenttb/swift-pdf-html-rendering" }
                 }
             }
         }

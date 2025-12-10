@@ -194,6 +194,15 @@ extension PDF.HTML.Context {
         /// Alternating row background color (nil for no alternation)
         public var alternatingRowColor: PDF.Color?
 
+        /// Track total rows rendered for proper Y advancement
+        public var totalRowsRendered: Int = 0
+
+        /// Whether columns have been initialized (from first row)
+        public var columnsInitialized: Bool = false
+
+        /// Measurement mode - count columns without drawing
+        public var measureOnly: Bool = false
+
         // MARK: - Initialization
 
         public init(

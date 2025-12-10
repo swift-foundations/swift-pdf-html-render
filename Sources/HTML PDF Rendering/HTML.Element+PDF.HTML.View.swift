@@ -421,31 +421,24 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     ) {
         // Save current context state
         let savedTableContext = context.tableContext
+        let tableStartY = context.pdf.layoutBox.lly
 
         // Get available width and configuration
         let availableWidth = context.pdf.layoutBox.width
         let cellPadding = context.configuration.tableCellPadding
 
-        // Estimate column count (default to 3 for now)
-        // TODO: Implement proper column counting by traversing table structure
-        let columnCount = 3
-        let columnWidth = columnCount > 0
-            ? PDF.UserSpace.Width(availableWidth.value / PDF.UserSpace.Unit(columnCount))
-            : availableWidth
-
-        // Create equal-width columns
-        let columnWidths = Array(repeating: columnWidth, count: columnCount)
+        // Start with empty columns - will be populated dynamically on first row
+        let columnWidths: [PDF.UserSpace.Width] = []
 
         // Estimate row height
         let defaultRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + cellPadding * 2)
-        let rowHeights = [defaultRowHeight]  // Will be extended dynamically
+        let rowHeights: [PDF.UserSpace.Height] = []
 
         // Create table bounds
         let tableX = context.pdf.layoutBox.llx
-        let tableY = context.pdf.layoutBox.lly
         let tableBounds = PDF.UserSpace.Rectangle(
             x: tableX,
-            y: tableY,
+            y: tableStartY,
             width: availableWidth,
             height: defaultRowHeight
         )
@@ -462,6 +455,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             headerBackground: context.configuration.tableHeaderBackground,
             alternatingRowColor: context.configuration.tableAlternatingRowColor
         )
+        // Track total rows for Y advancement
+        context.tableContext?.totalRowsRendered = 0
 
         // Reset margin collapsing within table
         context.resetMarginCollapsing()
@@ -469,11 +464,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Render table content
         PDF.HTML.renderBlock(view.content, context: &context)
 
-        // Advance past the table
-        if let tableCtx = context.tableContext {
-            let tableHeight = tableCtx.rowHeights.reduce(PDF.UserSpace.Unit(0)) { $0 + $1.value }
-            context.pdf.layoutBox.lly = PDF.UserSpace.Y(tableY.value + tableHeight)
-        }
+        // Advance past the table - use current layoutBox position which was updated by rows
+        // Add a small gap after the table
+        context.pdf.advance(PDF.UserSpace.Y(context.configuration.defaultFontSize * 0.5))
 
         // Restore context
         context.tableContext = savedTableContext
@@ -496,39 +489,62 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Calculate default row height
         let defaultRowHeight = PDF.UserSpace.Height(context.pdf.style.lineHeightPoints.value + tableCtx.cellPadding * 2)
 
-        // Extend rowHeights array if needed for this row
-        while tableCtx.rowHeights.count <= tableCtx.currentRow {
-            tableCtx.rowHeights.append(defaultRowHeight)
-        }
+        // Extend rowHeights array if needed
+        tableCtx.rowHeights.append(defaultRowHeight)
 
-        // Get row height
-        let rowHeight = tableCtx.rowHeights[tableCtx.currentRow]
+        // Get row height (use the one we just added)
+        let rowHeight = defaultRowHeight
 
         // Check if row fits on current page - if not, start a new page
         _ = context.pdf.checkPageBreak(needing: rowHeight)
 
-        // IMPORTANT: Update table bounds to use current layout position for this row
-        // This ensures cells are positioned relative to where we actually are,
-        // not where the table originally started
+        // Update table bounds to use current layout position for this row
         tableCtx.bounds = PDF.UserSpace.Rectangle(
             x: tableCtx.bounds.llx,
             y: context.pdf.layoutBox.lly,
             width: tableCtx.bounds.width,
             height: rowHeight
         )
-        // Reset row tracking since we're now positioning relative to current Y
+        // Use row 0 for cell positioning (relative to current bounds.y)
         tableCtx.currentRow = 0
 
         context.tableContext = tableCtx
 
-        // Skip columns occupied by rowspan from previous rows
-        context.tableContext?.advanceToNextAvailableColumn()
-
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
 
-        // Render child cells
-        PDF.HTML.renderBlock(view.content, context: &context)
+        // FIRST ROW: Two-pass rendering
+        // Pass 1: Measure (count columns without drawing)
+        // Pass 2: Draw with correct column widths
+        if !tableCtx.columnsInitialized {
+            // Pass 1: Measurement - count columns
+            if var tc = context.tableContext {
+                tc.measureOnly = true
+                tc.currentColumn = 0
+                context.tableContext = tc
+            }
+            PDF.HTML.renderBlock(view.content, context: &context)
+
+            // After measurement, set up correct column widths
+            if var tc = context.tableContext {
+                tc.measureOnly = false
+                tc.columnsInitialized = true
+                let columnCount = tc.columnWidths.count
+                if columnCount > 0 {
+                    let equalWidth = PDF.UserSpace.Width(tc.bounds.width.value / PDF.UserSpace.Unit(columnCount))
+                    tc.columnWidths = Array(repeating: equalWidth, count: columnCount)
+                }
+                // Reset for drawing pass
+                tc.currentColumn = 0
+                context.tableContext = tc
+            }
+
+            // Pass 2: Draw with correct widths
+            PDF.HTML.renderBlock(view.content, context: &context)
+        } else {
+            // Subsequent rows: single pass rendering
+            PDF.HTML.renderBlock(view.content, context: &context)
+        }
 
         // Flush any pending inline content
         if context.pdf.hasInlineRuns {
@@ -538,9 +554,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Advance Y position past this row
         context.pdf.layoutBox.lly = PDF.UserSpace.Y(rowStartY.value + rowHeight.value)
 
-        // Advance to next row
+        // Increment total rows rendered
         if var tc = context.tableContext {
-            tc.currentRow += 1
+            tc.totalRowsRendered += 1
             tc.currentColumn = 0
             context.tableContext = tc
         }
@@ -558,18 +574,29 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             return
         }
 
-        // Skip cells occupied by rowspan from previous rows
-        tableCtx.advanceToNextAvailableColumn()
-        context.tableContext = tableCtx
-
         // Get colspan/rowspan (default to 1)
         let colspan = 1  // TODO: Extract from HTML attributes
         let rowspan = 1  // TODO: Extract from HTML attributes
 
-        // Get current position
-        let row = tableCtx.currentRow
+        // Get current column position
         let column = tableCtx.currentColumn
 
+        // MEASUREMENT MODE: Just count columns, don't draw anything
+        if tableCtx.measureOnly {
+            // Add a placeholder column width (will be recalculated after measurement)
+            while tableCtx.columnWidths.count <= column {
+                tableCtx.columnWidths.append(PDF.UserSpace.Width(0))
+            }
+            // Advance column counter
+            tableCtx.currentColumn += colspan
+            context.tableContext = tableCtx
+            return
+        }
+
+        // DRAWING MODE: Render the cell
+        let row = tableCtx.currentRow
+
+        // Skip if beyond column count
         guard column < tableCtx.columnCount else {
             return
         }
@@ -586,8 +613,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         if isHeader, let headerBg = tableCtx.headerBackground {
             drawCellBackground(bounds: cellBounds, color: headerBg, context: &context)
         }
-        // Draw alternating row background
-        else if row % 2 == 1, let altColor = tableCtx.alternatingRowColor {
+        // Draw alternating row background (use totalRowsRendered for alternating)
+        else if let tc = context.tableContext, tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
             drawCellBackground(bounds: cellBounds, color: altColor, context: &context)
         }
 
@@ -620,7 +647,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Advance to next column
         if var tc = context.tableContext {
             tc.currentColumn += colspan
-            tc.advanceToNextAvailableColumn()
             context.tableContext = tc
         }
     }
