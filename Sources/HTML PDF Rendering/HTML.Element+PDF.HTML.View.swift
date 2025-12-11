@@ -66,7 +66,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Collect named destination for elements with id attribute (for internal links)
         if let elementId = context.attributes["id"], !elementId.isEmpty {
-            let pageNumber = context.pdf.pages.count + 1
+            // Use completedPages.count + 1 for correct 1-indexed page number
+            // pages.count includes current page if non-empty, which would overcount
+            let pageNumber = context.pdf.completedPages.count + 1
             let yPosition = context.pdf.layoutBox.lly
             context.namedDestinations[elementId] = PDF.HTML.Context.DestinationInfo(
                 pageNumber: pageNumber,
@@ -197,7 +199,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 let headingLineHeight = PDF.UserSpace.Height(headingFontSize * context.pdf.style.lineHeight.value)
                 context.pdf.checkPageBreak(needing: headingLineHeight)
 
-                let pageNumber = context.pdf.pages.count + 1
+                // Use completedPages.count + 1 for correct 1-indexed page number
+                // pages.count includes current page if non-empty, which would overcount
+                let pageNumber = context.pdf.completedPages.count + 1
                 let yPosition = context.pdf.layoutBox.lly
 
                 context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
