@@ -2,6 +2,7 @@
 // Configuration for HTML to PDF transformation
 
 import Geometry
+import ISO_32000
 import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Text
@@ -114,6 +115,26 @@ extension PDF.HTML {
         /// Alternating row background color (nil for no alternation)
         public var tableAlternatingRowColor: PDF.Color?
 
+        // MARK: - Outline Configuration
+
+        /// Document outline (bookmarks/TOC) settings
+        public var outline: Outline
+
+        // MARK: - Link Configuration
+
+        /// Link annotation settings
+        public var link: Link
+
+        // MARK: - Annotation Configuration
+
+        /// Annotation settings
+        public var annotation: Annotation
+
+        // MARK: - Viewer Preferences
+
+        /// PDF viewer preferences
+        public var viewer: Viewer
+
         // MARK: - Computed
 
         /// Media box (same as paper size, for use with PDF.Context)
@@ -160,7 +181,11 @@ extension PDF.HTML {
             tableBorderColor: PDF.Color = .gray(0.3),
             tableBorderWidth: PDF.UserSpace.Unit = 0.5,
             tableHeaderBackground: PDF.Color? = .gray(0.9),
-            tableAlternatingRowColor: PDF.Color? = nil
+            tableAlternatingRowColor: PDF.Color? = nil,
+            outline: Outline = .init(),
+            link: Link = .init(),
+            annotation: Annotation = .init(),
+            viewer: Viewer = .init()
         ) {
             self.paperSize = paperSize
             self.margins = margins
@@ -189,6 +214,10 @@ extension PDF.HTML {
             self.tableBorderWidth = tableBorderWidth
             self.tableHeaderBackground = tableHeaderBackground
             self.tableAlternatingRowColor = tableAlternatingRowColor
+            self.outline = outline
+            self.link = link
+            self.annotation = annotation
+            self.viewer = viewer
         }
 
         // MARK: - Line Height Resolution
@@ -266,6 +295,205 @@ extension PDF.HTML {
             case "h6": return 2.33
             default: return 1.0
             }
+        }
+    }
+}
+
+// MARK: - Configuration.Outline
+
+extension PDF.HTML.Configuration {
+    /// Document outline (bookmarks/TOC) configuration.
+    public struct Outline: Sendable, Equatable {
+        /// Maximum heading level to expand by default in the document outline.
+        ///
+        /// Controls which outline items are expanded when the PDF is first opened:
+        /// - `1`: Only H1 items expanded (default, shows main chapters)
+        /// - `2`: H1 and H2 expanded (shows chapters and sections)
+        /// - `6`: All levels expanded
+        /// - `0`: All levels collapsed
+        public var openToLevel: Int
+
+        /// Default RGB color for outline items (nil uses viewer default, typically black).
+        ///
+        /// Per PDF spec, this is three numbers in the range 0.0 to 1.0,
+        /// representing the components in the DeviceRGB colour space.
+        public var color: ISO_32000.DeviceRGB?
+
+        /// Default text style flags for outline items.
+        ///
+        /// - `.italic`: Display outline text in italic
+        /// - `.bold`: Display outline text in bold
+        public var flags: ISO_32000.Outline.ItemFlags
+
+        public init(
+            openToLevel: Int = 1,
+            color: ISO_32000.DeviceRGB? = nil,
+            flags: ISO_32000.Outline.ItemFlags = []
+        ) {
+            self.openToLevel = openToLevel
+            self.color = color
+            self.flags = flags
+        }
+    }
+}
+
+// MARK: - Configuration.Link
+
+extension PDF.HTML.Configuration {
+    /// Link annotation configuration.
+    public struct Link: Sendable, Equatable {
+        /// Visual feedback when clicking links in the PDF.
+        ///
+        /// - `.none`: No visual feedback
+        /// - `.invert`: Invert colors in annotation rectangle (default)
+        /// - `.outline`: Invert border of annotation
+        /// - `.push`: Display annotation as if pressed
+        public var highlightMode: ISO_32000.Annotation.Link.HighlightMode
+
+        public init(
+            highlightMode: ISO_32000.Annotation.Link.HighlightMode = .invert
+        ) {
+            self.highlightMode = highlightMode
+        }
+    }
+}
+
+// MARK: - Configuration.Annotation
+
+extension PDF.HTML.Configuration {
+    /// Annotation configuration.
+    public struct Annotation: Sendable, Equatable {
+        /// Border settings for annotations
+        public var border: Border
+
+        public init(
+            border: Border = .init()
+        ) {
+            self.border = border
+        }
+    }
+}
+
+extension PDF.HTML.Configuration.Annotation {
+    /// Annotation border configuration.
+    public struct Border: Sendable, Equatable {
+        /// Border width in points
+        public var width: Double
+
+        /// Border style
+        public var style: ISO_32000.Border.Style.Kind
+
+        public init(
+            width: Double = 1,
+            style: ISO_32000.Border.Style.Kind = .solid
+        ) {
+            self.width = width
+            self.style = style
+        }
+    }
+}
+
+// MARK: - Configuration.Viewer
+
+extension PDF.HTML.Configuration {
+    /// PDF viewer preferences configuration.
+    ///
+    /// Controls how the document is presented when opened in a PDF viewer.
+    /// All defaults match the ISO 32000 PDF specification.
+    public struct Viewer: Sendable, Equatable {
+        /// Whether to hide the viewer toolbar when document is active
+        public var hideToolbar: Bool
+
+        /// Whether to hide the viewer menu bar when document is active
+        public var hideMenubar: Bool
+
+        /// Whether to hide UI elements in the document window
+        public var hideWindowUI: Bool
+
+        /// Whether to resize document window to fit first page
+        public var fitWindow: Bool
+
+        /// Whether to center document window on screen
+        public var centerWindow: Bool
+
+        /// Whether to display document title (vs filename) in window title bar
+        public var displayDocTitle: Bool
+
+        /// Page mode after exiting full-screen mode
+        public var nonFullScreenPageMode: ISO_32000.NonFullScreenPageMode
+
+        /// Reading direction (affects page positioning in two-up mode)
+        public var direction: ISO_32000.Direction
+
+        /// View area and clipping settings
+        public var view: View
+
+        /// Print area, clipping, and scaling settings
+        public var print: Print
+
+        public init(
+            hideToolbar: Bool = false,
+            hideMenubar: Bool = false,
+            hideWindowUI: Bool = false,
+            fitWindow: Bool = false,
+            centerWindow: Bool = false,
+            displayDocTitle: Bool = false,
+            nonFullScreenPageMode: ISO_32000.NonFullScreenPageMode = .useNone,
+            direction: ISO_32000.Direction = .leftToRight,
+            view: View = .init(),
+            print: Print = .init()
+        ) {
+            self.hideToolbar = hideToolbar
+            self.hideMenubar = hideMenubar
+            self.hideWindowUI = hideWindowUI
+            self.fitWindow = fitWindow
+            self.centerWindow = centerWindow
+            self.displayDocTitle = displayDocTitle
+            self.nonFullScreenPageMode = nonFullScreenPageMode
+            self.direction = direction
+            self.view = view
+            self.print = print
+        }
+    }
+}
+
+extension PDF.HTML.Configuration.Viewer {
+    /// View area configuration.
+    public struct View: Sendable, Equatable {
+        /// Page boundary for display area
+        public var area: ISO_32000.PageBoundary
+
+        /// Page boundary for clipping display
+        public var clip: ISO_32000.PageBoundary
+
+        public init(
+            area: ISO_32000.PageBoundary = .cropBox,
+            clip: ISO_32000.PageBoundary = .cropBox
+        ) {
+            self.area = area
+            self.clip = clip
+        }
+    }
+
+    /// Print configuration.
+    public struct Print: Sendable, Equatable {
+        /// Page boundary for print area
+        public var area: ISO_32000.PageBoundary
+
+        /// Page boundary for clipping print output
+        public var clip: ISO_32000.PageBoundary
+
+        /// Default print scaling behavior
+        public var scaling: ISO_32000.PrintScaling
+
+        public init(
+            area: ISO_32000.PageBoundary = .cropBox,
+            clip: ISO_32000.PageBoundary = .cropBox,
+            scaling: ISO_32000.PrintScaling = .appDefault
+        ) {
+            self.area = area
+            self.clip = clip
+            self.scaling = scaling
         }
     }
 }

@@ -2,6 +2,7 @@
 // Create PDF documents from HTML content
 
 import HTML_Renderable
+import ISO_32000
 import PDF_Rendering
 import PDF_Standard
 
@@ -28,6 +29,28 @@ extension PDF.Document {
         generateOutline: Bool = false,
         @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
+        // Build viewer preferences from configuration
+        let viewerPreferences = ISO_32000.ViewerPreferences(
+            hideToolbar: configuration.viewer.hideToolbar,
+            hideMenubar: configuration.viewer.hideMenubar,
+            hideWindowUI: configuration.viewer.hideWindowUI,
+            fitWindow: configuration.viewer.fitWindow,
+            centerWindow: configuration.viewer.centerWindow,
+            displayDocTitle: configuration.viewer.displayDocTitle,
+            nonFullScreenPageMode: configuration.viewer.nonFullScreenPageMode,
+            direction: configuration.viewer.direction,
+            viewArea: configuration.viewer.view.area,
+            viewClip: configuration.viewer.view.clip,
+            printArea: configuration.viewer.print.area,
+            printClip: configuration.viewer.print.clip,
+            printScaling: configuration.viewer.print.scaling
+        )
+
+        // Only include viewer preferences if they differ from defaults
+        let viewerPrefs: ISO_32000.ViewerPreferences? = configuration.viewer == .init()
+            ? nil
+            : viewerPreferences
+
         if generateOutline {
             // Use render() to get pages and collected headings
             let result = PDF.HTML.render(
@@ -45,14 +68,18 @@ extension PDF.Document {
                         pageIndex: heading.pageNumber - 1,
                         yPosition: heading.yPosition
                     )
-                }
+                },
+                openToLevel: configuration.outline.openToLevel,
+                color: configuration.outline.color,
+                flags: configuration.outline.flags
             )
 
             // Create document with outline
             self.init(
                 info: info,
                 pages: result.pages,
-                outline: outline.isEmpty ? nil : outline
+                outline: outline.isEmpty ? nil : outline,
+                viewerPreferences: viewerPrefs
             )
         } else {
             // Simple path without outline generation
@@ -63,7 +90,8 @@ extension PDF.Document {
 
             self.init(
                 info: info,
-                pages: pages
+                pages: pages,
+                viewerPreferences: viewerPrefs
             )
         }
     }
