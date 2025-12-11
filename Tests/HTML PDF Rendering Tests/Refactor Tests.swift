@@ -330,6 +330,196 @@ struct `Comprehensive PDF.HTML.View Tests` {
             #expect(!outline.items.isEmpty, "Outline should have items from H1-H6 headings")
         }
     }
+
+    @Test
+    func `document with nested collapsible outline structure`() throws {
+        let doc = PDF.Document(
+            info: .init(
+                title: "Technical Specification",
+                author: "Test Suite"
+            ),
+            generateOutline: true
+        ) {
+            TechnicalSpecificationView()
+        }
+
+        let bytes = [UInt8](doc)
+
+        // Write to /tmp for visual inspection
+        let url = URL(fileURLWithPath: "/tmp/nested-outline-test.pdf")
+        try Data(bytes).write(to: url)
+        print("PDF with nested outline written to: \(url.path)")
+
+        // Basic sanity checks
+        #expect(doc.pages.count >= 1)
+
+        // Verify nested outline structure
+        #expect(doc.outline != nil, "Document should have outline/bookmarks")
+
+        if let outline = doc.outline {
+            // Print outline structure for debugging
+            print("Outline structure:")
+            printOutline(outline.items, indent: 0)
+
+            // Verify we have top-level items
+            #expect(!outline.items.isEmpty, "Outline should have top-level items")
+        }
+    }
+}
+
+/// Helper to print outline structure for debugging
+private func printOutline(_ items: [ISO_32000.Outline.Item], indent: Int) {
+    let prefix = String(repeating: "  ", count: indent)
+    for item in items {
+        print("\(prefix)- \(item.title)")
+        if !item.children.isEmpty {
+            printOutline(item.children, indent: indent + 1)
+        }
+    }
+}
+
+/// A technical specification document with nested heading structure
+/// Similar to ISO standards with numbered sections
+private struct TechnicalSpecificationView: HTML.View {
+    var body: some HTML.View {
+        // Front matter
+        H1 { "Technical Specification XYZ-2024" }
+            .css.textAlign(.center)
+        Paragraph { "A comprehensive guide to the XYZ standard." }
+
+        // Section 1
+        H1 { "1 Scope" }
+        Paragraph { "This document specifies the requirements for XYZ systems." }
+
+        // Section 2
+        H1 { "2 Normative references" }
+        Paragraph { "The following documents are referred to in the text." }
+
+        // Section 3
+        H1 { "3 Terms and definitions" }
+        Paragraph { "For the purposes of this document, the following terms apply." }
+
+        // Section 4 with subsections
+        H1 { "4 Notation" }
+        Paragraph { "This section describes the notation used throughout the document." }
+
+        H2 { "4.1 General" }
+        Paragraph { "General notation conventions are described here." }
+
+        H2 { "4.2 Established notations" }
+        Paragraph { "Industry-standard notations that are adopted." }
+
+        H2 { "4.3 Special symbols" }
+        Paragraph { "Special symbols used in this specification." }
+
+        H3 { "4.3.1 Mathematical symbols" }
+        Paragraph { "Symbols used for mathematical expressions." }
+
+        H3 { "4.3.2 Logical symbols" }
+        Paragraph { "Symbols used for logical operations." }
+
+        // Section 5
+        H1 { "5 Version designations" }
+        Paragraph { "How versions are designated in this standard." }
+
+        // Section 6 with deep nesting
+        H1 { "6 Conformance" }
+        Paragraph { "Requirements for conformance to this specification." }
+
+        H2 { "6.1 Conformance levels" }
+        Paragraph { "Different levels of conformance are defined." }
+
+        H3 { "6.1.1 Basic conformance" }
+        Paragraph { "Minimum requirements for basic conformance." }
+
+        H3 { "6.1.2 Full conformance" }
+        Paragraph { "Requirements for full conformance." }
+
+        H4 { "6.1.2.1 Mandatory features" }
+        Paragraph { "Features that must be implemented." }
+
+        H4 { "6.1.2.2 Optional features" }
+        Paragraph { "Features that may optionally be implemented." }
+
+        H2 { "6.2 Conformance testing" }
+        Paragraph { "How conformance is verified." }
+
+        // Section 7
+        H1 { "7 Syntax" }
+        Paragraph { "The syntax of the XYZ language." }
+
+        H2 { "7.1 Lexical elements" }
+        Paragraph { "Basic lexical elements of the language." }
+
+        H2 { "7.2 Expressions" }
+        Paragraph { "How expressions are formed." }
+
+        H2 { "7.3 Statements" }
+        Paragraph { "Statement syntax and semantics." }
+
+        // Section 8
+        H1 { "8 Graphics" }
+        Paragraph { "Graphics capabilities of the system." }
+
+        H2 { "8.1 Coordinate systems" }
+        Paragraph { "How coordinates are specified." }
+
+        H2 { "8.2 Transformations" }
+        Paragraph { "Geometric transformations supported." }
+
+        // Section 9 with multiple levels
+        H1 { "9 Text" }
+        Paragraph { "Text handling capabilities." }
+
+        H2 { "9.1 General" }
+        Paragraph { "Overview of text handling." }
+
+        H2 { "9.2 Organisation and use of fonts" }
+        Paragraph { "How fonts are organized and used." }
+
+        H3 { "9.2.1 Font types" }
+        Paragraph { "Different types of fonts supported." }
+
+        H3 { "9.2.2 Font embedding" }
+        Paragraph { "How fonts are embedded in documents." }
+
+        H2 { "9.3 Text state parameters and operators" }
+        Paragraph { "Parameters that control text rendering." }
+
+        H2 { "9.4 Text objects" }
+        Paragraph { "How text objects are defined." }
+
+        H2 { "9.5 Introduction to font data structures" }
+        Paragraph { "Overview of font data structures." }
+
+        H2 { "9.6 Simple fonts" }
+        Paragraph { "Simple font types and their properties." }
+
+        H3 { "9.6.1 Type 1 fonts" }
+        Paragraph { "Adobe Type 1 font format." }
+
+        H3 { "9.6.2 TrueType fonts" }
+        Paragraph { "TrueType font format." }
+
+        H2 { "9.7 Composite fonts" }
+        Paragraph { "Composite font architecture." }
+
+        H2 { "9.8 Font descriptors" }
+        Paragraph { "Metadata about fonts." }
+
+        // Annex
+        H1 { "Annex A (normative) Implementation notes" }
+        Paragraph { "Notes for implementers of this specification." }
+
+        H1 { "Annex B (informative) Examples" }
+        Paragraph { "Example implementations and use cases." }
+
+        H2 { "B.1 Basic example" }
+        Paragraph { "A simple example demonstrating core features." }
+
+        H2 { "B.2 Advanced example" }
+        Paragraph { "A complex example showing advanced features." }
+    }
 }
 
 import HtmlToPdf
