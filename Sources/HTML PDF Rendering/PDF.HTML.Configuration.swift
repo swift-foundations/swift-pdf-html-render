@@ -19,6 +19,22 @@ extension PDF.HTML {
         /// Page margins
         public var margins: PDF.UserSpace.EdgeInsets
 
+        // MARK: - Headers & Footers
+
+        /// Height reserved for page header (0 for no header)
+        public var headerHeight: PDF.UserSpace.Height
+
+        /// Height reserved for page footer (0 for no footer)
+        public var footerHeight: PDF.UserSpace.Height
+
+        // MARK: - Document Metadata
+
+        /// Document title (used in headers/footers and PDF metadata)
+        public var documentTitle: String?
+
+        /// Document date string (used in headers/footers)
+        public var documentDate: String?
+
         // MARK: - Typography
 
         /// Default font
@@ -120,6 +136,10 @@ extension PDF.HTML {
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
             margins: PDF.UserSpace.EdgeInsets = .init(all: 72),
+            headerHeight: PDF.UserSpace.Height = .init(0),
+            footerHeight: PDF.UserSpace.Height = .init(0),
+            documentTitle: String? = nil,
+            documentDate: String? = nil,
             defaultFont: PDF.Font = .times,
             defaultFontSize: PDF.UserSpace.Unit = 12,
             defaultColor: PDF.Color = .black,
@@ -144,6 +164,10 @@ extension PDF.HTML {
         ) {
             self.paperSize = paperSize
             self.margins = margins
+            self.headerHeight = headerHeight
+            self.footerHeight = footerHeight
+            self.documentTitle = documentTitle
+            self.documentDate = documentDate
             self.defaultFont = defaultFont
             self.defaultFontSize = defaultFontSize
             self.defaultColor = defaultColor
@@ -242,6 +266,45 @@ extension PDF.HTML {
             case "h6": return 2.33
             default: return 1.0
             }
+        }
+    }
+}
+
+// MARK: - Page Info
+
+extension PDF.HTML {
+    /// Information about the current page, provided to header/footer builders.
+    ///
+    /// Used during two-pass rendering to provide accurate page numbers and
+    /// section information for running headers and footers.
+    public struct PageInfo: Sendable {
+        /// Current page number (1-indexed)
+        public let pageNumber: Int
+
+        /// Total number of pages in the document
+        public let totalPages: Int
+
+        /// Title of the current section (from most recent H1-H3 heading)
+        public let sectionTitle: String?
+
+        /// Document title (from configuration)
+        public let documentTitle: String?
+
+        /// Document date string (from configuration)
+        public let date: String?
+
+        public init(
+            pageNumber: Int,
+            totalPages: Int,
+            sectionTitle: String? = nil,
+            documentTitle: String? = nil,
+            date: String? = nil
+        ) {
+            self.pageNumber = pageNumber
+            self.totalPages = totalPages
+            self.sectionTitle = sectionTitle
+            self.documentTitle = documentTitle
+            self.date = date
         }
     }
 }

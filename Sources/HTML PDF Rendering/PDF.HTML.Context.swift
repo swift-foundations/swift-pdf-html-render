@@ -54,7 +54,27 @@ extension PDF.HTML {
         /// Flag indicating the current element should avoid page break after it.
         /// Set by `page-break-after: avoid` CSS property.
         public var avoidPageBreakAfter: Bool = false
-        
+
+        // MARK: - Section Tracking (for headers/footers)
+
+        /// Current section title (from most recent H1-H3 heading)
+        public var currentSectionTitle: String?
+
+        /// Section titles at the start of each page (page number -> section title)
+        /// Populated during rendering when headings are encountered.
+        public var pageSectionTitles: [Int: String] = [:]
+
+        /// Collected heading entries for bookmark generation
+        public var collectedHeadings: [HeadingEntry] = []
+
+        // MARK: - Anchor Tracking (for internal links)
+
+        /// Named destinations for internal links (id -> page/position)
+        public var namedDestinations: [String: DestinationInfo] = [:]
+
+        /// Pending internal links to resolve (href="#id" links)
+        public var pendingInternalLinks: [PendingInternalLink] = []
+
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
             self.pdf = pdf
             self.configuration = configuration
@@ -62,6 +82,67 @@ extension PDF.HTML {
             self.pendingBottomMargin = 0
             self.deferredKeepWithNextRender = nil
             self.avoidPageBreakAfter = false
+            self.currentSectionTitle = nil
+            self.pageSectionTitles = [:]
+            self.collectedHeadings = []
+            self.namedDestinations = [:]
+            self.pendingInternalLinks = []
+        }
+    }
+}
+
+// MARK: - Heading Entry for Bookmarks
+
+extension PDF.HTML.Context {
+    /// Entry for a heading collected during rendering
+    public struct HeadingEntry: Sendable {
+        /// Heading level (1-6)
+        public let level: Int
+        /// Heading text
+        public let text: String
+        /// Page number where heading appears (1-indexed)
+        public let pageNumber: Int
+        /// Y position on the page
+        public let yPosition: PDF.UserSpace.Y
+
+        public init(level: Int, text: String, pageNumber: Int, yPosition: PDF.UserSpace.Y) {
+            self.level = level
+            self.text = text
+            self.pageNumber = pageNumber
+            self.yPosition = yPosition
+        }
+    }
+}
+
+// MARK: - Destination Info for Internal Links
+
+extension PDF.HTML.Context {
+    /// Information about a named destination (anchor target)
+    public struct DestinationInfo: Sendable {
+        /// Page number where the destination is (1-indexed)
+        public let pageNumber: Int
+        /// Y position on the page
+        public let yPosition: PDF.UserSpace.Y
+
+        public init(pageNumber: Int, yPosition: PDF.UserSpace.Y) {
+            self.pageNumber = pageNumber
+            self.yPosition = yPosition
+        }
+    }
+
+    /// A pending internal link that needs to be resolved
+    public struct PendingInternalLink: Sendable {
+        /// The target anchor id (without #)
+        public let targetId: String
+        /// Page number where the link is
+        public let pageNumber: Int
+        /// Bounds of the link annotation
+        public let bounds: PDF.UserSpace.Rectangle
+
+        public init(targetId: String, pageNumber: Int, bounds: PDF.UserSpace.Rectangle) {
+            self.targetId = targetId
+            self.pageNumber = pageNumber
+            self.bounds = bounds
         }
     }
 }
@@ -147,9 +228,7 @@ extension PDF.HTML.Context {
         _ keyPath: WritableKeyPath<PDF.HTML.Context, T>,
         _ body: (inout T) -> Void
     ) {
-        var value = self[keyPath: keyPath]
-        body(&value)
-        self[keyPath: keyPath] = value
+        PDF_HTML_Rendering.with(&self, keyPath, body)
     }
 }
 
@@ -158,10 +237,7 @@ extension PDF.HTML.Context {
         _ keyPath: WritableKeyPath<PDF.HTML.Context, T?>,
         _ body: (inout T) -> Void
     ) {
-        guard var value = self[keyPath: keyPath] else {
-            return
-        }
-        body(&value)
-        self[keyPath: keyPath] = value
+        PDF_HTML_Rendering.with(&self, keyPath, body)
     }
 }
+

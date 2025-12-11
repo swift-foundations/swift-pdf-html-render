@@ -10,45 +10,61 @@ extension PDF.Document {
     ///
     /// Example:
     /// ```swift
-    /// let doc = PDF.Document(myHTML)
+    /// let doc = PDF.Document {
+    ///     H1 { "Hello" }
+    ///     Paragraph { "World" }
+    /// }
     /// let bytes = [UInt8](doc)
     /// ```
-    /// Create a PDF document from HTML content using static dispatch.
-    public init<H: PDF.HTML.View>(
-        info: ISO_32000.Document.Info? = nil,
-        configuration: PDF.HTML.Configuration = .init(),
-        @HTML_Renderable.HTML.Builder _ html: () -> H
-    ) {
-        // Transform HTML to PDF pages
-        let pages = PDF.HTML.pages(
-            configuration: configuration,
-            html: html
-        )
-
-        // Create document
-        self.init(
-            info: info,
-            pages: pages
-        )
-    }
-
-    /// Create a PDF document from any HTML.View using dynamic dispatch.
-    @_disfavoredOverload
+    ///
+    /// - Parameters:
+    ///   - info: Document metadata (title, author, etc.)
+    ///   - configuration: PDF rendering configuration
+    ///   - generateOutline: If true, generates bookmarks from H1-H6 headings (default: false)
+    ///   - html: The HTML content to render
     public init<H: HTML_Renderable.HTML.View>(
         info: ISO_32000.Document.Info? = nil,
         configuration: PDF.HTML.Configuration = .init(),
+        generateOutline: Bool = false,
         @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
-        // Transform HTML to PDF pages
-        let pages = PDF.HTML.pages(
-            configuration: configuration,
-            html: html
-        )
+        if generateOutline {
+            // Use render() to get pages and collected headings
+            let result = PDF.HTML.render(
+                configuration: configuration,
+                html: html
+            )
 
-        // Create document
-        self.init(
-            info: info,
-            pages: pages
-        )
+            // Build outline from collected headings
+            // Note: HeadingEntry uses 1-indexed pageNumber, Outline.build expects 0-indexed pageIndex
+            let outline = ISO_32000.Outline.build(
+                from: result.headings.map { heading in
+                    (
+                        level: heading.level,
+                        title: heading.text,
+                        pageIndex: heading.pageNumber - 1,
+                        yPosition: heading.yPosition
+                    )
+                }
+            )
+
+            // Create document with outline
+            self.init(
+                info: info,
+                pages: result.pages,
+                outline: outline.isEmpty ? nil : outline
+            )
+        } else {
+            // Simple path without outline generation
+            let pages = PDF.HTML.pages(
+                configuration: configuration,
+                html: html
+            )
+
+            self.init(
+                info: info,
+                pages: pages
+            )
+        }
     }
 }

@@ -300,28 +300,35 @@ struct StickyHeaderTests {
 
 @Suite
 struct `Comprehensive PDF.HTML.View Tests` {
-    
+
     @Test
-    func `document showing all elements and properties`() throws {
+    func `document showing all elements and properties with outline`() throws {
         let doc = PDF.Document(
             info: .init(
                 title: "All Elements Demo",
                 author: "Test Suite"
-            )
+            ),
+            generateOutline: true
         ) {
             ComplexView()
         }
-        
+
         let bytes = [UInt8](doc)
-        
+
         // Write to /tmp for visual inspection
         let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
         try Data(bytes).write(to: url)
         print("PDF written to: \(url.path)")
-        
+
         // Basic sanity checks
         #expect(doc.pages.count >= 1)
         #expect(bytes.count > 1000, "Complex document should have substantial content")
+
+        // Outline should be generated from headings
+        #expect(doc.outline != nil, "Document should have outline/bookmarks")
+        if let outline = doc.outline {
+            #expect(!outline.items.isEmpty, "Outline should have items from H1-H6 headings")
+        }
     }
 }
 

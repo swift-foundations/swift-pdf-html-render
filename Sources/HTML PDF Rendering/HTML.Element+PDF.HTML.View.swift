@@ -40,9 +40,45 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // CSS `em` units in margins are relative to the element's own font size
         applyTagStyle(view.tagName, context: &context)
 
+        // Collect heading information for bookmarks and section tracking
+        if let headingLevel = headingLevel(for: view.tagName) {
+            let headingText = extractCellText(from: view.content)
+            if !headingText.isEmpty {
+                let pageNumber = context.pdf.pages.count + 1  // Current page (1-indexed)
+                let yPosition = context.pdf.layoutBox.lly
+
+                // Add to collected headings for bookmark generation
+                context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
+                    level: headingLevel,
+                    text: headingText,
+                    pageNumber: pageNumber,
+                    yPosition: yPosition
+                ))
+
+                // For H1-H3, update section tracking for headers/footers
+                if headingLevel <= 3 {
+                    context.currentSectionTitle = headingText
+                    // Record section title at page start if not already set
+                    if context.pageSectionTitles[pageNumber] == nil {
+                        context.pageSectionTitles[pageNumber] = headingText
+                    }
+                }
+            }
+        }
+
         // For anchor tags, extract href from attributes for clickable links
         if view.tagName == "a" {
             context.currentLinkURL = context.attributes["href"]
+        }
+
+        // Collect named destination for elements with id attribute (for internal links)
+        if let elementId = context.attributes["id"], !elementId.isEmpty {
+            let pageNumber = context.pdf.pages.count + 1
+            let yPosition = context.pdf.layoutBox.lly
+            context.namedDestinations[elementId] = PDF.HTML.Context.DestinationInfo(
+                pageNumber: pageNumber,
+                yPosition: yPosition
+            )
         }
 
         // Check for block margins (now using the element's font size for em calculations)
@@ -1076,6 +1112,21 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             fill: color,
             stroke: nil
         )
+    }
+
+    // MARK: - Heading Level Detection
+
+    /// Get heading level for tag name (nil if not a heading)
+    private static func headingLevel(for tagName: String) -> Int? {
+        switch tagName {
+        case "h1": return 1
+        case "h2": return 2
+        case "h3": return 3
+        case "h4": return 4
+        case "h5": return 5
+        case "h6": return 6
+        default: return nil
+        }
     }
 
     // MARK: - Header Text Extraction
