@@ -34,6 +34,12 @@ extension PDF.HTML {
         /// Set by `Anchor+PDF.HTML.View` when rendering anchor content.
         /// Used by `String+PDF.HTML.View` to pass URL to TextRun for PDF annotations.
         public var currentLinkURL: String?
+
+        /// Current internal link target ID for text being rendered inside an anchor element.
+        ///
+        /// Set when rendering `<a href="#section-id">` links. The ID is stored without the # prefix.
+        /// Used to create pending internal links that are resolved after rendering completes.
+        public var currentInternalLinkId: String?
         
         /// Pending bottom margin from previous block element (for margin collapsing).
         ///

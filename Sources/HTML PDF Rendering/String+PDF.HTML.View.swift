@@ -17,7 +17,8 @@ extension String: PDF.HTML.View {
             color: context.pdf.style.color,
             textDecoration: context.pdf.style.textMarkup,
             verticalOffset: context.pdf.style.verticalOffset,
-            linkURL: context.currentLinkURL
+            linkURL: context.currentLinkURL,
+            internalLinkId: context.currentInternalLinkId
         )
 
         // Append all runs (will be flushed at block boundaries)

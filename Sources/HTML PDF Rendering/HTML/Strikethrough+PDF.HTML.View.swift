@@ -8,6 +8,6 @@ import WHATWG_HTML
 extension Strikethrough: PDF.HTML.TagRenderer {
     static func applyStyle(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Line through text decoration
-        context.style.textMarkup = .strikeout
+        context.style.textMarkup = .strikeOut
     }
 }

@@ -28,12 +28,14 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let savedURX = context.pdf.layoutBox.urx
         let savedPreserveWhitespace = context.pdf.preserveWhitespace
         let savedLinkURL = context.currentLinkURL
+        let savedInternalLinkId = context.currentInternalLinkId
         defer {
             context.pdf.style = savedStyle
             context.pdf.layoutBox.llx = savedLLX
             context.pdf.layoutBox.urx = savedURX
             context.pdf.preserveWhitespace = savedPreserveWhitespace
             context.currentLinkURL = savedLinkURL
+            context.currentInternalLinkId = savedInternalLinkId
         }
 
         // Apply tag-specific style BEFORE calculating margins
@@ -51,7 +53,15 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // For anchor tags, extract href from attributes for clickable links
         if view.tagName == "a" {
-            context.currentLinkURL = context.attributes["href"]
+            if let href = context.attributes["href"] {
+                if href.hasPrefix("#") {
+                    // Internal link - store the target ID (without #)
+                    context.currentInternalLinkId = String(href.dropFirst())
+                } else {
+                    // External link - store the full URL
+                    context.currentLinkURL = href
+                }
+            }
         }
 
         // Collect named destination for elements with id attribute (for internal links)
@@ -180,6 +190,13 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // NOW capture heading position - after margin/page-break handling
             if let heading = pendingHeading {
+                // IMPORTANT: Check for page break BEFORE capturing position
+                // The heading's line height depends on its font size, which is larger than body text
+                // If we don't check here, we might record page N but the heading renders on page N+1
+                let headingFontSize = context.configuration.headingSize(level: heading.level)
+                let headingLineHeight = PDF.UserSpace.Height(headingFontSize * context.pdf.style.lineHeight.value)
+                context.pdf.checkPageBreak(needing: headingLineHeight)
+
                 let pageNumber = context.pdf.pages.count + 1
                 let yPosition = context.pdf.layoutBox.lly
 
@@ -380,11 +397,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Text decoration
         case "s", "strike", "del":
-            context.pdf.style.textMarkup = .strikeout
+            context.pdf.style.textMarkup = .strikeOut
         case "u", "ins":
             context.pdf.style.textMarkup = .underline
         case "mark":
-            context.pdf.style.textMarkup = .highlight(PDF.Color.yellow)
+            context.pdf.style.textMarkup = .highlight(.rgb(red: 1.0, green: 1.0, blue: 0.0))
 
         // Sub/superscript
         // WebKit: font-size ~0.83em, vertical-align: sub/super

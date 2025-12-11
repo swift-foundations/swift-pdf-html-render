@@ -62,8 +62,15 @@ extension PDF.HTML {
         // Flush any remaining inline runs
         context.pdf.flushInlineRuns()
 
-        // Return all pages
-        return context.pdf.pages
+        // Resolve pending internal links and return pages
+        let rawPages = context.pdf.pages
+        return PDF.Context.resolveInternalLinks(
+            pages: rawPages,
+            pendingLinks: context.pdf.pendingInternalLinks,
+            namedDestinations: context.namedDestinations.mapValues { dest in
+                (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
+            }
+        )
     }
 
     /// Result of rendering HTML to PDF, including collected metadata for outlines.
@@ -118,8 +125,18 @@ extension PDF.HTML {
         // Flush any remaining inline runs
         context.pdf.flushInlineRuns()
 
+        // Resolve pending internal links
+        let rawPages = context.pdf.pages
+        let resolvedPages = PDF.Context.resolveInternalLinks(
+            pages: rawPages,
+            pendingLinks: context.pdf.pendingInternalLinks,
+            namedDestinations: context.namedDestinations.mapValues { dest in
+                (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
+            }
+        )
+
         return RenderResult(
-            pages: context.pdf.pages,
+            pages: resolvedPages,
             headings: context.collectedHeadings,
             namedDestinations: context.namedDestinations
         )
@@ -169,8 +186,18 @@ extension PDF.HTML {
         // Flush any remaining inline runs
         context.pdf.flushInlineRuns()
 
+        // Resolve pending internal links
+        let rawPages = context.pdf.pages
+        let resolvedPages = PDF.Context.resolveInternalLinks(
+            pages: rawPages,
+            pendingLinks: context.pdf.pendingInternalLinks,
+            namedDestinations: context.namedDestinations.mapValues { dest in
+                (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
+            }
+        )
+
         return RenderResult(
-            pages: context.pdf.pages,
+            pages: resolvedPages,
             headings: context.collectedHeadings,
             namedDestinations: context.namedDestinations
         )
@@ -223,9 +250,16 @@ extension PDF.HTML {
         
         // Flush any remaining inline runs
         context.pdf.flushInlineRuns()
-        
-        // Return all pages
-        return context.pdf.pages
+
+        // Resolve pending internal links and return pages
+        let rawPages = context.pdf.pages
+        return PDF.Context.resolveInternalLinks(
+            pages: rawPages,
+            pendingLinks: context.pdf.pendingInternalLinks,
+            namedDestinations: context.namedDestinations.mapValues { dest in
+                (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
+            }
+        )
     }
 }
 
