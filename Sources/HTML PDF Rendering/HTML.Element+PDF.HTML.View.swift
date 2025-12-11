@@ -40,29 +40,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // CSS `em` units in margins are relative to the element's own font size
         applyTagStyle(view.tagName, context: &context)
 
-        // Collect heading information for bookmarks and section tracking
+        // Collect heading text for bookmarks (position captured after margin/page-break handling)
+        var pendingHeading: (level: Int, text: String)? = nil
         if let headingLevel = headingLevel(for: view.tagName) {
             let headingText = extractCellText(from: view.content)
             if !headingText.isEmpty {
-                let pageNumber = context.pdf.pages.count + 1  // Current page (1-indexed)
-                let yPosition = context.pdf.layoutBox.lly
-
-                // Add to collected headings for bookmark generation
-                context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
-                    level: headingLevel,
-                    text: headingText,
-                    pageNumber: pageNumber,
-                    yPosition: yPosition
-                ))
-
-                // For H1-H3, update section tracking for headers/footers
-                if headingLevel <= 3 {
-                    context.currentSectionTitle = headingText
-                    // Record section title at page start if not already set
-                    if context.pageSectionTitles[pageNumber] == nil {
-                        context.pageSectionTitles[pageNumber] = headingText
-                    }
-                }
+                pendingHeading = (level: headingLevel, text: headingText)
             }
         }
 
@@ -112,7 +95,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             if deferred.measuredHeight.value > availablePageHeight.value * context.configuration.deferredHeaderThreshold {
                 // Just render the header without sticky behavior
                 deferred.render(&context)
-                renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
+                renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
                 return
             }
 
@@ -131,12 +114,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             deferred.render(&context)
 
             // Continue with normal rendering of this element
-            renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
+            renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
             return
         }
 
         // Render with flow and margins
-        renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, context: &context)
+        renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
     }
 
     /// Render void element (br, hr, etc.)
@@ -178,6 +161,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         isBlock: Bool,
         marginTop: PDF.UserSpace.Unit,
         marginBottom: PDF.UserSpace.Unit,
+        pendingHeading: (level: Int, text: String)?,
         context: inout PDF.HTML.Context
     ) {
         if isBlock {
@@ -192,6 +176,27 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // between a parent and its first/last child when there's no padding/border.
             if marginTop > 0 || marginBottom > 0 {
                 context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
+            }
+
+            // NOW capture heading position - after margin/page-break handling
+            if let heading = pendingHeading {
+                let pageNumber = context.pdf.pages.count + 1
+                let yPosition = context.pdf.layoutBox.lly
+
+                context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
+                    level: heading.level,
+                    text: heading.text,
+                    pageNumber: pageNumber,
+                    yPosition: yPosition
+                ))
+
+                // For H1-H3, update section tracking for headers/footers
+                if heading.level <= 3 {
+                    context.currentSectionTitle = heading.text
+                    if context.pageSectionTitles[pageNumber] == nil {
+                        context.pageSectionTitles[pageNumber] = heading.text
+                    }
+                }
             }
 
             // Handle table containers
