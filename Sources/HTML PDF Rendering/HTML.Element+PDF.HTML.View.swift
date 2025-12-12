@@ -105,7 +105,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // If the deferred header is very tall (> threshold % of page), skip sticky behavior
             let availablePageHeight = context.pdf.remainingHeight
-            if deferred.measuredHeight.value > availablePageHeight.value * context.configuration.deferredHeaderThreshold {
+            if deferred.measuredHeight > availablePageHeight * context.configuration.deferredHeaderThreshold {
                 // Just render the header without sticky behavior
                 deferred.render(&context)
                 renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
@@ -113,7 +113,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             }
 
             // Calculate minimum content height (at least one line + top margin)
-            let oneLineHeight = context.pdf.style.lineHeightPoints
+            let oneLineHeight = context.pdf.style.line.height
             let minContentHeight = marginTop + oneLineHeight
             let totalNeeded = deferred.measuredHeight + minContentHeight
 
@@ -288,9 +288,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 case .text(let bytes, let font):
                     markerWidth = font.winAnsi.width(of: bytes, atSize: context.pdf.style.fontSize)
                 case .strokedCircle(let circle, _):
-                    markerWidth = PDF.UserSpace.Width(circle.radius.value * 2)  // diameter
+                    markerWidth = circle.diameter.width
                 case .filledCircle(let circle):
-                    markerWidth = PDF.UserSpace.Width(circle.radius.value * 2)  // diameter
+                    markerWidth = circle.diameter.width
                 case .filledSquare(let rect):
                     markerWidth = rect.width
                 }
@@ -492,13 +492,13 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Get available width and configuration
         let availableWidth = context.pdf.layoutBox.width
-        let cellPadding = context.configuration.table.cellPadding
+        let cellPadding = context.configuration.table.cell.padding
 
         // Start with empty columns - will be populated dynamically on first row
         let columnWidths: [PDF.UserSpace.Width] = []
 
         // Estimate row height
-        let defaultRowHeight = context.pdf.style.lineHeightPoints + cellPadding.height * 2
+        let defaultRowHeight = context.pdf.style.line.height + cellPadding.height * 2
         let rowHeights: [PDF.UserSpace.Height] = []
 
         // Create table bounds
@@ -563,12 +563,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
 
                 // Render content with vertical centering
-                let cellContentHeight = totalHeight - tc.cellPadding.height * 2
-                let lineHeight = deferred.savedStyle.lineHeightPoints
+                let cellContentHeight = totalHeight - tc.cell.padding.height * 2
+                let lineHeight = deferred.savedStyle.line.height
                 let verticalCenterOffset = max(PDF.UserSpace.Height(0), (cellContentHeight - lineHeight) / 2)
 
                 // Calculate content position with vertical centering
-                let contentY = deferred.startY + tc.cellPadding.height + verticalCenterOffset
+                let contentY = deferred.startY + tc.cell.padding.height + verticalCenterOffset
 
                 // Save context state
                 let savedLayoutBox = context.pdf.layoutBox
@@ -648,7 +648,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         tableCtx.currentRowMaxDescent = max(regularDescent, boldDescent)
 
         // Calculate minimum row height (single line)
-        let minRowHeight = context.pdf.style.lineHeightPoints + tableCtx.cellPadding.height * 2
+        let minRowHeight = context.pdf.style.line.height + tableCtx.cell.padding.height * 2
 
         // For page break check: account for header repetition if headers exist
         let headerHeight = tableCtx.header.hasHeader ? tableCtx.header.rowHeight : PDF.UserSpace.Height(0)
@@ -788,7 +788,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Get actual row height (max of all cells, minimum single line)
         let actualRowHeight: PDF.UserSpace.Height
         if let tc = context.table {
-            actualRowHeight = tc.maxCellHeightInCurrentRow.value > minRowHeight.value
+            actualRowHeight = tc.maxCellHeightInCurrentRow > minRowHeight
                 ? tc.maxCellHeightInCurrentRow
                 : minRowHeight
         } else {
@@ -799,9 +799,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Then draw all cell borders with correct row height
         if let tc = context.table {
             // Extend backgrounds if needed (draw additional strip below initial background)
-            if actualRowHeight.value > minRowHeight.value {
-                let extensionHeight = PDF.UserSpace.Height(actualRowHeight.value - minRowHeight.value)
-                let extensionY = PDF.UserSpace.Y(rowStartY.value + minRowHeight.value)
+            if actualRowHeight > minRowHeight {
+                let extensionHeight = actualRowHeight - minRowHeight
+                let extensionY = rowStartY + minRowHeight
                 for pending in tc.pendingCellBorders {
                     let cellX = tc.xForColumn(pending.column)
                     let cellWidth = tc.widthForColumns(pending.column, count: pending.colspan)
@@ -839,7 +839,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Advance Y position past this row using actual height
-        let newY = PDF.UserSpace.Y(rowStartY.value + actualRowHeight.value)
+        let newY = rowStartY + actualRowHeight
         context.pdf.layoutBox.lly = newY
 
         // Track table end position (updated after each row for accurate border drawing)
@@ -903,7 +903,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let cellWidth = tableCtx.widthForColumns(column, count: colspan)
 
         // Create content bounds with proper padding
-        let cellPadding = tableCtx.cellPadding
+        let cellPadding = tableCtx.cell.padding
         let contentX = cellX + cellPadding.width
         let contentWidth = cellWidth - cellPadding.width * 2
 
@@ -917,7 +917,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let fontContentHeight = rowMaxAscent + rowMaxDescent
 
         // Line height from style (includes leading)
-        let lineHeight = context.pdf.style.lineHeightPoints
+        let lineHeight = context.pdf.style.line.height
 
         // Use the larger of font content height or line height for consistent spacing
         let effectiveLineHeight = max(fontContentHeight, lineHeight)
@@ -963,7 +963,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             let contentText = extractCellText(from: view.content)
 
             // Use single line height as placeholder for row height calculation
-            actualContentHeight = context.pdf.style.lineHeightPoints
+            actualContentHeight = context.pdf.style.line.height
 
             // Capture style before entering with closure to avoid overlapping access
             let savedStyle = context.pdf.style
@@ -1035,7 +1035,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Calculate cell height (for row height tracking)
-        let cellHeight = actualContentHeight + tableCtx.cellPadding.height * 2
+        let cellHeight = actualContentHeight + tableCtx.cell.padding.height * 2
 
         // Update max cell height for this row
         context.with(\.table) { tc in
@@ -1238,7 +1238,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Minimum row height from stored header height
         let minRowHeight = tableCtx.header.rowHeight > 0
             ? tableCtx.header.rowHeight
-            : context.pdf.style.lineHeightPoints + tableCtx.cellPadding.height * 2
+            : context.pdf.style.line.height + tableCtx.cell.padding.height * 2
 
         // PRE-DRAW: Draw header backgrounds before content
         var cellColumn = 0
@@ -1267,12 +1267,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             let cellWidth = tableCtx.widthForColumns(cellColumn, count: headerCell.colspan)
 
             // Calculate content bounds with padding
-            let cellPadding = tableCtx.cellPadding
+            let cellPadding = tableCtx.cell.padding
             let contentX = cellX + cellPadding.width
             let contentWidth = cellWidth - cellPadding.width * 2
 
             // Vertical centering
-            let lineHeight = context.pdf.style.lineHeightPoints
+            let lineHeight = context.pdf.style.line.height
             let cellContentHeight = minRowHeight - cellPadding.height * 2
             let verticalCenterOffset = Swift.max(PDF.UserSpace.Height(0), (cellContentHeight - lineHeight) / 2)
             let headerCompensation: PDF.UserSpace.Height = 1.0
@@ -1327,12 +1327,12 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
 
         // Advance Y position past header row
-        let newY = PDF.UserSpace.Y(context.pdf.layoutBox.lly.value + minRowHeight.value)
+        let newY = context.pdf.layoutBox.lly + minRowHeight
         context.pdf.layoutBox = PDF.UserSpace.Rectangle(
             x: context.pdf.layoutBox.llx,
             y: newY,
             width: context.pdf.layoutBox.width,
-            height: PDF.UserSpace.Height(context.pdf.layoutBox.height.value - minRowHeight.value)
+            height: context.pdf.layoutBox.height - minRowHeight
         )
 
         // Update fragment end position to include the repeated header

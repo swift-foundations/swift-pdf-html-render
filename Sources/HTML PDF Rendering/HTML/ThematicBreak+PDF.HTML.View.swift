@@ -22,7 +22,7 @@ extension ThematicBreak: PDF.HTML.View {
         // Draw horizontal line
         let lineY = context.pdf.layoutBox.lly
         let startX = context.pdf.layoutBox.llx
-        let endX = PDF.UserSpace.X(startX.value + context.pdf.layoutBox.width.value)
+        let endX = startX + context.pdf.layoutBox.width
 
         context.pdf.emitLine(
             from: PDF.UserSpace.Coordinate(x: startX, y: lineY),

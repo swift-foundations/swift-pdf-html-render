@@ -318,8 +318,8 @@ extension PDF.HTML.Configuration {
 extension PDF.HTML.Configuration {
     /// Table styling configuration.
     public struct Table: Sendable, Equatable {
-        /// Cell padding for table cells
-        public var cellPadding: PDF.UserSpace.Size<1>
+        /// Cell configuration
+        public var cell: Cell
 
         /// Border styling for table cell edges
         public var border: Border
@@ -331,15 +331,29 @@ extension PDF.HTML.Configuration {
         public var alternatingRowColor: PDF.Color?
 
         public init(
-            cellPadding: PDF.UserSpace.Size<1> = 4,
+            cell: Cell = .init(),
             border: Border = .init(),
             headerBackground: PDF.Color? = .gray(0.9),
             alternatingRowColor: PDF.Color? = nil
         ) {
-            self.cellPadding = cellPadding
+            self.cell = cell
             self.border = border
             self.headerBackground = headerBackground
             self.alternatingRowColor = alternatingRowColor
+        }
+    }
+}
+
+extension PDF.HTML.Configuration.Table {
+    /// Table cell configuration.
+    public struct Cell: Sendable, Equatable {
+        /// Padding inside table cells
+        public var padding: PDF.UserSpace.Size<1>
+
+        public init(
+            padding: PDF.UserSpace.Size<1> = 4
+        ) {
+            self.padding = padding
         }
     }
 }

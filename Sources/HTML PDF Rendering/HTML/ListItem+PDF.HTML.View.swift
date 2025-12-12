@@ -24,9 +24,9 @@ extension ListItem: PDF.HTML.ListItemRenderer {
         case .text(let bytes, let font):
             markerWidth = font.winAnsi.width(of: bytes, atSize: context.style.fontSize)
         case .strokedCircle(let circle, _):
-            markerWidth = circle.radius.value * 2  // diameter
+            markerWidth = circle.diameter.width
         case .filledCircle(let circle):
-            markerWidth = circle.radius.value * 2  // diameter
+            markerWidth = circle.diameter.width
         case .filledSquare(let rect):
             markerWidth = rect.width
         }

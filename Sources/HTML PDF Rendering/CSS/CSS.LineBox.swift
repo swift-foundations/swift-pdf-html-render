@@ -80,7 +80,7 @@ extension PDF.HTML {
             let descender = metrics.descender(atSize: fontSize)  // negative value
             let contentHeight: PDF.UserSpace.Height = ascender - descender  // ascender - (negative) = ascender + |descender|
             let lineHeight: PDF.UserSpace.Height = fontSize.height * lineHeightMultiplier.value
-            let halfLeading: PDF.UserSpace.Height = PDF.UserSpace.Height(Swift.max(0, (lineHeight - contentHeight / 2).value))
+            let halfLeading = PDF.UserSpace.Height.max(.zero, (lineHeight - contentHeight) / 2)
 
             self.height = lineHeight
             self.halfLeading = halfLeading
@@ -102,7 +102,7 @@ extension PDF.HTML {
             let ascender = metrics.ascender(atSize: fontSize)
             let descender = metrics.descender(atSize: fontSize)
             let contentHeight = ascender - descender
-            let halfLeading = PDF.UserSpace.Height(Swift.max(0, (lineHeight - contentHeight / 2).value))
+            let halfLeading = PDF.UserSpace.Height.max(.zero, (lineHeight - contentHeight) / 2)
 
             self.height = lineHeight
             self.halfLeading = halfLeading
