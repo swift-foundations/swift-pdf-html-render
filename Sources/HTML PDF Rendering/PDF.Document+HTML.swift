@@ -29,8 +29,8 @@ extension PDF.Document {
         generateOutline: Bool = false,
         @HTML_Renderable.HTML.Builder _ html: () -> H
     ) {
-        // Build viewer preferences from configuration
-        let viewerPreferences = ISO_32000.ViewerPreferences(
+        // Build viewer from configuration, converting nested types
+        let viewer = ISO_32000.Viewer(
             hideToolbar: configuration.viewer.hideToolbar,
             hideMenubar: configuration.viewer.hideMenubar,
             hideWindowUI: configuration.viewer.hideWindowUI,
@@ -39,17 +39,21 @@ extension PDF.Document {
             displayDocTitle: configuration.viewer.displayDocTitle,
             nonFullScreenPageMode: configuration.viewer.nonFullScreenPageMode,
             direction: configuration.viewer.direction,
-            viewArea: configuration.viewer.view.area,
-            viewClip: configuration.viewer.view.clip,
-            printArea: configuration.viewer.print.area,
-            printClip: configuration.viewer.print.clip,
-            printScaling: configuration.viewer.print.scaling
+            view: .init(
+                area: configuration.viewer.view.area,
+                clip: configuration.viewer.view.clip
+            ),
+            print: .init(
+                area: configuration.viewer.print.area,
+                clip: configuration.viewer.print.clip,
+                scaling: configuration.viewer.print.scaling
+            )
         )
 
-        // Only include viewer preferences if they differ from defaults
-        let viewerPrefs: ISO_32000.ViewerPreferences? = configuration.viewer == .init()
+        // Only include viewer if it differs from defaults
+        let viewerOrNil: ISO_32000.Viewer? = configuration.viewer == .init()
             ? nil
-            : viewerPreferences
+            : viewer
 
         if generateOutline {
             // Use render() to get pages and collected headings
@@ -79,7 +83,7 @@ extension PDF.Document {
                 info: info,
                 pages: result.pages,
                 outline: outline.isEmpty ? nil : outline,
-                viewerPreferences: viewerPrefs
+                viewer: viewerOrNil
             )
         } else {
             // Simple path without outline generation
@@ -91,7 +95,7 @@ extension PDF.Document {
             self.init(
                 info: info,
                 pages: pages,
-                viewerPreferences: viewerPrefs
+                viewer: viewerOrNil
             )
         }
     }

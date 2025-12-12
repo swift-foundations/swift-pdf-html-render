@@ -52,18 +52,18 @@ extension PDF.HTML {
         /// Distance from the top of the line box to the baseline
         ///
         /// This equals: `halfLeading + ascender`
-        public let baselineOffset: PDF.UserSpace.Unit
+        public let baselineOffset: PDF.UserSpace.Height
 
         /// Distance from the baseline to the bottom of the line box
         ///
         /// This equals: `halfLeading + |descender|`
-        public let belowBaseline: PDF.UserSpace.Unit
+        public let belowBaseline: PDF.UserSpace.Height
 
         /// Half-leading value (leading distributed symmetrically)
         ///
         /// `halfLeading = max(0, (lineHeight - contentHeight) / 2)`
         /// where `contentHeight = ascender - descender`
-        public let halfLeading: PDF.UserSpace.Unit
+        public let halfLeading: PDF.UserSpace.Height
 
         /// Create a line box from font metrics and line-height multiplier
         ///
@@ -73,16 +73,16 @@ extension PDF.HTML {
         ///   - lineHeightMultiplier: CSS line-height multiplier (e.g., 1.2, 1.5)
         public init(
             metrics: PDF.Font.Metrics,
-            fontSize: PDF.UserSpace.Unit,
-            lineHeightMultiplier: Double
+            fontSize: PDF.UserSpace.Size<1>,
+            lineHeightMultiplier: PDF.UserSpace.Unit
         ) {
             let ascender = metrics.ascender(atSize: fontSize)
             let descender = metrics.descender(atSize: fontSize)  // negative value
-            let contentHeight = ascender - descender  // ascender - (negative) = ascender + |descender|
-            let lineHeight = fontSize * lineHeightMultiplier
-            let halfLeading = Swift.max(PDF.UserSpace.Unit(0), (lineHeight - contentHeight) / PDF.UserSpace.Unit(2))
+            let contentHeight: PDF.UserSpace.Height = ascender - descender  // ascender - (negative) = ascender + |descender|
+            let lineHeight: PDF.UserSpace.Height = fontSize.height * lineHeightMultiplier.value
+            let halfLeading: PDF.UserSpace.Height = PDF.UserSpace.Height(Swift.max(0, (lineHeight - contentHeight / 2).value))
 
-            self.height = PDF.UserSpace.Height(lineHeight)
+            self.height = lineHeight
             self.halfLeading = halfLeading
             self.baselineOffset = halfLeading + ascender
             self.belowBaseline = halfLeading + (-descender)  // convert negative descender to positive
@@ -96,15 +96,15 @@ extension PDF.HTML {
         ///   - lineHeight: Explicit line height in user space units
         public init(
             metrics: PDF.Font.Metrics,
-            fontSize: PDF.UserSpace.Unit,
-            lineHeight: PDF.UserSpace.Unit
+            fontSize: PDF.UserSpace.Size<1>,
+            lineHeight: PDF.UserSpace.Height
         ) {
             let ascender = metrics.ascender(atSize: fontSize)
             let descender = metrics.descender(atSize: fontSize)
             let contentHeight = ascender - descender
-            let halfLeading = Swift.max(PDF.UserSpace.Unit(0), (lineHeight - contentHeight) / PDF.UserSpace.Unit(2))
+            let halfLeading = PDF.UserSpace.Height(Swift.max(0, (lineHeight - contentHeight / 2).value))
 
-            self.height = PDF.UserSpace.Height(lineHeight)
+            self.height = lineHeight
             self.halfLeading = halfLeading
             self.baselineOffset = halfLeading + ascender
             self.belowBaseline = halfLeading + (-descender)

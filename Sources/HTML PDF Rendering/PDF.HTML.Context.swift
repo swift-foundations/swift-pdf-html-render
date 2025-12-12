@@ -46,7 +46,7 @@ extension PDF.HTML {
         /// In CSS, adjacent vertical margins collapse - only the larger margin is used.
         /// This tracks the bottom margin of the previous block element so it can be
         /// collapsed with the top margin of the next block element.
-        public var pendingBottomMargin: PDF.UserSpace.Unit = 0
+        public var pendingBottomMargin: PDF.UserSpace.Height = 0
         
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
         ///
@@ -164,22 +164,22 @@ extension PDF.HTML.Context {
     ///   - topMargin: Top margin of the current element
     ///   - bottomMargin: Bottom margin of the current element (stored for next collapse)
     public mutating func applyCollapsedMargin(
-        top topMargin: PDF.UserSpace.Unit,
-        bottom bottomMargin: PDF.UserSpace.Unit
+        top topMargin: PDF.UserSpace.Height,
+        bottom bottomMargin: PDF.UserSpace.Height
     ) {
         // Flush pending inline content
         if pdf.hasInlineRuns {
             pdf.flushInlineRuns()
         }
-        
+
         // CSS margin collapse: use larger of adjacent margins
         let collapsedMargin = max(pendingBottomMargin, topMargin)
-        
+
         // Apply the collapsed margin
         if collapsedMargin > 0 {
-            pdf.advance(PDF.UserSpace.Y(collapsedMargin))
+            pdf.advance(collapsedMargin)
         }
-        
+
         // Store bottom margin for next collapse
         pendingBottomMargin = bottomMargin
     }

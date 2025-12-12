@@ -116,13 +116,13 @@ extension PDF.HTML.Context {
         // MARK: - Styling
 
         /// Cell padding (applied uniformly)
-        public var cellPadding: PDF.UserSpace.Unit
+        public var cellPadding: PDF.UserSpace.Size<1>
 
         /// Border color for cell edges
         public var borderColor: PDF.Color
 
         /// Border width for cell edges
-        public var borderWidth: PDF.UserSpace.Unit
+        public var borderWidth: PDF.UserSpace.Size<1>
 
         /// Background color for header cells (nil for transparent)
         public var headerBackground: PDF.Color?
@@ -242,10 +242,10 @@ extension PDF.HTML.Context {
         // MARK: - Row Baseline Alignment
 
         /// Max font ascent across all cells in current row (for baseline alignment)
-        public var currentRowMaxAscent: PDF.UserSpace.Unit = 0
+        public var currentRowMaxAscent: PDF.UserSpace.Height = 0
 
         /// Max font descent across all cells in current row (absolute value, for baseline alignment)
-        public var currentRowMaxDescent: PDF.UserSpace.Unit = 0
+        public var currentRowMaxDescent: PDF.UserSpace.Height = 0
 
         // MARK: - Multi-Page Fragment Tracking
 
@@ -262,9 +262,9 @@ extension PDF.HTML.Context {
             bounds: PDF.UserSpace.Rectangle,
             columnWidths: [PDF.UserSpace.Width],
             rowHeights: [PDF.UserSpace.Height],
-            cellPadding: PDF.UserSpace.Unit = 4,
+            cellPadding: PDF.UserSpace.Size<1> = 4,
             borderColor: PDF.Color = .gray(0.3),
-            borderWidth: PDF.UserSpace.Unit = 0.5,
+            borderWidth: PDF.UserSpace.Size<1> = 0.5,
             headerBackground: PDF.Color? = .gray(0.9),
             alternatingRowColor: PDF.Color? = nil
         ) {
@@ -334,7 +334,7 @@ extension PDF.HTML.Context {
             rowspan: Int = 1
         ) -> PDF.UserSpace.Rectangle {
             cellBounds(row: row, column: column, colspan: colspan, rowspan: rowspan)
-                .insetBy(dx: cellPadding, dy: cellPadding)
+                .insetBy(dx: cellPadding.width, dy: cellPadding.height)
         }
 
         /// Find the next available column in the current row (skipping spanned cells)

@@ -492,8 +492,8 @@ extension PDF.HTML {
     public static func renderBlock<C: PDF.HTML.View>(
         _ content: C?,
         context: inout PDF.HTML.Context,
-        beforeSpacing: Double = 0,
-        afterSpacing: Double = 0
+        beforeSpacing: PDF.UserSpace.Height = 0,
+        afterSpacing: PDF.UserSpace.Height = 0
     ) {
         // Flush pending inline runs
         if context.pdf.hasInlineRuns {
@@ -502,7 +502,7 @@ extension PDF.HTML {
 
         // Add spacing before
         if beforeSpacing > 0 {
-            context.pdf.advance(PDF.UserSpace.Y(PDF.UserSpace.Unit(beforeSpacing)))
+            context.pdf.advance(beforeSpacing)
         }
 
         // Render content
@@ -517,7 +517,7 @@ extension PDF.HTML {
 
         // Add spacing after
         if afterSpacing > 0 {
-            context.pdf.advance(PDF.UserSpace.Y(PDF.UserSpace.Unit(afterSpacing)))
+            context.pdf.advance(afterSpacing)
         }
     }
 

@@ -1,44 +1,54 @@
 //
-//  File.swift
+//  CSS+PDF.UserSpace.Size.swift
 //  swift-pdf-html-rendering
 //
-//  Created by Coen ten Thije Boonkkamp on 04/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 12/12/2025.
 //
 
 import CSS_Standard
 import PDF_Rendering
 import PDF_Standard
 
-extension PDF.UserSpace.Unit {
+extension PDF.UserSpace.Size where N == 1 {
+    /// Create a 1D size from a CSS absolute font size.
+    ///
+    /// - Parameters:
+    ///   - absoluteSize: The CSS absolute size keyword
+    ///   - baseFontSize: The base font size (typically from configuration)
     public init(
         _ absoluteSize: W3C_CSS_Fonts.AbsoluteSize,
-        baseFontSize: PDF.UserSpace.Length
+        baseFontSize: Self
     ) {
         switch absoluteSize {
         case .xxSmall:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 0.6)
+            self = baseFontSize * 0.6
         case .xSmall:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 0.75)
+            self = baseFontSize * 0.75
         case .small:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 0.89)
+            self = baseFontSize * 0.89
         case .medium:
-            self = PDF.UserSpace.Unit(baseFontSize.value)
+            self = baseFontSize
         case .large:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 1.2)
+            self = baseFontSize * 1.2
         case .xLarge:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 1.5)
+            self = baseFontSize * 1.5
         case .xxLarge:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 2.0)
+            self = baseFontSize * 2.0
         case .xxxLarge:
-            self = PDF.UserSpace.Unit(baseFontSize.value * 3.0)
+            self = baseFontSize * 3.0
         }
     }
 }
 
-extension PDF.UserSpace.Unit {
+extension PDF.UserSpace.Size where N == 1 {
+    /// Create a 1D size from a CSS relative font size.
+    ///
+    /// - Parameters:
+    ///   - relativeSize: The CSS relative size keyword (smaller/larger)
+    ///   - currentSize: The current font size
     public init(
         _ relativeSize: W3C_CSS_Fonts.RelativeSize,
-        currentSize: PDF.UserSpace.Unit
+        currentSize: Self
     ) {
         let ratio = 1.2
         switch relativeSize {
@@ -50,15 +60,21 @@ extension PDF.UserSpace.Unit {
     }
 }
 
-extension PDF.UserSpace.Unit {
+extension PDF.UserSpace.Size where N == 1 {
+    /// Create a 1D size from a CSS length-percentage.
+    ///
+    /// - Parameters:
+    ///   - lengthPercentage: The CSS length-percentage value
+    ///   - currentSize: The current font size (for em, ex, etc.)
+    ///   - baseFontSize: The base font size (for rem)
     public init(
         _ lengthPercentage: LengthPercentage,
-        currentSize: PDF.UserSpace.Unit,
-        baseFontSize: PDF.UserSpace.Length
+        currentSize: Self,
+        baseFontSize: Self
     ) {
         switch lengthPercentage {
         case .length(let length):
-            self = PDF.UserSpace.Unit(length, currentSize: currentSize, baseFontSize: baseFontSize)
+            self = Self(length, currentSize: currentSize, baseFontSize: baseFontSize)
         case .percentage(let percentage):
             // Percentage of current font size
             self = currentSize * (percentage.value / 100.0)
@@ -67,52 +83,41 @@ extension PDF.UserSpace.Unit {
             self = currentSize
         }
     }
-
-    /// Convenience initializer accepting Size<1> for font sizes.
-    ///
-    /// Converts Size<1> to the appropriate scalar types for the calculation.
-    public init(
-        _ lengthPercentage: LengthPercentage,
-        currentSize: PDF.UserSpace.Size<1>,
-        baseFontSize: PDF.UserSpace.Size<1>
-    ) {
-        // Delegate to Size<1> initializer and extract the scalar value
-        let result = PDF.UserSpace.Size<1>(
-            lengthPercentage,
-            currentSize: currentSize,
-            baseFontSize: baseFontSize
-        )
-        self = PDF.UserSpace.Unit(result.length.value)
-    }
 }
 
-extension PDF.UserSpace.Unit {
+extension PDF.UserSpace.Size where N == 1 {
+    /// Create a 1D size from a CSS length.
+    ///
+    /// - Parameters:
+    ///   - length: The CSS length value
+    ///   - currentSize: The current font size (for em, ex, etc.)
+    ///   - baseFontSize: The base font size (for rem)
     public init(
         _ length: Length,
-        currentSize: PDF.UserSpace.Unit,
-        baseFontSize: PDF.UserSpace.Length
+        currentSize: Self,
+        baseFontSize: Self
     ) {
         switch length {
         case .length(let value, let unit):
             switch unit {
             case .pt:
-                self = PDF.UserSpace.Unit(value)
+                self = Self(value)
             case .px:
                 // 96 DPI: 1px = 72/96 pt = 0.75pt
-                self = PDF.UserSpace.Unit(value * 0.75)
+                self = Self(value * 0.75)
             case .em:
                 self = currentSize * value
             case .rem:
-                self = PDF.UserSpace.Unit(baseFontSize.value * value)
+                self = baseFontSize * value
             case .in:
-                self = PDF.UserSpace.Unit(value * 72.0)
+                self = Self(value * 72.0)
             case .cm:
-                self = PDF.UserSpace.Unit(value * 28.3465)
+                self = Self(value * 28.3465)
             case .mm:
-                self = PDF.UserSpace.Unit(value * 2.83465)
+                self = Self(value * 2.83465)
             case .pc:
                 // 1 pica = 12 points
-                self = PDF.UserSpace.Unit(value * 12.0)
+                self = Self(value * 12.0)
             case .ex:
                 // Approximate ex as 0.5em
                 self = currentSize * (value * 0.5)
@@ -130,7 +135,7 @@ extension PDF.UserSpace.Unit {
                 self = currentSize
             case .q:
                 // 1q = 0.25mm = 0.709pt
-                self = PDF.UserSpace.Unit(value * 0.70866)
+                self = Self(value * 0.70866)
             case .cap:
                 // Cap height - approximate as 0.7em
                 self = currentSize * (value * 0.7)
@@ -139,7 +144,7 @@ extension PDF.UserSpace.Unit {
                 self = currentSize * value
             case .rlh:
                 // Root line height - approximate as 1.2 * base
-                self = PDF.UserSpace.Unit(baseFontSize.value * value * 1.2)
+                self = baseFontSize * (value * 1.2)
             }
         case .keyword:
             // Keywords like auto don't apply to font-size

@@ -188,7 +188,7 @@ struct `PDF.HTML.View Tests` {
         
         #expect(config.headingSize(level: 1) == 28)  // 14 * 2.0
         #expect(config.headingSize(level: 2) == 21)  // 14 * 1.5
-        #expect(config.headingSize(level: 3) == PDF.UserSpace.Unit(14 * 1.17))
+        #expect(config.headingSize(level: 3) == config.defaultFontSize * 1.17)
     }
     
     @Test
@@ -198,8 +198,8 @@ struct `PDF.HTML.View Tests` {
             margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
         )
         
-        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width.value - 144)
-        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height.value - 144)
+        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width - 144)
+        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height - 144)
     }
 }
 

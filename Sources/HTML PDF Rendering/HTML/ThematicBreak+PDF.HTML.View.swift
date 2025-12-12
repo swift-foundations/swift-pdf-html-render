@@ -16,8 +16,8 @@ extension ThematicBreak: PDF.HTML.View {
         }
 
         // Add spacing before the rule
-        let spacing = context.configuration.defaultFontSize * 0.5
-        context.pdf.advance(PDF.UserSpace.Y(spacing))
+        let spacing = (context.configuration.defaultFontSize * 0.5).height
+        context.pdf.advance(spacing)
 
         // Draw horizontal line
         let lineY = context.pdf.layoutBox.lly
@@ -32,6 +32,6 @@ extension ThematicBreak: PDF.HTML.View {
         )
 
         // Add spacing after the rule
-        context.pdf.advance(PDF.UserSpace.Y(spacing))
+        context.pdf.advance(spacing)
     }
 }

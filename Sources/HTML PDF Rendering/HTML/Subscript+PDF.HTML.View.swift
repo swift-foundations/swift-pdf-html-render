@@ -12,6 +12,7 @@ extension Subscript: PDF.HTML.TagRenderer {
         let currentSize = context.style.fontSize
         context.style.fontSize = currentSize * 0.83
         // Subscript drops below baseline - WebKit uses about 0.2em
-        context.style.verticalOffset = (context.style.verticalOffset) - currentSize * 0.2
+        let offset = (currentSize * 0.2).height
+        context.style.verticalOffset = context.style.verticalOffset - offset
     }
 }

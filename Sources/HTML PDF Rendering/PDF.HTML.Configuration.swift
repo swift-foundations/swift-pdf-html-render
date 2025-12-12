@@ -42,7 +42,7 @@ extension PDF.HTML {
         public var defaultFont: PDF.Font
 
         /// Default font size in points
-        public var defaultFontSize: PDF.UserSpace.Unit
+        public var defaultFontSize: PDF.UserSpace.Size<1>
 
         /// Default text color
         public var defaultColor: PDF.Color
@@ -82,13 +82,13 @@ extension PDF.HTML {
         // MARK: - Block Indentation
 
         /// List indentation in points (default: 30)
-        public var listIndentPoints: PDF.UserSpace.Unit
+        public var listIndentPoints: PDF.UserSpace.Width
 
         /// Blockquote indentation in points (default: 30)
-        public var blockquoteIndentPoints: PDF.UserSpace.Unit
+        public var blockquoteIndentPoints: PDF.UserSpace.Width
 
         /// Figure margin in points (default: 40)
-        public var figureMarginPoints: PDF.UserSpace.Unit
+        public var figureMarginPoints: PDF.UserSpace.Width
 
         // MARK: - Spacing
 
@@ -101,13 +101,13 @@ extension PDF.HTML {
         // MARK: - Table Configuration
 
         /// Cell padding for table cells
-        public var tableCellPadding: PDF.UserSpace.Unit
+        public var tableCellPadding: PDF.UserSpace.Size<1>
 
         /// Border color for table cell edges
         public var tableBorderColor: PDF.Color
 
         /// Border width for table cell edges
-        public var tableBorderWidth: PDF.UserSpace.Unit
+        public var tableBorderWidth: PDF.UserSpace.Size<1>
 
         /// Background color for table header cells (nil for transparent)
         public var tableHeaderBackground: PDF.Color?
@@ -143,13 +143,13 @@ extension PDF.HTML {
         }
 
         /// Content width (paper width minus margins)
-        public var contentWidth: PDF.UserSpace.Unit {
-            PDF.UserSpace.Unit(paperSize.width.value) - margins.horizontal
+        public var contentWidth: PDF.UserSpace.Width {
+            paperSize.width - margins.horizontal
         }
 
         /// Content height (paper height minus margins)
-        public var contentHeight: PDF.UserSpace.Unit {
-            PDF.UserSpace.Unit(paperSize.height.value) - margins.vertical
+        public var contentHeight: PDF.UserSpace.Height {
+            paperSize.height - margins.vertical
         }
 
         // MARK: - Init
@@ -162,7 +162,7 @@ extension PDF.HTML {
             documentTitle: String? = nil,
             documentDate: String? = nil,
             defaultFont: PDF.Font = .times,
-            defaultFontSize: PDF.UserSpace.Unit = 12,
+            defaultFontSize: PDF.UserSpace.Size<1> = 12,
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
             paragraphSpacing: Double = 0.5,
@@ -172,14 +172,14 @@ extension PDF.HTML {
             smallTextScale: Double = 0.83,
             subscriptOffset: Double = 0.2,
             superscriptOffset: Double = 0.4,
-            listIndentPoints: PDF.UserSpace.Unit = 30,
-            blockquoteIndentPoints: PDF.UserSpace.Unit = 30,
-            figureMarginPoints: PDF.UserSpace.Unit = 40,
+            listIndentPoints: PDF.UserSpace.Width = 30,
+            blockquoteIndentPoints: PDF.UserSpace.Width = 30,
+            figureMarginPoints: PDF.UserSpace.Width = 40,
             horizontalGapEm: Double = 0.5,
             deferredHeaderThreshold: Double = 0.9,
-            tableCellPadding: PDF.UserSpace.Unit = 4,
+            tableCellPadding: PDF.UserSpace.Size<1> = 4,
             tableBorderColor: PDF.Color = .gray(0.3),
-            tableBorderWidth: PDF.UserSpace.Unit = 0.5,
+            tableBorderWidth: PDF.UserSpace.Size<1> = 0.5,
             tableHeaderBackground: PDF.Color? = .gray(0.9),
             tableAlternatingRowColor: PDF.Color? = nil,
             outline: Outline = .init(),
@@ -228,7 +228,7 @@ extension PDF.HTML {
         ///   - font: The font being used
         ///   - fontSize: The current font size
         /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
-        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Unit) -> Double {
+        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double {
             switch lineHeight {
             case .normal:
                 // CSS "line-height: normal" uses the font's normalLineHeight
@@ -254,8 +254,8 @@ extension PDF.HTML {
                 switch lp {
                 case .length(let length):
                     // For length values, calculate as multiple of font size
-                    let points = PDF.UserSpace.Unit(length, currentSize: fontSize, baseFontSize: defaultFontSize)
-                    return points.value / fontSize.value
+                    let points = PDF.UserSpace.Size<1>(length, currentSize: fontSize, baseFontSize: defaultFontSize)
+                    return points.length.value / fontSize.length.value
                 case .percentage(let pct):
                     return pct.value / 100.0
                 case .calc:
@@ -271,7 +271,7 @@ extension PDF.HTML {
         // MARK: - Heading Sizes
 
         /// Font size for heading level (1-6)
-        public func headingSize(level: Int) -> PDF.UserSpace.Unit {
+        public func headingSize(level: Int) -> PDF.UserSpace.Size<1> {
             switch level {
             case 1: return defaultFontSize * 2.0
             case 2: return defaultFontSize * 1.5
@@ -461,14 +461,14 @@ extension PDF.HTML.Configuration.Viewer {
     /// View area configuration.
     public struct View: Sendable, Equatable {
         /// Page boundary for display area
-        public var area: ISO_32000.PageBoundary
+        public var area: ISO_32000.Page.Boundary
 
         /// Page boundary for clipping display
-        public var clip: ISO_32000.PageBoundary
+        public var clip: ISO_32000.Page.Boundary
 
         public init(
-            area: ISO_32000.PageBoundary = .cropBox,
-            clip: ISO_32000.PageBoundary = .cropBox
+            area: ISO_32000.Page.Boundary = .cropBox,
+            clip: ISO_32000.Page.Boundary = .cropBox
         ) {
             self.area = area
             self.clip = clip
@@ -478,18 +478,18 @@ extension PDF.HTML.Configuration.Viewer {
     /// Print configuration.
     public struct Print: Sendable, Equatable {
         /// Page boundary for print area
-        public var area: ISO_32000.PageBoundary
+        public var area: ISO_32000.Page.Boundary
 
         /// Page boundary for clipping print output
-        public var clip: ISO_32000.PageBoundary
+        public var clip: ISO_32000.Page.Boundary
 
         /// Default print scaling behavior
-        public var scaling: ISO_32000.PrintScaling
+        public var scaling: ISO_32000.Print.Scaling
 
         public init(
-            area: ISO_32000.PageBoundary = .cropBox,
-            clip: ISO_32000.PageBoundary = .cropBox,
-            scaling: ISO_32000.PrintScaling = .appDefault
+            area: ISO_32000.Page.Boundary = .cropBox,
+            clip: ISO_32000.Page.Boundary = .cropBox,
+            scaling: ISO_32000.Print.Scaling = .appDefault
         ) {
             self.area = area
             self.clip = clip
