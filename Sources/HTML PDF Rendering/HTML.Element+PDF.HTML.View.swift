@@ -701,6 +701,11 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Save the current Y position for row start
         let rowStartY = context.pdf.layoutBox.lly
 
+        // Update table bounds Y to current row position for cell rendering
+        // This ensures rowspan cells capture the correct Y position
+        tableCtx.bounds.lly = rowStartY
+        context.table = tableCtx
+
         // Track table start position from first row (not from <table> entry)
         // This ensures borders start at the actual first row, not above it
         if tableCtx.totalRowsRendered == 0 {
@@ -740,6 +745,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Pass 2: Pre-draw backgrounds (using min height - will be redrawn if content is taller)
             if let tc = context.table {
                 for col in 0..<tc.columnCount {
+                    // Skip columns occupied by rowspan from previous rows
+                    if tc.spans.isOccupied(row: tc.totalRowsRendered, column: col) {
+                        continue
+                    }
                     let cellX = tc.xForColumn(col)
                     let cellWidth = tc.widthForColumns(col, count: 1)
                     let cellBounds = PDF.UserSpace.Rectangle(
@@ -761,6 +770,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Subsequent rows: Draw backgrounds first, then content
             if let tc = context.table {
                 for col in 0..<tc.columnCount {
+                    // Skip columns occupied by rowspan from previous rows
+                    if tc.spans.isOccupied(row: tc.totalRowsRendered, column: col) {
+                        continue
+                    }
                     let cellX = tc.xForColumn(col)
                     let cellWidth = tc.widthForColumns(col, count: 1)
                     let cellBounds = PDF.UserSpace.Rectangle(
@@ -963,8 +976,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Use single line height as placeholder for row height calculation
             actualContentHeight = context.pdf.style.line.height
 
-            // Capture style before entering with closure to avoid overlapping access
+            // Capture style and cell Y before entering closure for consistency
+            // All cell bounds (x, y, width) should come from the same source (tableCtx)
             let savedStyle = context.pdf.style
+            let cellY = tableCtx.bounds.lly
 
             context.with(\.table) { tc in
                 // Defer this spanning cell - content + border will be drawn after all rows
@@ -976,7 +991,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                         row: .init(span: rowspan)
                     ),
                     isHeader: isHeader,
-                    cell: .init(x: cellX, y: tc.bounds.lly, width: cellWidth),
+                    cell: .init(x: cellX, y: cellY, width: cellWidth),
                     content: .init(x: contentX, width: contentWidth),
                     savedStyle: savedStyle,
                     text: contentText,
@@ -1059,18 +1074,25 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let color = tableCtx.borderColor
         let width = tableCtx.borderWidth.width
 
+        // Round coordinates to avoid floating-point precision artifacts at border junctions
+        // This ensures adjacent cell borders align perfectly
+        let llx = PDF.UserSpace.X((bounds.llx.rawValue * 100).rounded() / 100)
+        let lly = PDF.UserSpace.Y((bounds.lly.rawValue * 100).rounded() / 100)
+        let urx = PDF.UserSpace.X((bounds.urx.rawValue * 100).rounded() / 100)
+        let ury = PDF.UserSpace.Y((bounds.ury.rawValue * 100).rounded() / 100)
+
         // Draw left edge (from lower-left to upper-left)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
-            to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
+            from: PDF.UserSpace.Coordinate(x: llx, y: lly),
+            to: PDF.UserSpace.Coordinate(x: llx, y: ury),
             color: color,
             width: width
         )
 
         // Draw top edge (from lower-left to lower-right)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
-            to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
+            from: PDF.UserSpace.Coordinate(x: llx, y: lly),
+            to: PDF.UserSpace.Coordinate(x: urx, y: lly),
             color: color,
             width: width
         )

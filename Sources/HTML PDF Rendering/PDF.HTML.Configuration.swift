@@ -117,8 +117,8 @@ extension PDF.HTML {
         /// Access `.width` and `.height` for dimensions.
         public var content: PDF.UserSpace.Rectangle {
             PDF.UserSpace.Rectangle(
-                x: PDF.UserSpace.X(margins.leading),
-                y: PDF.UserSpace.Y(margins.top),
+                x: .zero + margins.leading,
+                y: .zero + margins.top,
                 width: paperSize.width - margins.horizontal,
                 height: paperSize.height - margins.vertical
             )
