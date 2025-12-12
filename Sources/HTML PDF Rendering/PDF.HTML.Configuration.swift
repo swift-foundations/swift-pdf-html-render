@@ -112,10 +112,10 @@ extension PDF.HTML {
             paperSize
         }
 
-        /// Content bounds (paper size minus margins) as a Rectangle
+        /// Content area (paper size minus margins) as a Rectangle
         ///
         /// Access `.width` and `.height` for dimensions.
-        public var contentBounds: PDF.UserSpace.Rectangle {
+        public var content: PDF.UserSpace.Rectangle {
             PDF.UserSpace.Rectangle(
                 x: PDF.UserSpace.X(margins.leading),
                 y: PDF.UserSpace.Y(margins.top),
