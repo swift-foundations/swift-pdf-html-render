@@ -289,13 +289,13 @@ extension PDF.HTML.Context {
         /// Get X position for a given column
         public func xForColumn(_ column: Int) -> PDF.UserSpace.X {
             let offset = widthForColumns(0, count: column)
-            return PDF.UserSpace.X(bounds.llx.value + offset.value)
+            return bounds.llx + offset
         }
 
         /// Get Y position for a given row
         public func yForRow(_ row: Int) -> PDF.UserSpace.Y {
             let offset = heightForRows(0, count: row)
-            return PDF.UserSpace.Y(bounds.lly.value + offset.value)
+            return bounds.lly + offset
         }
 
         /// Calculate total width for a range of columns (for colspan)

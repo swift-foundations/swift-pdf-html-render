@@ -22,11 +22,11 @@ extension PDF.HTML {
 
         // MARK: - Headers & Footers
 
-        /// Height reserved for page header (0 for no header)
-        public var headerHeight: PDF.UserSpace.Height
+        /// Page header configuration
+        public var header: Header
 
-        /// Height reserved for page footer (0 for no footer)
-        public var footerHeight: PDF.UserSpace.Height
+        /// Page footer configuration
+        public var footer: Footer
 
         // MARK: - Document Metadata
 
@@ -129,8 +129,8 @@ extension PDF.HTML {
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
             margins: PDF.UserSpace.EdgeInsets = .init(all: 72),
-            headerHeight: PDF.UserSpace.Height = .init(0),
-            footerHeight: PDF.UserSpace.Height = .init(0),
+            header: Header = .init(),
+            footer: Footer = .init(),
             documentTitle: String? = nil,
             documentDate: String? = nil,
             defaultFont: PDF.Font = .times,
@@ -151,8 +151,8 @@ extension PDF.HTML {
         ) {
             self.paperSize = paperSize
             self.margins = margins
-            self.headerHeight = headerHeight
-            self.footerHeight = footerHeight
+            self.header = header
+            self.footer = footer
             self.documentTitle = documentTitle
             self.documentDate = documentDate
             self.defaultFont = defaultFont
@@ -247,6 +247,38 @@ extension PDF.HTML {
             case "h6": return 2.33
             default: return 1.0
             }
+        }
+    }
+}
+
+// MARK: - Configuration.Header
+
+extension PDF.HTML.Configuration {
+    /// Page header configuration.
+    public struct Header: Sendable, Equatable {
+        /// Height reserved for the header (0 for no header)
+        public var height: PDF.UserSpace.Height
+
+        public init(
+            height: PDF.UserSpace.Height = .init(0)
+        ) {
+            self.height = height
+        }
+    }
+}
+
+// MARK: - Configuration.Footer
+
+extension PDF.HTML.Configuration {
+    /// Page footer configuration.
+    public struct Footer: Sendable, Equatable {
+        /// Height reserved for the footer (0 for no footer)
+        public var height: PDF.UserSpace.Height
+
+        public init(
+            height: PDF.UserSpace.Height = .init(0)
+        ) {
+            self.height = height
         }
     }
 }
