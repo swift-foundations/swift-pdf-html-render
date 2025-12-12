@@ -306,21 +306,11 @@ extension PDF.HTML {
             lineHeight: configuration.lineHeight,
             paragraphSpacing: configuration.paragraphSpacing,
             headingSpacing: configuration.headingSpacing,
-            subscriptScale: configuration.subscriptScale,
-            superscriptScale: configuration.superscriptScale,
-            smallTextScale: configuration.smallTextScale,
-            subscriptOffset: configuration.subscriptOffset,
-            superscriptOffset: configuration.superscriptOffset,
-            listIndentPoints: configuration.listIndentPoints,
-            blockquoteIndentPoints: configuration.blockquoteIndentPoints,
-            figureMarginPoints: configuration.figureMarginPoints,
+            typography: configuration.typography,
+            indent: configuration.indent,
             horizontalGapEm: configuration.horizontalGapEm,
             deferredHeaderThreshold: configuration.deferredHeaderThreshold,
-            tableCellPadding: configuration.tableCellPadding,
-            tableBorderColor: configuration.tableBorderColor,
-            tableBorderWidth: configuration.tableBorderWidth,
-            tableHeaderBackground: configuration.tableHeaderBackground,
-            tableAlternatingRowColor: configuration.tableAlternatingRowColor
+            table: configuration.table
         )
 
         var pass1PdfContext = PDF.Context(

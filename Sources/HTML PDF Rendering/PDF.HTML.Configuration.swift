@@ -64,31 +64,13 @@ extension PDF.HTML {
 
         // MARK: - Typography Scales
 
-        /// Scale factor for subscript text (default: 0.83, i.e., 83% of base size)
-        public var subscriptScale: Double
-
-        /// Scale factor for superscript text (default: 0.83)
-        public var superscriptScale: Double
-
-        /// Scale factor for <small> tag text (default: 0.83)
-        public var smallTextScale: Double
-
-        /// Vertical offset for subscript as em fraction (default: 0.2, negative direction)
-        public var subscriptOffset: Double
-
-        /// Vertical offset for superscript as em fraction (default: 0.4, positive direction)
-        public var superscriptOffset: Double
+        /// Typography scale settings (subscript, superscript, small text)
+        public var typography: Typography
 
         // MARK: - Block Indentation
 
-        /// List indentation in points (default: 30)
-        public var listIndentPoints: PDF.UserSpace.Width
-
-        /// Blockquote indentation in points (default: 30)
-        public var blockquoteIndentPoints: PDF.UserSpace.Width
-
-        /// Figure margin in points (default: 40)
-        public var figureMarginPoints: PDF.UserSpace.Width
+        /// Block element indentation settings
+        public var indent: Indent
 
         // MARK: - Spacing
 
@@ -100,20 +82,8 @@ extension PDF.HTML {
 
         // MARK: - Table Configuration
 
-        /// Cell padding for table cells
-        public var tableCellPadding: PDF.UserSpace.Size<1>
-
-        /// Border color for table cell edges
-        public var tableBorderColor: PDF.Color
-
-        /// Border width for table cell edges
-        public var tableBorderWidth: PDF.UserSpace.Size<1>
-
-        /// Background color for table header cells (nil for transparent)
-        public var tableHeaderBackground: PDF.Color?
-
-        /// Alternating row background color (nil for no alternation)
-        public var tableAlternatingRowColor: PDF.Color?
+        /// Table styling configuration
+        public var table: Table
 
         // MARK: - Outline Configuration
 
@@ -142,14 +112,16 @@ extension PDF.HTML {
             paperSize
         }
 
-        /// Content width (paper width minus margins)
-        public var contentWidth: PDF.UserSpace.Width {
-            paperSize.width - margins.horizontal
-        }
-
-        /// Content height (paper height minus margins)
-        public var contentHeight: PDF.UserSpace.Height {
-            paperSize.height - margins.vertical
+        /// Content bounds (paper size minus margins) as a Rectangle
+        ///
+        /// Access `.width` and `.height` for dimensions.
+        public var contentBounds: PDF.UserSpace.Rectangle {
+            PDF.UserSpace.Rectangle(
+                x: PDF.UserSpace.X(margins.leading),
+                y: PDF.UserSpace.Y(margins.top),
+                width: paperSize.width - margins.horizontal,
+                height: paperSize.height - margins.vertical
+            )
         }
 
         // MARK: - Init
@@ -167,21 +139,11 @@ extension PDF.HTML {
             lineHeight: LineHeight = .normal,
             paragraphSpacing: Double = 0.5,
             headingSpacing: Double = 0.8,
-            subscriptScale: Double = 0.83,
-            superscriptScale: Double = 0.83,
-            smallTextScale: Double = 0.83,
-            subscriptOffset: Double = 0.2,
-            superscriptOffset: Double = 0.4,
-            listIndentPoints: PDF.UserSpace.Width = 30,
-            blockquoteIndentPoints: PDF.UserSpace.Width = 30,
-            figureMarginPoints: PDF.UserSpace.Width = 40,
+            typography: Typography = .init(),
+            indent: Indent = .init(),
             horizontalGapEm: Double = 0.5,
             deferredHeaderThreshold: Double = 0.9,
-            tableCellPadding: PDF.UserSpace.Size<1> = 4,
-            tableBorderColor: PDF.Color = .gray(0.3),
-            tableBorderWidth: PDF.UserSpace.Size<1> = 0.5,
-            tableHeaderBackground: PDF.Color? = .gray(0.9),
-            tableAlternatingRowColor: PDF.Color? = nil,
+            table: Table = .init(),
             outline: Outline = .init(),
             link: Link = .init(),
             annotation: Annotation = .init(),
@@ -199,21 +161,11 @@ extension PDF.HTML {
             self.lineHeight = lineHeight
             self.paragraphSpacing = paragraphSpacing
             self.headingSpacing = headingSpacing
-            self.subscriptScale = subscriptScale
-            self.superscriptScale = superscriptScale
-            self.smallTextScale = smallTextScale
-            self.subscriptOffset = subscriptOffset
-            self.superscriptOffset = superscriptOffset
-            self.listIndentPoints = listIndentPoints
-            self.blockquoteIndentPoints = blockquoteIndentPoints
-            self.figureMarginPoints = figureMarginPoints
+            self.typography = typography
+            self.indent = indent
             self.horizontalGapEm = horizontalGapEm
             self.deferredHeaderThreshold = deferredHeaderThreshold
-            self.tableCellPadding = tableCellPadding
-            self.tableBorderColor = tableBorderColor
-            self.tableBorderWidth = tableBorderWidth
-            self.tableHeaderBackground = tableHeaderBackground
-            self.tableAlternatingRowColor = tableAlternatingRowColor
+            self.table = table
             self.outline = outline
             self.link = link
             self.annotation = annotation
@@ -295,6 +247,118 @@ extension PDF.HTML {
             case "h6": return 2.33
             default: return 1.0
             }
+        }
+    }
+}
+
+// MARK: - Configuration.Typography
+
+extension PDF.HTML.Configuration {
+    /// Typography scale settings for subscript, superscript, and small text.
+    public struct Typography: Sendable, Equatable {
+        /// Scale factor for subscript text (default: 0.83, i.e., 83% of base size)
+        public var subscriptScale: Double
+
+        /// Scale factor for superscript text (default: 0.83)
+        public var superscriptScale: Double
+
+        /// Scale factor for <small> tag text (default: 0.83)
+        public var smallScale: Double
+
+        /// Vertical offset for subscript as em fraction (default: 0.2, negative direction)
+        public var subscriptOffset: Double
+
+        /// Vertical offset for superscript as em fraction (default: 0.4, positive direction)
+        public var superscriptOffset: Double
+
+        public init(
+            subscriptScale: Double = 0.83,
+            superscriptScale: Double = 0.83,
+            smallScale: Double = 0.83,
+            subscriptOffset: Double = 0.2,
+            superscriptOffset: Double = 0.4
+        ) {
+            self.subscriptScale = subscriptScale
+            self.superscriptScale = superscriptScale
+            self.smallScale = smallScale
+            self.subscriptOffset = subscriptOffset
+            self.superscriptOffset = superscriptOffset
+        }
+    }
+}
+
+// MARK: - Configuration.Indent
+
+extension PDF.HTML.Configuration {
+    /// Block element indentation settings.
+    public struct Indent: Sendable, Equatable {
+        /// List indentation (default: 30pt)
+        public var list: PDF.UserSpace.Width
+
+        /// Blockquote indentation (default: 30pt)
+        public var blockquote: PDF.UserSpace.Width
+
+        /// Figure margin (default: 40pt)
+        public var figure: PDF.UserSpace.Width
+
+        public init(
+            list: PDF.UserSpace.Width = 30,
+            blockquote: PDF.UserSpace.Width = 30,
+            figure: PDF.UserSpace.Width = 40
+        ) {
+            self.list = list
+            self.blockquote = blockquote
+            self.figure = figure
+        }
+    }
+}
+
+// MARK: - Configuration.Table
+
+extension PDF.HTML.Configuration {
+    /// Table styling configuration.
+    public struct Table: Sendable, Equatable {
+        /// Cell padding for table cells
+        public var cellPadding: PDF.UserSpace.Size<1>
+
+        /// Border styling for table cell edges
+        public var border: Border
+
+        /// Background color for table header cells (nil for transparent)
+        public var headerBackground: PDF.Color?
+
+        /// Alternating row background color (nil for no alternation)
+        public var alternatingRowColor: PDF.Color?
+
+        public init(
+            cellPadding: PDF.UserSpace.Size<1> = 4,
+            border: Border = .init(),
+            headerBackground: PDF.Color? = .gray(0.9),
+            alternatingRowColor: PDF.Color? = nil
+        ) {
+            self.cellPadding = cellPadding
+            self.border = border
+            self.headerBackground = headerBackground
+            self.alternatingRowColor = alternatingRowColor
+        }
+    }
+}
+
+extension PDF.HTML.Configuration.Table {
+    /// Table border styling.
+    public struct Border: Sendable, Equatable {
+        /// Border color
+        public var color: PDF.Color
+
+        /// Border width
+        public var width: PDF.UserSpace.Size<1>
+
+        public init(
+            color: PDF.Color = .gray(0.3),
+            width: PDF.UserSpace.Size<1> = 0.5
+        ) {
+            self.color = color
+            self.width = width
         }
     }
 }

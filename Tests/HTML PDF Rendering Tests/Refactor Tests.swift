@@ -198,8 +198,8 @@ struct `PDF.HTML.View Tests` {
             margins: .init(top: 72, leading: 72, bottom: 72, trailing: 72)
         )
         
-        #expect(config.contentWidth == PDF.UserSpace.Rectangle.a4.width - 144)
-        #expect(config.contentHeight == PDF.UserSpace.Rectangle.a4.height - 144)
+        #expect(config.contentBounds.width == PDF.UserSpace.Rectangle.a4.width - 144)
+        #expect(config.contentBounds.height == PDF.UserSpace.Rectangle.a4.height - 144)
     }
 }
 

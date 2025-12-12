@@ -259,7 +259,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             else if let listType = listType(for: view.tagName) {
                 context.pdf.push(list: listType)
                 // WebKit's default padding-left for ul/ol is 40px ≈ 30pt at 72dpi
-                let indent = context.configuration.listIndentPoints
+                let indent = context.configuration.indent.list
                 let savedLLX = context.pdf.layoutBox.llx
                 context.pdf.layoutBox.llx = savedLLX + indent
 
@@ -412,18 +412,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // WebKit: font-size ~0.83em, vertical-align: sub/super
         case "sub":
             let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * context.configuration.subscriptScale
+            context.pdf.style.fontSize = currentSize * context.configuration.typography.subscriptScale
             // Subscript drops below baseline
-            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset - (currentSize * context.configuration.subscriptOffset).height
+            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset - (currentSize * context.configuration.typography.subscriptOffset).height
         case "sup":
             let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * context.configuration.superscriptScale
+            context.pdf.style.fontSize = currentSize * context.configuration.typography.superscriptScale
             // Superscript rises above baseline
-            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset + (currentSize * context.configuration.superscriptOffset).height
+            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset + (currentSize * context.configuration.typography.superscriptOffset).height
 
         // Small - WebKit default is smaller
         case "small":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * context.configuration.smallTextScale
+            context.pdf.style.fontSize = context.pdf.style.fontSize * context.configuration.typography.smallScale
 
         // Links
         case "a":
@@ -433,10 +433,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Block indentation
         // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
-            let indent = context.configuration.blockquoteIndentPoints
+            let indent = context.configuration.indent.blockquote
             context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + indent
         case "figure":
-            let margin = context.configuration.figureMarginPoints
+            let margin = context.configuration.indent.figure
             context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + margin
             context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - margin
 
@@ -492,7 +492,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Get available width and configuration
         let availableWidth = context.pdf.layoutBox.width
-        let cellPadding = context.configuration.tableCellPadding
+        let cellPadding = context.configuration.table.cellPadding
 
         // Start with empty columns - will be populated dynamically on first row
         let columnWidths: [PDF.UserSpace.Width] = []
@@ -516,10 +516,10 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             columnWidths: columnWidths,
             rowHeights: rowHeights,
             cellPadding: cellPadding,
-            borderColor: context.configuration.tableBorderColor,
-            borderWidth: context.configuration.tableBorderWidth,
-            headerBackground: context.configuration.tableHeaderBackground,
-            alternatingRowColor: context.configuration.tableAlternatingRowColor
+            borderColor: context.configuration.table.border.color,
+            borderWidth: context.configuration.table.border.width,
+            headerBackground: context.configuration.table.headerBackground,
+            alternatingRowColor: context.configuration.table.alternatingRowColor
         )
         // Track total rows for Y advancement
         context.table?.totalRowsRendered = 0
