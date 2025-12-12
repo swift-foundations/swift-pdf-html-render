@@ -537,20 +537,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         if let tc = context.table {
             for deferred in tc.deferredSpanningCells {
                 // Calculate total height across all spanned rows
-                let startRow = deferred.originRow
-                let endRow = startRow + deferred.rowspan
+                let startRow = deferred.origin.row
+                let endRow = startRow + deferred.span.row.span
                 var totalHeight: PDF.UserSpace.Height = 0
                 for rowIndex in startRow..<min(endRow, tc.rowHeights.count) {
                     totalHeight += tc.rowHeights[rowIndex]
                 }
 
-                // Calculate cell bounds
-                let cellX = tc.xForColumn(deferred.column)
-                let cellWidth = tc.widthForColumns(deferred.column, count: deferred.colspan)
+                // Use stored cell bounds for consistency with normal cells
                 let cellBounds = PDF.UserSpace.Rectangle(
-                    x: cellX,
-                    y: deferred.startY,
-                    width: cellWidth,
+                    x: deferred.cell.x,
+                    y: deferred.cell.y,
+                    width: deferred.cell.width,
                     height: totalHeight
                 )
 
@@ -568,7 +566,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 let verticalCenterOffset = max(PDF.UserSpace.Height(0), (cellContentHeight - lineHeight) / 2)
 
                 // Calculate content position with vertical centering
-                let contentY = deferred.startY + tc.cell.padding.height + verticalCenterOffset
+                let contentY = deferred.cell.y + tc.cell.padding.height + verticalCenterOffset
 
                 // Save context state
                 let savedLayoutBox = context.pdf.layoutBox
@@ -578,15 +576,15 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 context.pdf.style = deferred.savedStyle
                 context.pdf.style.textAlign = deferred.textAlignment
                 context.pdf.layoutBox = PDF.UserSpace.Rectangle(
-                    x: deferred.contentX,
+                    x: deferred.content.x,
                     y: contentY,
-                    width: deferred.contentWidth,
+                    width: deferred.content.width,
                     height: cellContentHeight - verticalCenterOffset
                 )
 
                 // Render the deferred text content
                 let runs = PDF.Context.TextRun.runsWithSymbolSupport(
-                    text: deferred.contentText,
+                    text: deferred.text,
                     font: deferred.savedStyle.font,
                     fontSize: deferred.savedStyle.fontSize,
                     color: deferred.savedStyle.color,
@@ -971,16 +969,17 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             context.with(\.table) { tc in
                 // Defer this spanning cell - content + border will be drawn after all rows
                 tc.deferredSpanningCells.append(.init(
-                    originRow: tc.totalRowsRendered,
+                    origin: .init(row: tc.totalRowsRendered),
                     column: column,
-                    colspan: colspan,
-                    rowspan: rowspan,
+                    span: .init(
+                        col: .init(span: colspan),
+                        row: .init(span: rowspan)
+                    ),
                     isHeader: isHeader,
-                    startY: tc.bounds.lly,
-                    contentWidth: contentWidth,
-                    contentX: contentX,
+                    cell: .init(x: cellX, y: tc.bounds.lly, width: cellWidth),
+                    content: .init(x: contentX, width: contentWidth),
                     savedStyle: savedStyle,
-                    contentText: contentText,
+                    text: contentText,
                     textAlignment: textAlignment
                 ))
 

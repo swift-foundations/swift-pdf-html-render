@@ -154,17 +154,46 @@ extension PDF.HTML.Context {
 
         /// Deferred spanning cells (rowspan > 1) that need content + borders drawn after all rows
         public struct DeferredSpanningCell {
-            let originRow: Int
+            /// Origin position in the table grid
+            public struct Origin {
+                let row: Int
+            }
+            let origin: Origin
+
             let column: Int
-            let colspan: Int
-            let rowspan: Int
+
+            /// Span configuration
+            public struct Span {
+                public struct Col {
+                    let span: Int
+                }
+                public struct Row {
+                    let span: Int
+                }
+                let col: Col
+                let row: Row
+            }
+            let span: Span
+
             let isHeader: Bool
-            let startY: PDF.UserSpace.Y
-            // Content rendering data for vertical centering
-            let contentWidth: PDF.UserSpace.Width
-            let contentX: PDF.UserSpace.X
+
+            /// Cell bounds for border drawing (captured at cell creation time)
+            public struct Cell {
+                let x: PDF.UserSpace.X
+                let y: PDF.UserSpace.Y
+                let width: PDF.UserSpace.Width
+            }
+            let cell: Cell
+
+            /// Content bounds for text rendering
+            public struct Content {
+                let x: PDF.UserSpace.X
+                let width: PDF.UserSpace.Width
+            }
+            let content: Content
+
             let savedStyle: PDF.Context.Style.Resolved
-            let contentText: String
+            let text: String
             let textAlignment: Horizontal.Alignment
         }
         public var deferredSpanningCells: [DeferredSpanningCell] = []
