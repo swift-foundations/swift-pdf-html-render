@@ -286,9 +286,9 @@ extension PDF.HTML {
     ) -> [PDF.Page] {
         // Adjust margins to account for header/footer space
         let adjustedMargins = PDF.UserSpace.EdgeInsets(
-            top: configuration.margins.top + configuration.header.height.value,
+            top: configuration.margins.top + configuration.header.height,
             leading: configuration.margins.leading,
-            bottom: configuration.margins.bottom + configuration.footer.height.value,
+            bottom: configuration.margins.bottom + configuration.footer.height,
             trailing: configuration.margins.trailing
         )
 
@@ -358,7 +358,7 @@ extension PDF.HTML {
                 margins: PDF.UserSpace.EdgeInsets(
                     top: configuration.margins.top,
                     leading: configuration.margins.leading,
-                    bottom: configuration.paperSize.height.value - configuration.margins.top - configuration.header.height.value,
+                    bottom: configuration.paperSize.height - configuration.margins.top - configuration.header.height,
                     trailing: configuration.margins.trailing
                 )
             )
@@ -372,7 +372,7 @@ extension PDF.HTML {
             var footerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
                 margins: PDF.UserSpace.EdgeInsets(
-                    top: configuration.paperSize.height.value - configuration.margins.bottom - configuration.footer.height.value,
+                    top: configuration.paperSize.height - configuration.margins.bottom - configuration.footer.height,
                     leading: configuration.margins.leading,
                     bottom: configuration.margins.bottom,
                     trailing: configuration.margins.trailing

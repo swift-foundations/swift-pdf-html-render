@@ -6,8 +6,10 @@
 //
 
 import CSS_Standard
+import Dimension
 import PDF_Rendering
 import PDF_Standard
+import W3C_CSS_Values
 
 extension PDF.UserSpace.Size where N == 1 {
     /// Create a 1D size from a CSS absolute font size.
@@ -50,12 +52,11 @@ extension PDF.UserSpace.Size where N == 1 {
         _ relativeSize: W3C_CSS_Fonts.RelativeSize,
         currentSize: Self
     ) {
-        let ratio = 1.2
         switch relativeSize {
         case .smaller:
-            self = currentSize / ratio
+            self = currentSize / 1.2
         case .larger:
-            self = currentSize * ratio
+            self = currentSize * 1.2
         }
     }
 }
@@ -77,7 +78,7 @@ extension PDF.UserSpace.Size where N == 1 {
             self = Self(length, currentSize: currentSize, baseFontSize: baseFontSize)
         case .percentage(let percentage):
             // Percentage of current font size
-            self = currentSize * (percentage.value / 100.0)
+            self = currentSize * Scale(percentage.value / 100.0)
         case .calc:
             // calc() expressions can't be evaluated statically
             self = currentSize
@@ -93,7 +94,7 @@ extension PDF.UserSpace.Size where N == 1 {
     ///   - currentSize: The current font size (for em, ex, etc.)
     ///   - baseFontSize: The base font size (for rem)
     public init(
-        _ length: Length,
+        _ length: W3C_CSS_Values.Length,
         currentSize: Self,
         baseFontSize: Self
     ) {
@@ -106,9 +107,9 @@ extension PDF.UserSpace.Size where N == 1 {
                 // 96 DPI: 1px = 72/96 pt = 0.75pt
                 self = Self(value * 0.75)
             case .em:
-                self = currentSize * value
+                self = currentSize * Scale(value)
             case .rem:
-                self = baseFontSize * value
+                self = baseFontSize * Scale(value)
             case .in:
                 self = Self(value * 72.0)
             case .cm:
@@ -120,13 +121,13 @@ extension PDF.UserSpace.Size where N == 1 {
                 self = Self(value * 12.0)
             case .ex:
                 // Approximate ex as 0.5em
-                self = currentSize * (value * 0.5)
+                self = currentSize * Scale(value * 0.5)
             case .ch:
                 // Approximate ch as 0.5em
-                self = currentSize * (value * 0.5)
+                self = currentSize * Scale(value * 0.5)
             case .lh:
                 // Line height - approximate as 1.2em
-                self = currentSize * (value * 1.2)
+                self = currentSize * Scale(value * 1.2)
             case .vw, .vh, .vmin, .vmax:
                 // Viewport units not meaningful for PDF font size
                 self = currentSize
@@ -138,13 +139,13 @@ extension PDF.UserSpace.Size where N == 1 {
                 self = Self(value * 0.70866)
             case .cap:
                 // Cap height - approximate as 0.7em
-                self = currentSize * (value * 0.7)
+                self = currentSize * Scale(value * 0.7)
             case .ic:
                 // Ideographic character - approximate as 1em
-                self = currentSize * value
+                self = currentSize * Scale(value)
             case .rlh:
                 // Root line height - approximate as 1.2 * base
-                self = baseFontSize * (value * 1.2)
+                self = baseFontSize * Scale(value * 1.2)
             }
         case .keyword:
             // Keywords like auto don't apply to font-size

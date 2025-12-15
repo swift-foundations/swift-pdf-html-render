@@ -7,6 +7,7 @@
 // This is a CSS concept (CSS 2.1 Section 10.8), not a PDF concept,
 // so it belongs in the HTML-to-PDF rendering layer.
 
+import Dimension
 import PDF_Rendering
 
 extension PDF.HTML {
@@ -74,12 +75,12 @@ extension PDF.HTML {
         public init(
             metrics: PDF.Font.Metrics,
             fontSize: PDF.UserSpace.Size<1>,
-            lineHeightMultiplier: PDF.UserSpace.Unit
+            lineHeightMultiplier: Scale<1, Double>
         ) {
             let ascender = metrics.ascender(atSize: fontSize)
             let descender = metrics.descender(atSize: fontSize)  // negative value
             let contentHeight: PDF.UserSpace.Height = ascender - descender  // ascender - (negative) = ascender + |descender|
-            let lineHeight: PDF.UserSpace.Height = fontSize.height * lineHeightMultiplier.value
+            let lineHeight: PDF.UserSpace.Height = fontSize.height * lineHeightMultiplier
             let halfLeading = PDF.UserSpace.Height.max(.zero, (lineHeight - contentHeight) / 2)
 
             self.height = lineHeight

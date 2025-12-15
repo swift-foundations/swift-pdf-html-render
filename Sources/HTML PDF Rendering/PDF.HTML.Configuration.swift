@@ -1,6 +1,7 @@
 // PDF.HTML.Configuration.swift
 // Configuration for HTML to PDF transformation
 
+import Dimension
 import Geometry
 import ISO_32000
 import PDF_Rendering
@@ -57,10 +58,10 @@ extension PDF.HTML {
         // MARK: - Spacing
 
         /// Paragraph spacing (multiplier of font size)
-        public var paragraphSpacing: Double
+        public var paragraphSpacing: Scale<1, Double>
 
         /// Heading spacing (multiplier of heading size)
-        public var headingSpacing: Double
+        public var headingSpacing: Scale<1, Double>
 
         // MARK: - Typography Scales
 
@@ -75,10 +76,10 @@ extension PDF.HTML {
         // MARK: - Spacing
 
         /// Horizontal gap multiplier in em (default: 0.5, used for list markers)
-        public var horizontalGapEm: Double
+        public var horizontalGapEm: Scale<1, Double>
 
         /// Threshold for deferring large headers (default: 0.9, i.e., 90% of page height)
-        public var deferredHeaderThreshold: Double
+        public var deferredHeaderThreshold: Scale<1, Double>
 
         // MARK: - Table Configuration
 
@@ -137,12 +138,12 @@ extension PDF.HTML {
             defaultFontSize: PDF.UserSpace.Size<1> = 12,
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
-            paragraphSpacing: Double = 0.5,
-            headingSpacing: Double = 0.8,
+            paragraphSpacing: Scale<1, Double> = 0.5,
+            headingSpacing: Scale<1, Double> = 0.8,
             typography: Typography = .init(),
             indent: Indent = .init(),
-            horizontalGapEm: Double = 0.5,
-            deferredHeaderThreshold: Double = 0.9,
+            horizontalGapEm: Scale<1, Double> = 0.5,
+            deferredHeaderThreshold: Scale<1, Double> = 0.9,
             table: Table = .init(),
             outline: Outline = .init(),
             link: Link = .init(),
@@ -191,10 +192,10 @@ extension PDF.HTML {
                 //
                 // For Standard 14 fonts where leading is 0, we fall back to 1.15 multiplier
                 // which matches WebKit's typical behavior for Times New Roman and similar fonts.
-                let normalHeight = Double(font.metrics.normalLineHeight.value) / 1000.0
-                if font.metrics.leading.value == 0 {
+                let normalHeight = font.metrics.line.normal.value
+                if font.metrics.leading == .zero {
                     // No explicit leading - use WebKit-typical 1.15 multiplier
-                    let metricsLineHeight = Double(font.metrics.lineHeight.value) / 1000.0
+                    let metricsLineHeight = font.metrics.line.height.value
                     let impliedLineGap = 1.15 - metricsLineHeight
                     return metricsLineHeight + max(0, impliedLineGap)
                 }
@@ -207,16 +208,16 @@ extension PDF.HTML {
                 case .length(let length):
                     // For length values, calculate as multiple of font size
                     let points = PDF.UserSpace.Size<1>(length, currentSize: fontSize, baseFontSize: defaultFontSize)
-                    return points.length.value / fontSize.length.value
+                    return (points.length / fontSize.length).value
                 case .percentage(let pct):
                     return pct.value / 100.0
                 case .calc:
                     // calc() can't be evaluated statically - use normal fallback
-                    return Double(font.metrics.normalLineHeight.value) / 1000.0
+                    return font.metrics.line.normal.value
                 }
             case .global:
                 // Global values (inherit, initial) - use normal as fallback
-                return Double(font.metrics.normalLineHeight.value) / 1000.0
+                return font.metrics.line.normal.value
             }
         }
 
@@ -237,7 +238,7 @@ extension PDF.HTML {
 
         /// Margin multiplier (em-based) for heading level (1-6)
         /// Based on WebKit user-agent stylesheet defaults
-        public func headingMarginEm(for tag: String) -> Double {
+        public func headingMarginEm(for tag: String) -> Scale<1, Double> {
             switch tag {
             case "h1": return 0.67
             case "h2": return 0.83
@@ -289,26 +290,26 @@ extension PDF.HTML.Configuration {
     /// Typography scale settings for subscript, superscript, and small text.
     public struct Typography: Sendable, Equatable {
         /// Scale factor for subscript text (default: 0.83, i.e., 83% of base size)
-        public var subscriptScale: Double
+        public var subscriptScale: Scale<1, Double>
 
         /// Scale factor for superscript text (default: 0.83)
-        public var superscriptScale: Double
+        public var superscriptScale: Scale<1, Double>
 
         /// Scale factor for <small> tag text (default: 0.83)
-        public var smallScale: Double
+        public var smallScale: Scale<1, Double>
 
         /// Vertical offset for subscript as em fraction (default: 0.2, negative direction)
-        public var subscriptOffset: Double
+        public var subscriptOffset: Scale<1, Double>
 
         /// Vertical offset for superscript as em fraction (default: 0.4, positive direction)
-        public var superscriptOffset: Double
+        public var superscriptOffset: Scale<1, Double>
 
         public init(
-            subscriptScale: Double = 0.83,
-            superscriptScale: Double = 0.83,
-            smallScale: Double = 0.83,
-            subscriptOffset: Double = 0.2,
-            superscriptOffset: Double = 0.4
+            subscriptScale: Scale<1, Double> = 0.83,
+            superscriptScale: Scale<1, Double> = 0.83,
+            smallScale: Scale<1, Double> = 0.83,
+            subscriptOffset: Scale<1, Double> = 0.2,
+            superscriptOffset: Scale<1, Double> = 0.4
         ) {
             self.subscriptScale = subscriptScale
             self.superscriptScale = superscriptScale

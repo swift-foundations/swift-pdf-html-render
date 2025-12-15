@@ -2,6 +2,7 @@
 // HTML.Element rendering using runtime tag metadata
 
 import CSS_Standard
+import Dimension
 import HTML_Renderable
 import Layout
 import PDF_Rendering
@@ -197,7 +198,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 // The heading's line height depends on its font size, which is larger than body text
                 // If we don't check here, we might record page N but the heading renders on page N+1
                 let headingFontSize = context.configuration.headingSize(level: heading.level)
-                let headingLineHeight = (headingFontSize * context.pdf.style.lineHeight.value).height
+                let headingLineHeight = (headingFontSize * context.pdf.style.lineHeight).height
                 context.pdf.checkPageBreak(needing: headingLineHeight)
 
                 // Use completedPages.count + 1 for correct 1-indexed page number
@@ -458,7 +459,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         case "p":
             return (.length(.em(1.0)), .length(.em(1.0)))
         case "h1", "h2", "h3", "h4", "h5", "h6":
-            let margin = configuration.headingMarginEm(for: tagName)
+            let margin = configuration.headingMarginEm(for: tagName).value
             return (.length(.em(margin)), .length(.em(margin)))
         case "blockquote":
             return (.length(.em(1.0)), .length(.em(1.0)))
@@ -733,7 +734,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
                 tc.columnsInitialized = true
                 let columnCount = tc.columnWidths.count
                 if columnCount > 0 {
-                    let equalWidth = tc.bounds.width / Double(columnCount)
+                    let equalWidth = tc.bounds.width / Scale(Double(columnCount))
                     tc.columnWidths = Array(repeating: equalWidth, count: columnCount)
                 }
                 // Reset for drawing pass
@@ -1025,7 +1026,8 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Calculate actual content height used
             let contentEndY = context.pdf.layoutBox.lly
-            actualContentHeight = contentEndY - contentStartY
+            // Convert Dy (displacement) to Height (extent) - in PDF Y goes up, so content going down gives negative Dy
+            actualContentHeight = PDF.UserSpace.Height(abs((contentEndY - contentStartY)._rawValue))
 
             // Update max cell height and store pending border
             context.with(\.table) { tc in
@@ -1074,25 +1076,18 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         let color = tableCtx.borderColor
         let width = tableCtx.borderWidth.width
 
-        // Round coordinates to avoid floating-point precision artifacts at border junctions
-        // This ensures adjacent cell borders align perfectly
-        let llx = PDF.UserSpace.X((bounds.llx.rawValue * 100).rounded() / 100)
-        let lly = PDF.UserSpace.Y((bounds.lly.rawValue * 100).rounded() / 100)
-        let urx = PDF.UserSpace.X((bounds.urx.rawValue * 100).rounded() / 100)
-        let ury = PDF.UserSpace.Y((bounds.ury.rawValue * 100).rounded() / 100)
-
         // Draw left edge (from lower-left to upper-left)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: llx, y: lly),
-            to: PDF.UserSpace.Coordinate(x: llx, y: ury),
+            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+            to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
             color: color,
             width: width
         )
 
         // Draw top edge (from lower-left to lower-right)
         context.pdf.emitLine(
-            from: PDF.UserSpace.Coordinate(x: llx, y: lly),
-            to: PDF.UserSpace.Coordinate(x: urx, y: lly),
+            from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+            to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
             color: color,
             width: width
         )

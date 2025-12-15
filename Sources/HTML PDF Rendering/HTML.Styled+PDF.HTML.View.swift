@@ -68,9 +68,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             // Check if there's already deferred content (consecutive sticky headers)
             if let existingDeferred = context.deferredKeepWithNextRender {
                 // Chain: combine heights and render in sequence
-                let combinedHeight = PDF.UserSpace.Height(
-                    existingDeferred.measuredHeight.value + measuredHeight.value
-                )
+                let combinedHeight = existingDeferred.measuredHeight + measuredHeight
                 context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
                     render: { ctx in
                         // Render existing deferred content first
