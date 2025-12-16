@@ -8,7 +8,7 @@ import W3C_CSS_Values
 
 extension W3C_CSS_Fonts.FontSize: PDF.HTML.StyleModifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        let currentSize = context.style.fontSize ?? configuration.defaultFontSize
+        let currentSize = context.style.fontSize
         switch self {
         case .absoluteSize(let size):
             context.style.fontSize = PDF.UserSpace.Size<1>(size, baseFontSize: configuration.defaultFontSize)
