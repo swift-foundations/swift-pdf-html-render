@@ -62,6 +62,12 @@ extension PDF.Document {
                 html: html
             )
 
+            // DEBUG: Show all collected headings before building outline
+            print("DEBUG OUTLINE BUILD: Total collected headings: \(result.headings.count)")
+            for (index, heading) in result.headings.enumerated() {
+                print("DEBUG OUTLINE BUILD: [\(index)] Level \(heading.level): '\(heading.text)' on page \(heading.pageNumber) at y=\(heading.yPosition)")
+            }
+
             // Build outline from collected headings
             // Note: HeadingEntry uses 1-indexed pageNumber, Outline.build expects 0-indexed pageIndex
             let outline = ISO_32000.Outline.build(

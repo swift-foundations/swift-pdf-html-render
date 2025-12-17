@@ -104,9 +104,9 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             // Clear deferred content - we're handling it now
             context.deferredKeepWithNextRender = nil
 
-            // If the deferred header is very tall (> threshold % of page), skip sticky behavior
-            let availablePageHeight = context.pdf.remainingHeight
-            if deferred.measuredHeight > availablePageHeight * context.configuration.deferredHeaderThreshold {
+            // If the deferred header is very tall (> threshold % of full page), skip sticky behavior
+            let fullPageHeight = context.configuration.content.height
+            if deferred.measuredHeight > fullPageHeight * context.configuration.deferredHeaderThreshold {
                 // Just render the header without sticky behavior
                 deferred.render(&context)
                 renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
