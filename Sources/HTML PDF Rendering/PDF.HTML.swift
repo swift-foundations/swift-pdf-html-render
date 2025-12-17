@@ -427,53 +427,77 @@ extension PDF.HTML {
 extension PDF.HTML {
     /// Dynamic dispatch helper for rendering any HTML.View.
     ///
-    /// Checks if the view conforms to PDF.HTML.View and dispatches accordingly.
-    /// Falls back to rendering the body recursively if no explicit conformance.
+    /// Uses Mirror-based detection for HTML.Styled to avoid Swift runtime crashes
+    /// on deeply nested generic types like `HTML.Styled<HTML.Styled<...>>`.
     ///
-    /// Note: Swift's runtime type checking doesn't work with conditional conformances
-    /// on variadic generics (`_Tuple`), so we handle _Tuple specially by iterating
-    /// its content.
+    /// The Mirror approach identifies HTML.Styled by field structure rather than
+    /// protocol conformance, which doesn't trigger the problematic type metadata
+    /// instantiation that causes `EXC_BAD_ACCESS` crashes.
     public static func renderHTMLView(
         _ view: some HTML.View,
         context: inout PDF.HTML.Context
     ) {
-        // Inner helper to open existentials
+        // CRITICAL: Use Mirror to detect wrapper types BEFORE any as? cast.
+        // Doing `as?` on deeply nested generics crashes Swift's runtime.
+        let mirror = Mirror(reflecting: view)
+
+        // Check for HTML.Styled (has "content" and "property" fields)
+        if isStyledType(mirror) {
+            renderStyledViaMirror(view, context: &context)
+            return
+        }
+
+        // Check for HTML.CSS wrapper (has only "base" field)
+        // This can also create deep nesting when combined with Styled
+        if isCSSWrapperType(mirror) {
+            renderCSSWrapperViaMirror(mirror, context: &context)
+            return
+        }
+
+        // Check for HTML._Attributes wrapper (has "content" and "attributes" fields)
+        // This can also create deep nesting when chaining .attribute() calls
+        if isAttributesType(mirror) {
+            renderAttributesViaMirror(mirror, context: &context)
+            return
+        }
+
+        // For non-wrapper types, as? casts are safe (they don't create deep generic nesting)
         func renderPDFView<V: PDF.HTML.View>(_ v: V) {
             V._render(v, context: &context)
         }
 
-        // 1. Try static dispatch if type conforms to PDF.HTML.View
+        // 1. Handle HTML.AnyView first (before static dispatch to avoid infinite recursion)
+        if let anyView = view as? any _AnyViewContent {
+            anyView._renderAnyViewDynamically(context: &context)
+            return
+        }
+
+        // 2. Try static dispatch for PDF.HTML.View conforming types
         if let pdfView = view as? any PDF.HTML.View {
             renderPDFView(pdfView)
             return
         }
 
-        // 2. Handle _Tuple specially - Swift can't verify variadic conditional conformances at runtime
+        // 3. Handle _Tuple - Swift can't verify variadic conditional conformances at runtime
         if let tuple = view as? any _TupleContent {
             tuple._renderEachElementDynamically(context: &context)
             return
         }
 
-        // 3. Handle HTML.Element.Tag - Swift can't verify conditional conformance at runtime
+        // 4. Handle HTML.Element.Tag - Swift can't verify conditional conformance at runtime
         if let element = view as? any _HTMLElementContent {
             element._renderElementDynamically(context: &context)
             return
         }
 
-        // 4. Handle HTML.Raw - ignore in PDF context (no meaningful representation)
+        // 5. Handle HTML.Raw - ignore in PDF context
         if view is any _HTMLRawContent {
             return
         }
 
-        // 5. Handle Optional - Swift can't verify conditional conformance at runtime
+        // 6. Handle Optional - Swift can't verify conditional conformance at runtime
         if let optional = view as? any _OptionalContent {
             optional._renderOptionalDynamically(context: &context)
-            return
-        }
-
-        // 6. Handle HTML.Styled - Swift can't verify conditional conformance at runtime
-        if let styled = view as? any _HTMLStyledContent {
-            styled._renderStyledDynamically(context: &context)
             return
         }
 
@@ -483,11 +507,420 @@ extension PDF.HTML {
             return
         }
 
-        // 8. Fallback: render the body recursively (for custom HTML.View types)
+        // 8. Handle _Array - Swift can't verify conditional conformance at runtime
+        if let array = view as? any _ArrayContent {
+            array._renderArrayDynamically(context: &context)
+            return
+        }
+
+        // 9. Fallback: render the body recursively (for custom HTML.View types)
         func renderBody<V: HTML.View>(_ v: V) {
             renderHTMLView(v.body, context: &context)
         }
         renderBody(view)
+    }
+
+    /// Render HTML.Styled content by flattening consecutive styled layers iteratively.
+    ///
+    /// This avoids stack overflow from deeply nested HTML.Styled wrappers (common in VStack
+    /// and other components that chain CSS properties like `.css.alignItems().display().flexDirection()`).
+    ///
+    /// Instead of:
+    /// ```
+    /// Styled1._render -> renderHTMLView(Styled2) -> Styled2._render -> renderHTMLView(Styled3) -> ...
+    /// ```
+    ///
+    /// We iterate through all nested Styled layers, apply styles, then render the innermost content:
+    /// ```
+    /// flatten: [Styled1, Styled2, Styled3, ...]
+    /// apply all styles
+    /// render innermost content
+    /// ```
+    static func renderFlattenedStyledContent(
+        _ initialStyled: any _HTMLStyledContent,
+        context: inout PDF.HTML.Context
+    ) {
+        // Save current style state - we'll restore after all nested styles
+        let savedStyle = context.pdf.style
+
+        // Collect all consecutive HTML.Styled layers (avoid existential boxing by only casting to _HTMLStyledContent)
+        var styledLayers: [any _HTMLStyledContent] = [initialStyled]
+
+        // Flatten: iterate through nested HTML.Styled wrappers
+        var current = initialStyled
+        while let nested = current.wrappedStyledContent {
+            styledLayers.append(nested)
+            current = nested
+        }
+
+        // The last element in styledLayers has the innermost non-styled content
+        let innermostStyled = styledLayers[styledLayers.count - 1]
+
+        // Apply all styles in order (outermost to innermost)
+        var shouldAvoidPageBreakAfter = false
+        var shouldForcePageBreakAfter = false
+        var shouldAvoidPageBreakInside = false
+
+        for styled in styledLayers {
+            let flags = styled.applyStyle(to: &context)
+            // Accumulate break flags - any layer requesting it wins
+            if flags.avoidBreakAfter { shouldAvoidPageBreakAfter = true }
+            if flags.forceBreakAfter { shouldForcePageBreakAfter = true }
+            if flags.avoidBreakInside { shouldAvoidPageBreakInside = true }
+        }
+
+        defer {
+            // Restore style state after rendering content
+            context.pdf.style = savedStyle
+        }
+
+        // Handle break-inside: avoid
+        if shouldAvoidPageBreakInside {
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
+            let configuration = context.configuration
+            let pendingBottomMargin = context.pendingBottomMargin
+
+            // Measure the element's total height
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                innermostStyled.renderWrappedContent(context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+            }
+
+            // If it won't fit on current page but would fit on a fresh page, break before
+            let pageContentHeight = context.configuration.content.height
+            if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
+                context.pdf.startNewPage()
+            }
+        }
+
+        // Handle break-after: avoid (sticky header behavior)
+        if shouldAvoidPageBreakAfter {
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
+            let configuration = context.configuration
+            let pendingBottomMargin = context.pendingBottomMargin
+
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                innermostStyled.renderWrappedContent(context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+            }
+
+            if let existingDeferred = context.deferredKeepWithNextRender {
+                let combinedHeight = existingDeferred.measuredHeight + measuredHeight
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { ctx in
+                        existingDeferred.render(&ctx)
+                        snapshot.restore(to: &ctx.pdf)
+                        innermostStyled.renderWrappedContent(context: &ctx)
+                        ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: combinedHeight
+                )
+            } else {
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { ctx in
+                        snapshot.restore(to: &ctx.pdf)
+                        innermostStyled.renderWrappedContent(context: &ctx)
+                        ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: measuredHeight
+                )
+            }
+        } else {
+            // Normal rendering - render the innermost content
+            innermostStyled.renderWrappedContent(context: &context)
+
+            // Handle break-after: always/page
+            if shouldForcePageBreakAfter {
+                context.pdf.flushInlineRuns()
+                context.pdf.startNewPage()
+            }
+        }
+    }
+}
+
+// MARK: - Mirror-Based Rendering (Avoids as? crashes on deeply nested generics)
+
+extension PDF.HTML {
+    /// Check if a value is an HTML.Styled type using Mirror (without as? cast).
+    ///
+    /// HTML.Styled is identified by having both "content" and "property" fields.
+    /// This avoids the Swift runtime crash that occurs when doing `as?` on deeply
+    /// nested generic types.
+    private static func isStyledType(_ mirror: Mirror) -> Bool {
+        var hasContent = false
+        var hasProperty = false
+        for child in mirror.children {
+            if child.label == "content" { hasContent = true }
+            if child.label == "property" { hasProperty = true }
+            if hasContent && hasProperty { return true }
+        }
+        return false
+    }
+
+    /// Check if a value is an HTML.CSS wrapper type using Mirror.
+    ///
+    /// HTML.CSS is identified by having only a "base" field (without "renderFunction"
+    /// which would indicate AnyView).
+    private static func isCSSWrapperType(_ mirror: Mirror) -> Bool {
+        var hasBase = false
+        var hasRenderFunction = false
+        for child in mirror.children {
+            if child.label == "base" { hasBase = true }
+            if child.label == "renderFunction" { hasRenderFunction = true }
+        }
+        // HTML.CSS has only "base", AnyView has both "base" and "renderFunction"
+        return hasBase && !hasRenderFunction
+    }
+
+    /// Check if a value is an HTML._Attributes type using Mirror.
+    ///
+    /// HTML._Attributes is identified by having "content" and "attributes" fields.
+    /// Note: HTML.Styled also has "content" but has "property" instead of "attributes".
+    private static func isAttributesType(_ mirror: Mirror) -> Bool {
+        var hasContent = false
+        var hasAttributes = false
+        for child in mirror.children {
+            if child.label == "content" { hasContent = true }
+            if child.label == "attributes" { hasAttributes = true }
+            if hasContent && hasAttributes { return true }
+        }
+        return false
+    }
+
+    /// Render HTML.Styled content via Mirror traversal.
+    ///
+    /// This iteratively processes nested HTML.Styled wrappers without using `as?`,
+    /// collecting all styles and then rendering the innermost non-Styled content.
+    static func renderStyledViaMirror(
+        _ value: Any,
+        context: inout PDF.HTML.Context
+    ) {
+        // Save style state at the outermost level
+        let savedStyle = context.pdf.style
+        defer { context.pdf.style = savedStyle }
+
+        // Iteratively unwrap nested HTML.Styled layers
+        var current: Any = value
+        while true {
+            let mirror = Mirror(reflecting: current)
+
+            // Check if current is HTML.Styled
+            if isStyledType(mirror) {
+                var content: Any?
+                var property: Any?
+
+                for child in mirror.children {
+                    switch child.label {
+                    case "content": content = child.value
+                    case "property": property = child.value
+                    default: break
+                    }
+                }
+
+                // Apply style property (property types are simple, safe to cast)
+                if let prop = property {
+                    applyStylePropertyViaMirror(prop, context: &context)
+                }
+
+                // Continue with content
+                if let c = content {
+                    current = c
+                    continue
+                } else {
+                    return // No content
+                }
+            } else {
+                // Not HTML.Styled - render the inner content using safe dispatch
+                renderInnerContent(current, context: &context)
+                return
+            }
+        }
+    }
+
+    /// Apply a CSS property to the context.
+    /// Property types are simple value types (not deeply nested), so casting is safe.
+    private static func applyStylePropertyViaMirror(
+        _ prop: Any,
+        context: inout PDF.HTML.Context
+    ) {
+        // Unwrap Optional wrapper if present
+        let unwrapped: Any
+        let propMirror = Mirror(reflecting: prop)
+        if propMirror.displayStyle == .optional {
+            if let firstChild = propMirror.children.first {
+                unwrapped = firstChild.value
+            } else {
+                return // nil property
+            }
+        } else {
+            unwrapped = prop
+        }
+
+        // Cast to PDF style modifier (safe - property types are simple)
+        if let modifier = unwrapped as? any PDF.HTML.StyleModifier {
+            modifier.apply(to: &context.pdf, configuration: context.configuration)
+        }
+
+        // Check for HTML context modifier (for page-break-after, break-inside, etc.)
+        if let htmlModifier = unwrapped as? any PDF.HTML.HTMLContextStyleModifier {
+            htmlModifier.apply(to: &context)
+        }
+    }
+
+    /// Render inner (non-Styled) content using safe dispatch methods.
+    ///
+    /// Once we've unwrapped all HTML.Styled layers via Mirror, the inner content
+    /// is no longer deeply nested in generics, so we can safely use `as?` checks.
+    /// However, we still need to check for wrapper types via Mirror first since
+    /// they may still be nested with each other.
+    private static func renderInnerContent(
+        _ value: Any,
+        context: inout PDF.HTML.Context
+    ) {
+        // CRITICAL: Check for wrapper types via Mirror FIRST before any as? casts.
+        // These types can still be nested with each other (CSS wrapping Attributes, etc.)
+        let mirror = Mirror(reflecting: value)
+
+        if isStyledType(mirror) {
+            renderStyledViaMirror(value, context: &context)
+            return
+        }
+
+        if isCSSWrapperType(mirror) {
+            renderCSSWrapperViaMirror(mirror, context: &context)
+            return
+        }
+
+        if isAttributesType(mirror) {
+            renderAttributesViaMirror(mirror, context: &context)
+            return
+        }
+
+        // Simple types - safe to cast
+        if let str = value as? String {
+            String._render(str, context: &context)
+            return
+        }
+
+        // Check for PDF.HTML.View conformance (now safe - not deeply nested)
+        if let pdfView = value as? any PDF.HTML.View {
+            func render<V: PDF.HTML.View>(_ v: V) {
+                V._render(v, context: &context)
+            }
+            render(pdfView)
+            return
+        }
+
+        // Handle marker protocols for types with conditional conformances
+        if let tuple = value as? any _TupleContent {
+            tuple._renderEachElementDynamically(context: &context)
+            return
+        }
+
+        if let element = value as? any _HTMLElementContent {
+            element._renderElementDynamically(context: &context)
+            return
+        }
+
+        if let anyView = value as? any _AnyViewContent {
+            anyView._renderAnyViewDynamically(context: &context)
+            return
+        }
+
+        if value is any _HTMLRawContent {
+            return // Ignore raw HTML in PDF
+        }
+
+        if let optional = value as? any _OptionalContent {
+            optional._renderOptionalDynamically(context: &context)
+            return
+        }
+
+        if let conditional = value as? any _ConditionalContent {
+            conditional._renderConditionalDynamically(context: &context)
+            return
+        }
+
+        if let array = value as? any _ArrayContent {
+            array._renderArrayDynamically(context: &context)
+            return
+        }
+
+        // Fallback: try to render body for HTML.View types
+        if let htmlView = value as? any HTML.View {
+            func renderBody<V: HTML.View>(_ v: V) {
+                renderHTMLView(v.body, context: &context)
+            }
+            renderBody(htmlView)
+        }
+    }
+
+    /// Render HTML.CSS wrapper content via Mirror traversal.
+    ///
+    /// HTML.CSS wraps content and may itself be nested inside HTML.Styled or vice versa.
+    /// We extract the "base" field and recursively render it.
+    private static func renderCSSWrapperViaMirror(
+        _ mirror: Mirror,
+        context: inout PDF.HTML.Context
+    ) {
+        // Extract the "base" field
+        for child in mirror.children {
+            if child.label == "base" {
+                // The base content might be another wrapper type (Styled, CSS, or Attributes)
+                // so we need to check it again via Mirror
+                let baseMirror = Mirror(reflecting: child.value)
+
+                if isStyledType(baseMirror) {
+                    renderStyledViaMirror(child.value, context: &context)
+                } else if isCSSWrapperType(baseMirror) {
+                    renderCSSWrapperViaMirror(baseMirror, context: &context)
+                } else if isAttributesType(baseMirror) {
+                    renderAttributesViaMirror(baseMirror, context: &context)
+                } else {
+                    // Inner content is not a wrapper - render using safe dispatch
+                    renderInnerContent(child.value, context: &context)
+                }
+                return
+            }
+        }
+    }
+
+    /// Render HTML._Attributes wrapper content via Mirror traversal.
+    ///
+    /// HTML._Attributes wraps content with HTML attributes. The attributes are
+    /// not relevant for PDF rendering, so we just extract and render the content.
+    private static func renderAttributesViaMirror(
+        _ mirror: Mirror,
+        context: inout PDF.HTML.Context
+    ) {
+        // Extract the "content" field (ignore "attributes" - not relevant for PDF)
+        for child in mirror.children {
+            if child.label == "content" {
+                // The content might be another wrapper type (Styled, CSS, or more Attributes)
+                // so we need to check it again via Mirror
+                let contentMirror = Mirror(reflecting: child.value)
+
+                if isStyledType(contentMirror) {
+                    renderStyledViaMirror(child.value, context: &context)
+                } else if isCSSWrapperType(contentMirror) {
+                    renderCSSWrapperViaMirror(contentMirror, context: &context)
+                } else if isAttributesType(contentMirror) {
+                    renderAttributesViaMirror(contentMirror, context: &context)
+                } else {
+                    // Inner content is not a wrapper - render using safe dispatch
+                    renderInnerContent(child.value, context: &context)
+                }
+                return
+            }
+        }
     }
 }
 
@@ -524,6 +957,19 @@ package protocol _HTMLRawContent {}
 package protocol _HTMLStyledContent {
     /// Render this styled content using dynamic dispatch for the wrapped content.
     func _renderStyledDynamically(context: inout PDF.HTML.Context)
+
+    /// The CSS property to apply (may be nil).
+    var styledProperty: Any? { get }
+
+    /// Apply this styled element's property to the context.
+    /// Returns flags for break handling.
+    func applyStyle(to context: inout PDF.HTML.Context) -> (avoidBreakAfter: Bool, forceBreakAfter: Bool, avoidBreakInside: Bool)
+
+    /// Get the wrapped content as _HTMLStyledContent if it is one (avoids existential boxing).
+    var wrappedStyledContent: (any _HTMLStyledContent)? { get }
+
+    /// Render the wrapped content directly (avoids existential boxing of content).
+    func renderWrappedContent(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for _Conditional dynamic dispatch.
@@ -533,6 +979,15 @@ package protocol _HTMLStyledContent {
 package protocol _ConditionalContent {
     /// Render the active branch of this conditional using dynamic dispatch.
     func _renderConditionalDynamically(context: inout PDF.HTML.Context)
+}
+
+/// Marker protocol for _Array dynamic dispatch.
+///
+/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
+/// conditional conformances like `_Array: PDF.HTML.View where Element: PDF.HTML.View`.
+package protocol _ArrayContent {
+    /// Render all elements in the array using dynamic dispatch.
+    func _renderArrayDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for Optional dynamic dispatch.

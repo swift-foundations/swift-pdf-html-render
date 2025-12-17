@@ -4,19 +4,21 @@
 import HTML_Renderable
 import PDF_Rendering
 
-extension HTML.AnyView: PDF.HTML.View {
-    public static func _render(
-        _ view: Self,
-        context: inout PDF.HTML.Context
-    ) {
-        // We need to check if the base conforms to PDF.HTML.View
-        // Since HTML.AnyView wraps `any HTML.View`, we use dynamic dispatch
-        if let pdfView = view.base as? any PDF.HTML.View {
-            func callRender<V: PDF.HTML.View>(_ v: V) {
-                V._render(v, context: &context)
-            }
-            callRender(pdfView)
+// Note: HTML.AnyView does NOT conform to PDF.HTML.View to avoid infinite recursion.
+// Instead, it's handled specially in renderHTMLView via _AnyViewContent protocol.
+
+/// Marker protocol for HTML.AnyView dynamic dispatch.
+package protocol _AnyViewContent {
+    /// Render the wrapped view using dynamic dispatch.
+    func _renderAnyViewDynamically(context: inout PDF.HTML.Context)
+}
+
+extension HTML.AnyView: _AnyViewContent {
+    public func _renderAnyViewDynamically(context: inout PDF.HTML.Context) {
+        // Use dynamic dispatch to handle the wrapped type
+        func renderBase<V: HTML.View>(_ v: V) {
+            PDF.HTML.renderHTMLView(v, context: &context)
         }
-        // If the wrapped type doesn't conform to PDF.HTML.View, nothing renders
+        renderBase(base)
     }
 }

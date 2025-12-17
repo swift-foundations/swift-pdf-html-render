@@ -142,19 +142,20 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
 // MARK: - Dynamic Dispatch Support
 
 extension HTML.Styled: _HTMLStyledContent where Content: HTML.View {
-    public func _renderStyledDynamically(context: inout PDF.HTML.Context) {
-        // Save current style state
-        let savedStyle = context.pdf.style
+    public var styledProperty: Any? { property }
 
-        defer {
-            // Restore style state after rendering content
-            context.pdf.style = savedStyle
-        }
+    package var wrappedStyledContent: (any _HTMLStyledContent)? {
+        content as? any _HTMLStyledContent
+    }
 
-        // Check for break-related styles
-        var shouldAvoidPageBreakAfter = false
-        var shouldForcePageBreakAfter = false
-        var shouldAvoidPageBreakInside = false
+    public func renderWrappedContent(context: inout PDF.HTML.Context) {
+        PDF.HTML.renderHTMLView(content, context: &context)
+    }
+
+    public func applyStyle(to context: inout PDF.HTML.Context) -> (avoidBreakAfter: Bool, forceBreakAfter: Bool, avoidBreakInside: Bool) {
+        var avoidBreakAfter = false
+        var forceBreakAfter = false
+        var avoidBreakInside = false
 
         if let property = property {
             // Check for PDF context modifier
@@ -168,87 +169,29 @@ extension HTML.Styled: _HTMLStyledContent where Content: HTML.View {
 
             // Capture and reset break flags
             if context.avoidPageBreakAfter {
-                shouldAvoidPageBreakAfter = true
+                avoidBreakAfter = true
                 context.avoidPageBreakAfter = false
             }
             if context.forcePageBreakAfter {
-                shouldForcePageBreakAfter = true
+                forceBreakAfter = true
                 context.forcePageBreakAfter = false
             }
             if context.avoidPageBreakInside {
-                shouldAvoidPageBreakInside = true
+                avoidBreakInside = true
                 context.avoidPageBreakInside = false
             }
         }
 
-        // Handle break-inside: avoid
-        if shouldAvoidPageBreakInside {
-            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-            let configuration = context.configuration
-            let pendingBottomMargin = context.pendingBottomMargin
+        return (avoidBreakAfter, forceBreakAfter, avoidBreakInside)
+    }
 
-            // Measure the element's total height
-            let measuredHeight = context.pdf.measure { measureContext in
-                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                snapshot.restore(to: &tempHTMLContext.pdf)
-                PDF.HTML.renderHTMLView(content, context: &tempHTMLContext)
-                tempHTMLContext.pdf.flushInlineRuns()
-                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
-            }
-
-            // If it won't fit on current page but would fit on a fresh page, break before
-            let pageContentHeight = context.configuration.content.height
-            if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
-                context.pdf.startNewPage()
-            }
-        }
-
-        // Handle break-after: avoid (sticky header behavior)
-        if shouldAvoidPageBreakAfter {
-            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-            let configuration = context.configuration
-            let pendingBottomMargin = context.pendingBottomMargin
-
-            let measuredHeight = context.pdf.measure { measureContext in
-                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                snapshot.restore(to: &tempHTMLContext.pdf)
-                PDF.HTML.renderHTMLView(content, context: &tempHTMLContext)
-                tempHTMLContext.pdf.flushInlineRuns()
-                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
-            }
-
-            if let existingDeferred = context.deferredKeepWithNextRender {
-                let combinedHeight = existingDeferred.measuredHeight + measuredHeight
-                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
-                    render: { ctx in
-                        existingDeferred.render(&ctx)
-                        snapshot.restore(to: &ctx.pdf)
-                        PDF.HTML.renderHTMLView(self.content, context: &ctx)
-                        ctx.pdf.flushInlineRuns()
-                    },
-                    measuredHeight: combinedHeight
-                )
-            } else {
-                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
-                    render: { ctx in
-                        snapshot.restore(to: &ctx.pdf)
-                        PDF.HTML.renderHTMLView(self.content, context: &ctx)
-                        ctx.pdf.flushInlineRuns()
-                    },
-                    measuredHeight: measuredHeight
-                )
-            }
-        } else {
-            // Normal rendering using dynamic dispatch
-            PDF.HTML.renderHTMLView(content, context: &context)
-
-            // Handle break-after: always/page
-            if shouldForcePageBreakAfter {
-                context.pdf.flushInlineRuns()
-                context.pdf.startNewPage()
-            }
-        }
+    public func _renderStyledDynamically(context: inout PDF.HTML.Context) {
+        // This method should NOT be called directly anymore when flattening is active.
+        // It's kept for compatibility but the flattening logic in renderHTMLView handles
+        // consecutive HTML.Styled layers iteratively to avoid stack overflow.
+        //
+        // If called directly (e.g., for a single non-nested HTML.Styled), we delegate
+        // to the flattened rendering path which handles all cases.
+        PDF.HTML.renderFlattenedStyledContent(self, context: &context)
     }
 }

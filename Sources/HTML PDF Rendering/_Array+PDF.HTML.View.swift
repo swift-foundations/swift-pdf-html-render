@@ -17,3 +17,13 @@ extension _Array: PDF.HTML.View where Element: PDF.HTML.View {
         }
     }
 }
+
+// MARK: - Dynamic Dispatch Support
+
+extension _Array: _ArrayContent where Element: HTML.View {
+    public func _renderArrayDynamically(context: inout PDF.HTML.Context) {
+        for element in elements {
+            PDF.HTML.renderHTMLView(element, context: &context)
+        }
+    }
+}
