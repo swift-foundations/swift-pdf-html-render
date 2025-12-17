@@ -477,7 +477,13 @@ extension PDF.HTML {
             return
         }
 
-        // 7. Fallback: render the body recursively (for custom HTML.View types)
+        // 7. Handle _Conditional - Swift can't verify conditional conformance at runtime
+        if let conditional = view as? any _ConditionalContent {
+            conditional._renderConditionalDynamically(context: &context)
+            return
+        }
+
+        // 8. Fallback: render the body recursively (for custom HTML.View types)
         func renderBody<V: HTML.View>(_ v: V) {
             renderHTMLView(v.body, context: &context)
         }
@@ -518,6 +524,15 @@ package protocol _HTMLRawContent {}
 package protocol _HTMLStyledContent {
     /// Render this styled content using dynamic dispatch for the wrapped content.
     func _renderStyledDynamically(context: inout PDF.HTML.Context)
+}
+
+/// Marker protocol for _Conditional dynamic dispatch.
+///
+/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
+/// conditional conformances like `_Conditional: PDF.HTML.View where First: PDF.HTML.View, Second: PDF.HTML.View`.
+package protocol _ConditionalContent {
+    /// Render the active branch of this conditional using dynamic dispatch.
+    func _renderConditionalDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for Optional dynamic dispatch.
