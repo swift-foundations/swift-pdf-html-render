@@ -8,6 +8,20 @@ import Layout
 import PDF_Rendering
 import WHATWG_HTML
 
+// MARK: - Text Extraction Protocol (Performance Optimization)
+
+/// Protocol for types that can efficiently extract text for PDF table headers.
+/// Conforming to this protocol avoids expensive Mirror reflection.
+public protocol PDFTextExtractable {
+    /// The extracted text content for PDF rendering
+    var pdfExtractedText: String { get }
+}
+
+extension String: PDFTextExtractable {
+    @inlinable
+    public var pdfExtractedText: String { self }
+}
+
 extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render(
         _ view: Self,
@@ -570,6 +584,8 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 if columnCount > 0 {
                     let equalWidth = tc.bounds.width / Scale(Double(columnCount))
                     tc.columnWidths = Array(repeating: equalWidth, count: columnCount)
+                    // Pre-allocate span grid to avoid dynamic growth (64 rows covers most tables)
+                    tc.spans.preallocate(rows: 64, columns: columnCount)
                 }
                 // Reset for drawing pass
                 tc.currentColumn = 0
@@ -1184,18 +1200,19 @@ extension HTML.Element.Tag {
 
     /// Extract plain text content from cell for header repetition
     fileprivate static func extractCellText<CellContent>(from content: CellContent) -> String {
-        // Use Mirror to recursively find string content
-        let mirror = Mirror(reflecting: content)
-
-        // Check if it's a String directly
-        if let str = content as? String {
-            return str
+        // Fast path: Check PDFTextExtractable protocol (avoids Mirror reflection)
+        if let extractable = content as? PDFTextExtractable {
+            return extractable.pdfExtractedText
         }
+
+        // Fallback: Use Mirror to recursively find string content
+        let mirror = Mirror(reflecting: content)
 
         // Check for HTML.Element or other containers with text
         for child in mirror.children {
-            if let text = child.value as? String {
-                return text
+            // Check protocol first for child values
+            if let extractable = child.value as? PDFTextExtractable {
+                return extractable.pdfExtractedText
             }
             // Recursively check nested content (using Any to avoid generic issues)
             let nested = extractCellTextFromAny(child.value)
@@ -1215,14 +1232,16 @@ extension HTML.Element.Tag {
 
     /// Helper to extract text from Any type
     fileprivate static func extractCellTextFromAny(_ value: Any) -> String {
-        if let str = value as? String {
-            return str
+        // Fast path: Check PDFTextExtractable protocol (avoids Mirror reflection)
+        if let extractable = value as? PDFTextExtractable {
+            return extractable.pdfExtractedText
         }
 
+        // Fallback to Mirror
         let mirror = Mirror(reflecting: value)
         for child in mirror.children {
-            if let text = child.value as? String {
-                return text
+            if let extractable = child.value as? PDFTextExtractable {
+                return extractable.pdfExtractedText
             }
             let nested = extractCellTextFromAny(child.value)
             if !nested.isEmpty {
@@ -1773,6 +1792,8 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 if columnCount > 0 {
                     let equalWidth = tc.bounds.width / Scale(Double(columnCount))
                     tc.columnWidths = Array(repeating: equalWidth, count: columnCount)
+                    // Pre-allocate span grid to avoid dynamic growth (64 rows covers most tables)
+                    tc.spans.preallocate(rows: 64, columns: columnCount)
                 }
                 tc.currentColumn = 0
                 tc.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)

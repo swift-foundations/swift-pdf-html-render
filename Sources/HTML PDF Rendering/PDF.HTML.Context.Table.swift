@@ -27,10 +27,54 @@ extension PDF.HTML.Context {
         public var bounds: PDF.UserSpace.Rectangle
 
         /// Column widths (auto-sized from content)
-        public var columnWidths: [PDF.UserSpace.Width]
+        public var columnWidths: [PDF.UserSpace.Width] {
+            didSet {
+                // Eagerly recompute cumulative cache when column widths change
+                _recomputeCumulativeColumnWidths()
+            }
+        }
 
         /// Row heights (auto-sized from content, considering rowspan)
-        public var rowHeights: [PDF.UserSpace.Height]
+        public var rowHeights: [PDF.UserSpace.Height] {
+            didSet {
+                // Eagerly recompute cumulative cache when row heights change
+                _recomputeCumulativeRowHeights()
+            }
+        }
+
+        // MARK: - Cumulative Width/Height Cache (Performance Optimization)
+
+        /// Cached cumulative column widths for O(1) range sum lookups
+        /// `cumulativeColumnWidths[i]` = sum of columnWidths[0..<i]
+        private var _cumulativeColumnWidths: [PDF.UserSpace.Width] = [.zero]
+
+        /// Cached cumulative row heights for O(1) range sum lookups
+        /// `cumulativeRowHeights[i]` = sum of rowHeights[0..<i]
+        private var _cumulativeRowHeights: [PDF.UserSpace.Height] = [.zero]
+
+        /// Recompute cumulative column widths from current columnWidths
+        private mutating func _recomputeCumulativeColumnWidths() {
+            var cumulative: [PDF.UserSpace.Width] = [.zero]
+            cumulative.reserveCapacity(columnWidths.count + 1)
+            var sum: PDF.UserSpace.Width = .zero
+            for width in columnWidths {
+                sum = sum + width
+                cumulative.append(sum)
+            }
+            _cumulativeColumnWidths = cumulative
+        }
+
+        /// Recompute cumulative row heights from current rowHeights
+        private mutating func _recomputeCumulativeRowHeights() {
+            var cumulative: [PDF.UserSpace.Height] = [.zero]
+            cumulative.reserveCapacity(rowHeights.count + 1)
+            var sum: PDF.UserSpace.Height = .zero
+            for height in rowHeights {
+                sum = sum + height
+                cumulative.append(sum)
+            }
+            _cumulativeRowHeights = cumulative
+        }
 
         // MARK: - Span Tracking
 
@@ -41,6 +85,13 @@ extension PDF.HTML.Context {
         public struct SpanGrid: Sendable {
             /// `grid[row][column]` is non-nil if that cell is occupied by a spanning cell
             private var grid: [[CellSpan?]] = []
+
+            /// Pre-allocate the grid for known dimensions
+            /// Call this when table dimensions are known to avoid dynamic growth during rendering
+            public mutating func preallocate(rows: Int, columns: Int) {
+                guard rows > 0 && columns > 0 else { return }
+                grid = Array(repeating: Array(repeating: nil, count: columns), count: rows)
+            }
 
             /// Information about a cell span occupying grid positions
             public struct CellSpan: Sendable {
@@ -82,16 +133,22 @@ extension PDF.HTML.Context {
                     colSpan: colspan
                 )
 
-                // Ensure grid has enough rows
-                while grid.count <= originRow + rowspan - 1 {
-                    grid.append(Array(repeating: nil, count: columnCount))
+                let requiredRows = originRow + rowspan
+
+                // Batch allocate missing rows (avoid repeated append)
+                if grid.count < requiredRows {
+                    grid.reserveCapacity(requiredRows)
+                    let missingRows = requiredRows - grid.count
+                    for _ in 0..<missingRows {
+                        grid.append(Array(repeating: nil, count: columnCount))
+                    }
                 }
 
                 // Mark all cells covered by this span (except the origin cell itself)
-                for r in originRow..<(originRow + rowspan) {
-                    // Ensure this row has enough columns
-                    while grid[r].count < columnCount {
-                        grid[r].append(nil)
+                for r in originRow..<requiredRows {
+                    // Extend row to required column count if needed (single allocation)
+                    if grid[r].count < columnCount {
+                        grid[r].append(contentsOf: Array(repeating: nil, count: columnCount - grid[r].count))
                     }
 
                     for c in originColumn..<(originColumn + colspan) {
@@ -305,6 +362,10 @@ extension PDF.HTML.Context {
             self.borderWidth = borderWidth
             self.headerBackground = headerBackground
             self.alternatingRowColor = alternatingRowColor
+
+            // Compute cumulative arrays (didSet doesn't fire during init)
+            _recomputeCumulativeColumnWidths()
+            _recomputeCumulativeRowHeights()
         }
 
         // MARK: - Column Access
@@ -328,17 +389,23 @@ extension PDF.HTML.Context {
         }
 
         /// Calculate total width for a range of columns (for colspan)
+        /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
         public func widthForColumns(_ startColumn: Int, count: Int) -> PDF.UserSpace.Width {
             let endColumn = min(startColumn + count, columnWidths.count)
             guard endColumn > startColumn else { return .zero }
-            return columnWidths[startColumn..<endColumn].reduce(.zero, +)
+            // cumulative[i] = sum of widths[0..<i]
+            // so widths[start..<end] = cumulative[end] - cumulative[start]
+            return _cumulativeColumnWidths[endColumn] - _cumulativeColumnWidths[startColumn]
         }
 
         /// Calculate total height for a range of rows (for rowspan)
+        /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
         public func heightForRows(_ startRow: Int, count: Int) -> PDF.UserSpace.Height {
             let endRow = min(startRow + count, rowHeights.count)
             guard endRow > startRow else { return .zero }
-            return rowHeights[startRow..<endRow].reduce(.zero, +)
+            // cumulative[i] = sum of heights[0..<i]
+            // so heights[start..<end] = cumulative[end] - cumulative[start]
+            return _cumulativeRowHeights[endRow] - _cumulativeRowHeights[startRow]
         }
 
         // MARK: - Cell Accessor
