@@ -8,7 +8,7 @@ import Layout
 import PDF_Rendering
 import WHATWG_HTML
 
-extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
+extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render(
         _ view: Self,
         context: inout PDF.HTML.Context
@@ -134,39 +134,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Render with flow and margins
         renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
-    }
-
-    /// Render void element (br, hr, etc.)
-    private static func renderVoidElement(
-        _ view: Self,
-        context: inout PDF.HTML.Context
-    ) {
-        switch view.tagName {
-        case "br":
-            // BR is inline, just flush and advance within the current block
-            context.pdf.flushInlineRuns()
-            context.pdf.advanceLine()
-        case "hr":
-            // HR is block-level - flush inline runs first
-            if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
-            }
-            let spacing = (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
-            context.pdf.advance(spacing)
-
-            let layoutBox = context.pdf.layoutBox
-            context.pdf.emitLine(
-                from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
-                to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
-                color: .gray(0.5),
-                width: 1
-            )
-
-            context.pdf.advance(spacing)
-        default:
-            // Other void elements have no PDF representation
-            break
-        }
     }
 
     /// Render with flow (block or inline) and margins
@@ -344,139 +311,6 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
             } else {
                 PDF.HTML.renderInline(view.content, context: &context)
             }
-        }
-    }
-
-    /// Check if tag is a list container
-    private static func isListContainer(_ tagName: String) -> Bool {
-        tagName == "ol" || tagName == "ul"
-    }
-
-    /// Get list type for a list container tag
-    private static func listType(for tagName: String) -> PDF.Context.ListType? {
-        switch tagName {
-        case "ol": return .ordered(startNumber: 1)
-        case "ul": return .unordered
-        default: return nil
-        }
-    }
-
-    /// Apply tag-specific styling based on tag name
-    private static func applyTagStyle(_ tagName: String, context: inout PDF.HTML.Context) {
-        switch tagName {
-        // Headings
-        case "h1":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 1)
-        case "h2":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 2)
-        case "h3":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 3)
-        case "h4":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 4)
-        case "h5":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 5)
-        case "h6":
-            context.pdf.style.font = context.pdf.style.font.bold
-            context.pdf.style.fontSize = context.configuration.headingSize(level: 6)
-
-        // Emphasis and importance
-        case "strong", "b":
-            context.pdf.style.font = context.pdf.style.font.bold
-        case "em", "i":
-            context.pdf.style.font = context.pdf.style.font.italic
-
-        // Code and preformatted
-        // WebKit uses a smaller monospace font relative to body text
-        case "code", "kbd", "samp":
-            context.pdf.style.font = .courier
-            // WebKit's monospace is slightly smaller than body text
-            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
-        case "pre":
-            context.pdf.style.font = .courier
-            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
-            context.pdf.preserveWhitespace = true
-
-        // Text decoration
-        case "s", "strike", "del":
-            context.pdf.style.textMarkup = .strikeOut
-        case "u", "ins":
-            context.pdf.style.textMarkup = .underline
-        case "mark":
-            context.pdf.style.textMarkup = .highlight(.rgb(red: 1.0, green: 1.0, blue: 0.0))
-
-        // Sub/superscript
-        // WebKit: font-size ~0.83em, vertical-align: sub/super
-        case "sub":
-            let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * context.configuration.typography.subscriptScale
-            // Subscript drops below baseline
-            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset - (currentSize * context.configuration.typography.subscriptOffset).height
-        case "sup":
-            let currentSize = context.pdf.style.fontSize
-            context.pdf.style.fontSize = currentSize * context.configuration.typography.superscriptScale
-            // Superscript rises above baseline
-            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset + (currentSize * context.configuration.typography.superscriptOffset).height
-
-        // Small - WebKit default is smaller
-        case "small":
-            context.pdf.style.fontSize = context.pdf.style.fontSize * context.configuration.typography.smallScale
-
-        // Links
-        case "a":
-            context.pdf.style.color = .blue
-            context.pdf.style.textMarkup = .underline
-
-        // Block indentation
-        // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
-        case "blockquote", "dd":
-            let indent = context.configuration.indent.blockquote
-            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + indent
-        case "figure":
-            let margin = context.configuration.indent.figure
-            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + margin
-            context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - margin
-
-        // Citation, definition, and variable (all italic in WebKit)
-        case "cite", "dfn", "var":
-            context.pdf.style.font = context.pdf.style.font.italic
-
-        default:
-            break
-        }
-    }
-
-    /// Get block margins for a tag name
-    private static func blockMargins(
-        for tagName: String,
-        configuration: PDF.HTML.Configuration
-    ) -> (top: LengthPercentage, bottom: LengthPercentage)? {
-        switch tagName {
-        case "p":
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        case "h1", "h2", "h3", "h4", "h5", "h6":
-            let margin = configuration.headingMarginEm(for: tagName).value
-            return (.length(.em(margin)), .length(.em(margin)))
-        case "blockquote":
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        // Note: <figure> has no vertical margins - its children provide spacing.
-        // This matches WebKit behavior where figure acts as a transparent container
-        // for margin collapsing, with only horizontal indentation applied.
-        case "pre":
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        case "ul", "ol":
-            // Note: nested lists have no margins (handled by parent li element)
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        // Note: <li> has no default margins per WHATWG HTML Standard
-        // The parent <ul>/<ol> provides the 1em margins
-        case "table":
-            return (.length(.em(1.0)), .length(.em(1.0)))
-        default:
-            return nil
         }
     }
 
@@ -1063,12 +897,185 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         // Restore layout state
         context.pdf.layoutBox = savedLayoutBox
     }
+}
+
+// MARK: - Shared Helpers (no Content constraint needed)
+// These helper methods are extracted to an unconstrained extension so they can be
+// called from both the static dispatch path (Content: PDF.HTML.View) and the
+// dynamic dispatch path (Content: HTML.View).
+
+extension HTML.Element.Tag {
+    /// Render void element (br, hr, etc.)
+    fileprivate static func renderVoidElement(
+        _ view: Self,
+        context: inout PDF.HTML.Context
+    ) {
+        switch view.tagName {
+        case "br":
+            // BR is inline, just flush and advance within the current block
+            context.pdf.flushInlineRuns()
+            context.pdf.advanceLine()
+        case "hr":
+            // HR is block-level - flush inline runs first
+            if context.pdf.hasInlineRuns {
+                context.pdf.flushInlineRuns()
+            }
+            let spacing = (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
+            context.pdf.advance(spacing)
+
+            let layoutBox = context.pdf.layoutBox
+            context.pdf.emitLine(
+                from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
+                to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
+                color: .gray(0.5),
+                width: 1
+            )
+
+            context.pdf.advance(spacing)
+        default:
+            // Other void elements have no PDF representation
+            break
+        }
+    }
+
+    /// Check if tag is a list container
+    fileprivate static func isListContainer(_ tagName: String) -> Bool {
+        tagName == "ol" || tagName == "ul"
+    }
+
+    /// Get list type for a list container tag
+    fileprivate static func listType(for tagName: String) -> PDF.Context.ListType? {
+        switch tagName {
+        case "ol": return .ordered(startNumber: 1)
+        case "ul": return .unordered
+        default: return nil
+        }
+    }
+
+    /// Apply tag-specific styling based on tag name
+    fileprivate static func applyTagStyle(_ tagName: String, context: inout PDF.HTML.Context) {
+        switch tagName {
+        // Headings
+        case "h1":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 1)
+        case "h2":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 2)
+        case "h3":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 3)
+        case "h4":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 4)
+        case "h5":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 5)
+        case "h6":
+            context.pdf.style.font = context.pdf.style.font.bold
+            context.pdf.style.fontSize = context.configuration.headingSize(level: 6)
+
+        // Emphasis and importance
+        case "strong", "b":
+            context.pdf.style.font = context.pdf.style.font.bold
+        case "em", "i":
+            context.pdf.style.font = context.pdf.style.font.italic
+
+        // Code and preformatted
+        // WebKit uses a smaller monospace font relative to body text
+        case "code", "kbd", "samp":
+            context.pdf.style.font = .courier
+            // WebKit's monospace is slightly smaller than body text
+            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
+        case "pre":
+            context.pdf.style.font = .courier
+            context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
+            context.pdf.preserveWhitespace = true
+
+        // Text decoration
+        case "s", "strike", "del":
+            context.pdf.style.textMarkup = .strikeOut
+        case "u", "ins":
+            context.pdf.style.textMarkup = .underline
+        case "mark":
+            context.pdf.style.textMarkup = .highlight(.rgb(red: 1.0, green: 1.0, blue: 0.0))
+
+        // Sub/superscript
+        // WebKit: font-size ~0.83em, vertical-align: sub/super
+        case "sub":
+            let currentSize = context.pdf.style.fontSize
+            context.pdf.style.fontSize = currentSize * context.configuration.typography.subscriptScale
+            // Subscript drops below baseline
+            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset - (currentSize * context.configuration.typography.subscriptOffset).height
+        case "sup":
+            let currentSize = context.pdf.style.fontSize
+            context.pdf.style.fontSize = currentSize * context.configuration.typography.superscriptScale
+            // Superscript rises above baseline
+            context.pdf.style.verticalOffset = context.pdf.style.verticalOffset + (currentSize * context.configuration.typography.superscriptOffset).height
+
+        // Small - WebKit default is smaller
+        case "small":
+            context.pdf.style.fontSize = context.pdf.style.fontSize * context.configuration.typography.smallScale
+
+        // Links
+        case "a":
+            context.pdf.style.color = .blue
+            context.pdf.style.textMarkup = .underline
+
+        // Block indentation
+        // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
+        case "blockquote", "dd":
+            let indent = context.configuration.indent.blockquote
+            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + indent
+        case "figure":
+            let margin = context.configuration.indent.figure
+            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + margin
+            context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - margin
+
+        // Citation, definition, and variable (all italic in WebKit)
+        case "cite", "dfn", "var":
+            context.pdf.style.font = context.pdf.style.font.italic
+
+        default:
+            break
+        }
+    }
+
+    /// Get block margins for a tag name
+    fileprivate static func blockMargins(
+        for tagName: String,
+        configuration: PDF.HTML.Configuration
+    ) -> (top: LengthPercentage, bottom: LengthPercentage)? {
+        switch tagName {
+        case "p":
+            return (.length(.em(1.0)), .length(.em(1.0)))
+        case "h1", "h2", "h3", "h4", "h5", "h6":
+            let margin = configuration.headingMarginEm(for: tagName).value
+            return (.length(.em(margin)), .length(.em(margin)))
+        case "blockquote":
+            return (.length(.em(1.0)), .length(.em(1.0)))
+        // Note: <figure> has no vertical margins - its children provide spacing.
+        // This matches WebKit behavior where figure acts as a transparent container
+        // for margin collapsing, with only horizontal indentation applied.
+        case "pre":
+            return (.length(.em(1.0)), .length(.em(1.0)))
+        case "ul", "ol":
+            // Note: nested lists have no margins (handled by parent li element)
+            return (.length(.em(1.0)), .length(.em(1.0)))
+        // Note: <li> has no default margins per WHATWG HTML Standard
+        // The parent <ul>/<ol> provides the 1em margins
+        case "table":
+            return (.length(.em(1.0)), .length(.em(1.0)))
+        default:
+            return nil
+        }
+    }
 
     /// Draw cell border (only left and top edges to avoid double borders)
     ///
     /// Uses border-collapse approach: each cell draws its left and top borders.
     /// The table's right and bottom edges are drawn once at the end.
-    private static func drawCellBorder(
+    fileprivate static func drawCellBorder(
         bounds: PDF.UserSpace.Rectangle,
         tableCtx: PDF.HTML.Context.Table,
         context: inout PDF.HTML.Context
@@ -1098,7 +1105,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     /// For multi-page tables, this is called:
     /// 1. Before each page break (to close the fragment on the current page)
     /// 2. At the end of the table (to close the final fragment)
-    private static func drawFragmentRightAndBottomBorders(
+    fileprivate static func drawFragmentRightAndBottomBorders(
         tableCtx: PDF.HTML.Context.Table,
         fragmentStartY: PDF.UserSpace.Y,
         fragmentEndY: PDF.UserSpace.Y,
@@ -1129,7 +1136,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
 
     /// Draw the table's right and bottom borders (completing the border-collapse grid)
     /// Convenience wrapper that uses the current fragment tracking properties.
-    private static func drawTableRightAndBottomBorders(
+    fileprivate static func drawTableRightAndBottomBorders(
         tableCtx: PDF.HTML.Context.Table,
         context: inout PDF.HTML.Context
     ) {
@@ -1142,7 +1149,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     }
 
     /// Draw cell background (inset by half border width to avoid overlap)
-    private static func drawCellBackground(
+    fileprivate static func drawCellBackground(
         bounds: PDF.UserSpace.Rectangle,
         color: PDF.Color,
         borderWidth: PDF.UserSpace.Size<1> = 0,
@@ -1161,7 +1168,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     // MARK: - Heading Level Detection
 
     /// Get heading level for tag name (nil if not a heading)
-    private static func headingLevel(for tagName: String) -> Int? {
+    fileprivate static func headingLevel(for tagName: String) -> Int? {
         switch tagName {
         case "h1": return 1
         case "h2": return 2
@@ -1176,7 +1183,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     // MARK: - Header Text Extraction
 
     /// Extract plain text content from cell for header repetition
-    private static func extractCellText<CellContent>(from content: CellContent) -> String {
+    fileprivate static func extractCellText<CellContent>(from content: CellContent) -> String {
         // Use Mirror to recursively find string content
         let mirror = Mirror(reflecting: content)
 
@@ -1207,7 +1214,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     }
 
     /// Helper to extract text from Any type
-    private static func extractCellTextFromAny(_ value: Any) -> String {
+    fileprivate static func extractCellTextFromAny(_ value: Any) -> String {
         if let str = value as? String {
             return str
         }
@@ -1229,7 +1236,7 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
     // MARK: - Header Row Repetition
 
     /// Render the stored header row (called after page break)
-    private static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
+    fileprivate static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
         guard var tableCtx = context.table,
               let headerCells = tableCtx.header.cells,
               !headerCells.isEmpty else {
@@ -1357,3 +1364,652 @@ extension HTML.Element: PDF.HTML.View where Content: PDF.HTML.View {
         }
     }
 }
+
+// MARK: - Dynamic Dispatch Support for HTML.Element.Tag
+
+/// Conformance to `_HTMLElementContent` enables runtime dispatch for `HTML.Element.Tag<Content>`
+/// when `Content` doesn't statically conform to `PDF.HTML.View` but is an `HTML.View`.
+///
+/// This mirrors the static dispatch `_render` method but uses dynamic dispatch helpers
+/// (`renderBlockDynamic`, `renderInlineDynamic`) for content rendering.
+extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
+    public func _renderElementDynamically(context: inout PDF.HTML.Context) {
+        // Handle void elements (br, hr, etc.) based on runtime check
+        if self.isVoid {
+            Self.renderVoidElement(self, context: &context)
+            return
+        }
+
+        // Determine if this is a block or inline element
+        let isBlock = self.isBlock
+
+        // Save element-scoped state (restored via defer)
+        let savedStyle = context.pdf.style
+        let savedLLX = context.pdf.layoutBox.llx
+        let savedURX = context.pdf.layoutBox.urx
+        let savedPreserveWhitespace = context.pdf.preserveWhitespace
+        let savedLinkURL = context.currentLinkURL
+        let savedInternalLinkId = context.currentInternalLinkId
+        defer {
+            context.pdf.style = savedStyle
+            context.pdf.layoutBox.llx = savedLLX
+            context.pdf.layoutBox.urx = savedURX
+            context.pdf.preserveWhitespace = savedPreserveWhitespace
+            context.currentLinkURL = savedLinkURL
+            context.currentInternalLinkId = savedInternalLinkId
+        }
+
+        // Apply tag-specific style BEFORE calculating margins
+        Self.applyTagStyle(self.tagName, context: &context)
+
+        // Collect heading text for bookmarks
+        var pendingHeading: (level: Int, text: String)? = nil
+        if let headingLevel = Self.headingLevel(for: self.tagName) {
+            let headingText = Self.extractCellText(from: self.content)
+            if !headingText.isEmpty {
+                pendingHeading = (level: headingLevel, text: headingText)
+            }
+        }
+
+        // For anchor tags, extract href from attributes for clickable links
+        if self.tagName == "a" {
+            if let href = context.attributes["href"] {
+                if href.hasPrefix("#") {
+                    context.currentInternalLinkId = String(href.dropFirst())
+                } else {
+                    context.currentLinkURL = href
+                }
+            }
+        }
+
+        // Collect named destination for elements with id attribute
+        if let elementId = context.attributes["id"], !elementId.isEmpty {
+            let pageNumber = context.pdf.completedPages.count + 1
+            let yPosition = context.pdf.layoutBox.lly
+            context.namedDestinations[elementId] = PDF.HTML.Context.DestinationInfo(
+                pageNumber: pageNumber,
+                yPosition: yPosition
+            )
+        }
+
+        // Check for block margins
+        let isNestedList = (self.tagName == "ul" || self.tagName == "ol") && context.pdf.listDepth > 0
+        let marginTop: PDF.UserSpace.Height
+        let marginBottom: PDF.UserSpace.Height
+        if !isNestedList, let margins = Self.blockMargins(for: self.tagName, configuration: context.configuration) {
+            let currentSize = context.pdf.style.fontSize
+            marginTop = PDF.UserSpace.Size<1>(
+                margins.top,
+                currentSize: currentSize,
+                baseFontSize: context.configuration.defaultFontSize
+            ).height
+            marginBottom = PDF.UserSpace.Size<1>(
+                margins.bottom,
+                currentSize: currentSize,
+                baseFontSize: context.configuration.defaultFontSize
+            ).height
+        } else {
+            marginTop = 0
+            marginBottom = 0
+        }
+
+        // Handle deferred content (page-break-after: avoid)
+        if isBlock, let deferred = context.deferredKeepWithNextRender {
+            context.deferredKeepWithNextRender = nil
+            let fullPageHeight = context.configuration.content.height
+            if deferred.measuredHeight > fullPageHeight * context.configuration.deferredHeaderThreshold {
+                deferred.render(&context)
+                Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+                return
+            }
+            let oneLineHeight = context.pdf.style.line.height
+            let minContentHeight = marginTop + oneLineHeight
+            let totalNeeded = deferred.measuredHeight + minContentHeight
+            if context.pdf.wouldExceedPage(adding: totalNeeded) {
+                context.pdf.startNewPage()
+            }
+            deferred.render(&context)
+            Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+            return
+        }
+
+        Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+    }
+
+    /// Dynamic dispatch version of renderWithFlow
+    fileprivate static func renderWithFlowDynamic(
+        _ view: Self,
+        isBlock: Bool,
+        marginTop: PDF.UserSpace.Height,
+        marginBottom: PDF.UserSpace.Height,
+        pendingHeading: (level: Int, text: String)?,
+        context: inout PDF.HTML.Context
+    ) {
+        if isBlock {
+            if context.pdf.hasInlineRuns {
+                context.pdf.flushInlineRuns()
+            }
+
+            if marginTop > 0 || marginBottom > 0 {
+                context.applyCollapsedMargin(top: marginTop, bottom: marginBottom)
+            }
+
+            if let heading = pendingHeading {
+                let headingFontSize = context.configuration.headingSize(level: heading.level)
+                let headingLineHeight = (headingFontSize * context.pdf.style.lineHeight).height
+                context.pdf.checkPageBreak(needing: headingLineHeight)
+                let pageNumber = context.pdf.completedPages.count + 1
+                let yPosition = context.pdf.layoutBox.lly
+                context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
+                    level: heading.level,
+                    text: heading.text,
+                    pageNumber: pageNumber,
+                    yPosition: yPosition
+                ))
+                if heading.level <= 3 {
+                    context.currentSectionTitle = heading.text
+                    if context.pageSectionTitles[pageNumber] == nil {
+                        context.pageSectionTitles[pageNumber] = heading.text
+                    }
+                }
+            }
+
+            // Handle table containers
+            if view.tagName == "table" {
+                renderTableDynamic(view, context: &context)
+            }
+            else if view.tagName == "thead" {
+                context.with(\.table) { tc in
+                    tc.header.startCapturing()
+                }
+                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                context.with(\.table) { tc in
+                    tc.header.finalizeCapture()
+                    if !tc.rowHeights.isEmpty {
+                        tc.header.rowHeight = tc.rowHeights[0]
+                    }
+                }
+            }
+            else if view.tagName == "tbody" || view.tagName == "tfoot" {
+                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            }
+            else if view.tagName == "tr" {
+                renderTableRowDynamic(view, context: &context)
+            }
+            else if view.tagName == "td" || view.tagName == "th" {
+                renderTableCellDynamic(view, isHeader: view.tagName == "th", context: &context)
+            }
+            else if let listType = listType(for: view.tagName) {
+                context.pdf.push(list: listType)
+                let indent = context.configuration.indent.list
+                let savedLLX = context.pdf.layoutBox.llx
+                context.pdf.layoutBox.llx = savedLLX + indent
+                let savedPendingMargin = context.pendingBottomMargin
+                context.pendingBottomMargin = 0
+                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                context.pendingBottomMargin = savedPendingMargin
+                context.pdf.layoutBox.llx = savedLLX
+                context.pdf.popList()
+            }
+            else if view.tagName == "li" {
+                let marker = context.pdf.nextListMarker()
+                let markerWidth: PDF.UserSpace.Width
+                switch marker {
+                case .text(let bytes, let font):
+                    markerWidth = font.winAnsi.width(of: bytes, atSize: context.pdf.style.fontSize)
+                case .strokedCircle(let circle, _):
+                    markerWidth = circle.diameter.width
+                case .filledCircle(let circle):
+                    markerWidth = circle.diameter.width
+                case .filledSquare(let rect):
+                    markerWidth = rect.width
+                }
+                let markerGap = (context.pdf.style.fontSize * context.configuration.horizontalGapEm).width
+                let markerX = context.pdf.layoutBox.llx - markerWidth - markerGap
+                context.pdf.pendingListMarker = (marker: marker, x: markerX)
+                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                context.pdf.pendingListMarker = nil
+            }
+            else {
+                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            }
+        } else {
+            if view.tagName == "q" {
+                let openQuote = PDF.Context.TextRun(
+                    bytes: [0x93],
+                    font: context.pdf.style.font,
+                    fontSize: context.pdf.style.fontSize,
+                    color: context.pdf.style.color,
+                    textDecoration: context.pdf.style.textMarkup,
+                    verticalOffset: context.pdf.style.verticalOffset
+                )
+                context.pdf.append(inline: openQuote)
+                PDF.HTML.renderInlineDynamic(view.content, context: &context)
+                let closeQuote = PDF.Context.TextRun(
+                    bytes: [0x94],
+                    font: context.pdf.style.font,
+                    fontSize: context.pdf.style.fontSize,
+                    color: context.pdf.style.color,
+                    textDecoration: context.pdf.style.textMarkup,
+                    verticalOffset: context.pdf.style.verticalOffset
+                )
+                context.pdf.append(inline: closeQuote)
+            } else {
+                PDF.HTML.renderInlineDynamic(view.content, context: &context)
+            }
+        }
+    }
+
+    /// Dynamic dispatch version of renderTable
+    fileprivate static func renderTableDynamic(
+        _ view: Self,
+        context: inout PDF.HTML.Context
+    ) {
+        let savedTableContext = context.table
+        let tableStartY = context.pdf.layoutBox.lly
+        let availableWidth = context.pdf.layoutBox.width
+        let cellPadding = context.configuration.table.cell.padding
+        let columnWidths: [PDF.UserSpace.Width] = []
+        let defaultRowHeight = context.pdf.style.line.height + cellPadding.height * 2
+        let rowHeights: [PDF.UserSpace.Height] = []
+        let tableX = context.pdf.layoutBox.llx
+        let tableBounds = PDF.UserSpace.Rectangle(
+            x: tableX,
+            y: tableStartY,
+            width: availableWidth,
+            height: defaultRowHeight
+        )
+        context.table = PDF.HTML.Context.Table(
+            bounds: tableBounds,
+            columnWidths: columnWidths,
+            rowHeights: rowHeights,
+            cellPadding: cellPadding,
+            borderColor: context.configuration.table.border.color,
+            borderWidth: context.configuration.table.border.width,
+            headerBackground: context.configuration.table.headerBackground,
+            alternatingRowColor: context.configuration.table.alternatingRowColor
+        )
+        context.table?.totalRowsRendered = 0
+        context.resetMarginCollapsing()
+
+        PDF.HTML.renderBlockDynamic(view.content, context: &context)
+
+        if let tc = context.table {
+            for deferred in tc.deferredSpanningCells {
+                let startRow = deferred.origin.row
+                let endRow = startRow + deferred.span.row.span
+                var totalHeight: PDF.UserSpace.Height = 0
+                for rowIndex in startRow..<min(endRow, tc.rowHeights.count) {
+                    totalHeight += tc.rowHeights[rowIndex]
+                }
+                let cellBounds = PDF.UserSpace.Rectangle(
+                    x: deferred.cell.x,
+                    y: deferred.cell.y,
+                    width: deferred.cell.width,
+                    height: totalHeight
+                )
+                if deferred.isHeader, let headerBg = tc.headerBackground {
+                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                }
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+                let cellContentHeight = totalHeight - tc.cell.padding.height * 2
+                let lineHeight = deferred.savedStyle.line.height
+                let verticalCenterOffset = max(PDF.UserSpace.Height(0), (cellContentHeight - lineHeight) / 2)
+                let contentY = deferred.cell.y + tc.cell.padding.height + verticalCenterOffset
+                let savedLayoutBox = context.pdf.layoutBox
+                let savedStyle = context.pdf.style
+                context.pdf.style = deferred.savedStyle
+                context.pdf.style.textAlign = deferred.textAlignment
+                context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+                    x: deferred.content.x,
+                    y: contentY,
+                    width: deferred.content.width,
+                    height: cellContentHeight - verticalCenterOffset
+                )
+                let runs = PDF.Context.TextRun.runsWithSymbolSupport(
+                    text: deferred.text,
+                    font: deferred.savedStyle.font,
+                    fontSize: deferred.savedStyle.fontSize,
+                    color: deferred.savedStyle.color,
+                    textDecoration: deferred.savedStyle.textMarkup,
+                    verticalOffset: deferred.savedStyle.verticalOffset
+                )
+                for run in runs {
+                    context.pdf.append(inline: run)
+                }
+                context.pdf.flushInlineRuns()
+                context.pdf.style = savedStyle
+                context.pdf.layoutBox = savedLayoutBox
+            }
+            drawTableRightAndBottomBorders(tableCtx: tc, context: &context)
+        }
+        context.pdf.advance((context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height)
+        context.table = savedTableContext
+    }
+
+    /// Dynamic dispatch version of renderTableRow
+    fileprivate static func renderTableRowDynamic(
+        _ view: Self,
+        context: inout PDF.HTML.Context
+    ) {
+        guard var tableCtx = context.table else {
+            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            return
+        }
+
+        tableCtx.currentColumn = 0
+        tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
+        tableCtx.pendingCellBorders = []
+
+        let fontSize = context.pdf.style.fontSize
+        let regularFont = context.pdf.style.font
+        let boldFont = regularFont.bold
+        let regularAscent = regularFont.metrics.ascender(atSize: fontSize)
+        let regularDescent = abs(regularFont.metrics.descender(atSize: fontSize))
+        let boldAscent = boldFont.metrics.ascender(atSize: fontSize)
+        let boldDescent = abs(boldFont.metrics.descender(atSize: fontSize))
+        tableCtx.currentRowMaxAscent = max(regularAscent, boldAscent)
+        tableCtx.currentRowMaxDescent = max(regularDescent, boldDescent)
+
+        let minRowHeight = context.pdf.style.line.height + tableCtx.cell.padding.height * 2
+        let headerHeight = tableCtx.header.hasHeader ? tableCtx.header.rowHeight : PDF.UserSpace.Height(0)
+        let totalNeeded = minRowHeight + headerHeight
+
+        let willPageBreak = context.pdf.wouldExceedPage(adding: totalNeeded)
+        if willPageBreak && tableCtx.columnsInitialized && tableCtx.totalRowsRendered > 0 {
+            drawFragmentRightAndBottomBorders(
+                tableCtx: tableCtx,
+                fragmentStartY: tableCtx.currentFragmentStartY,
+                fragmentEndY: tableCtx.currentFragmentEndY,
+                context: &context
+            )
+        }
+
+        let didPageBreak = context.pdf.checkPageBreak(needing: totalNeeded)
+        if didPageBreak && tableCtx.columnsInitialized {
+            tableCtx.currentFragmentStartY = context.pdf.layoutBox.lly
+            tableCtx.currentFragmentEndY = context.pdf.layoutBox.lly
+            context.table = tableCtx
+        }
+        if didPageBreak && tableCtx.header.hasHeader && tableCtx.columnsInitialized {
+            renderRepeatedHeader(context: &context)
+            if let tc = context.table {
+                tableCtx = tc
+            }
+        }
+
+        tableCtx.bounds = PDF.UserSpace.Rectangle(
+            x: tableCtx.bounds.llx,
+            y: context.pdf.layoutBox.lly,
+            width: tableCtx.bounds.width,
+            height: minRowHeight
+        )
+        tableCtx.currentRow = 0
+        context.table = tableCtx
+
+        let rowStartY = context.pdf.layoutBox.lly
+        tableCtx.bounds.lly = rowStartY
+        context.table = tableCtx
+
+        if tableCtx.totalRowsRendered == 0 {
+            context.with(\.table) { tc in
+                tc.tableStartY = rowStartY
+                tc.currentFragmentStartY = rowStartY
+                tc.currentFragmentEndY = rowStartY
+                tableCtx = tc
+            }
+        }
+
+        if !tableCtx.columnsInitialized {
+            context.with(\.table) { tc in
+                tc.measureOnly = true
+                tc.currentColumn = 0
+            }
+            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            context.with(\.table) { tc in
+                tc.measureOnly = false
+                tc.columnsInitialized = true
+                let columnCount = tc.columnWidths.count
+                if columnCount > 0 {
+                    let equalWidth = tc.bounds.width / Scale(Double(columnCount))
+                    tc.columnWidths = Array(repeating: equalWidth, count: columnCount)
+                }
+                tc.currentColumn = 0
+                tc.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
+                tc.pendingCellBorders = []
+            }
+            if let tc = context.table {
+                for col in 0..<tc.columnCount {
+                    if tc.spans.isOccupied(row: tc.totalRowsRendered, column: col) {
+                        continue
+                    }
+                    let cellX = tc.xForColumn(col)
+                    let cellWidth = tc.widthForColumns(col, count: 1)
+                    let cellBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: rowStartY,
+                        width: cellWidth,
+                        height: minRowHeight
+                    )
+                    if let headerBg = tc.headerBackground {
+                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                    }
+                }
+            }
+            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+        } else {
+            if let tc = context.table {
+                for col in 0..<tc.columnCount {
+                    if tc.spans.isOccupied(row: tc.totalRowsRendered, column: col) {
+                        continue
+                    }
+                    let cellX = tc.xForColumn(col)
+                    let cellWidth = tc.widthForColumns(col, count: 1)
+                    let cellBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: rowStartY,
+                        width: cellWidth,
+                        height: minRowHeight
+                    )
+                    if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
+                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                    }
+                }
+            }
+            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+        }
+
+        if context.pdf.hasInlineRuns {
+            context.pdf.flushInlineRuns()
+        }
+
+        let actualRowHeight: PDF.UserSpace.Height
+        if let tc = context.table {
+            actualRowHeight = tc.maxCellHeightInCurrentRow > minRowHeight
+                ? tc.maxCellHeightInCurrentRow
+                : minRowHeight
+        } else {
+            actualRowHeight = minRowHeight
+        }
+
+        if let tc = context.table {
+            if actualRowHeight > minRowHeight {
+                let extensionHeight = actualRowHeight - minRowHeight
+                let extensionY = rowStartY + minRowHeight
+                for pending in tc.pendingCellBorders {
+                    let cellX = tc.xForColumn(pending.column)
+                    let cellWidth = tc.widthForColumns(pending.column, count: pending.colspan)
+                    let extensionBounds = PDF.UserSpace.Rectangle(
+                        x: cellX,
+                        y: extensionY,
+                        width: cellWidth,
+                        height: extensionHeight
+                    )
+                    if pending.isHeader, let headerBg = tc.headerBackground {
+                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                    } else if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
+                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                    }
+                }
+            }
+            for pending in tc.pendingCellBorders {
+                let cellX = tc.xForColumn(pending.column)
+                let cellWidth = tc.widthForColumns(pending.column, count: pending.colspan)
+                let cellBounds = PDF.UserSpace.Rectangle(
+                    x: cellX,
+                    y: rowStartY,
+                    width: cellWidth,
+                    height: actualRowHeight
+                )
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+            }
+        }
+
+        context.with(\.table) { tc in
+            tc.rowHeights.append(actualRowHeight)
+        }
+
+        let newY = rowStartY + actualRowHeight
+        context.pdf.layoutBox.lly = newY
+
+        context.with(\.table) { tc in
+            tc.tableEndY = newY
+            tc.currentFragmentEndY = newY
+        }
+
+        context.with(\.table) { tc in
+            tc.totalRowsRendered += 1
+            tc.currentColumn = 0
+            tc.pendingCellBorders = []
+        }
+    }
+
+    /// Dynamic dispatch version of renderTableCell
+    fileprivate static func renderTableCellDynamic(
+        _ view: Self,
+        isHeader: Bool,
+        context: inout PDF.HTML.Context
+    ) {
+        guard var tableCtx = context.table else {
+            PDF.HTML.renderInlineDynamic(view.content, context: &context)
+            return
+        }
+
+        let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
+        let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
+
+        tableCtx.advanceToNextAvailableColumn()
+        context.table = tableCtx
+
+        let column = tableCtx.currentColumn
+
+        if tableCtx.measureOnly {
+            while tableCtx.columnWidths.count <= column {
+                tableCtx.columnWidths.append(PDF.UserSpace.Width(0))
+            }
+            tableCtx.currentColumn += colspan
+            context.table = tableCtx
+            return
+        }
+
+        guard column < tableCtx.columnCount else {
+            return
+        }
+
+        let cellX = tableCtx.xForColumn(column)
+        let cellWidth = tableCtx.widthForColumns(column, count: colspan)
+        let cellPadding = tableCtx.cell.padding
+        let contentX = cellX + cellPadding.width
+        let contentWidth = cellWidth - cellPadding.width * 2
+
+        let rowMaxAscent = tableCtx.currentRowMaxAscent
+        let rowMaxDescent = tableCtx.currentRowMaxDescent
+        let fontContentHeight = rowMaxAscent + rowMaxDescent
+        let lineHeight = context.pdf.style.line.height
+        let effectiveLineHeight = max(fontContentHeight, lineHeight)
+        let cellContentHeight = tableCtx.bounds.height - cellPadding.height * 2
+        let verticalCenterOffset = Swift.max(PDF.UserSpace.Height(0), (cellContentHeight - effectiveLineHeight) / 2)
+        let headerCompensation: PDF.UserSpace.Height = isHeader ? 1.0 : 0
+        let contentY = tableCtx.bounds.lly + cellPadding.height + verticalCenterOffset + headerCompensation
+        let contentHeight = cellContentHeight - verticalCenterOffset - headerCompensation
+
+        let savedLayoutBox = context.pdf.layoutBox
+        context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+            x: contentX,
+            y: contentY,
+            width: contentWidth,
+            height: contentHeight
+        )
+
+        let textAlignment = context.pdf.style.textAlign
+        let contentStartY = context.pdf.layoutBox.lly
+
+        let actualContentHeight: PDF.UserSpace.Height
+        if rowspan > 1 {
+            let contentText = extractCellText(from: view.content)
+            actualContentHeight = context.pdf.style.line.height
+            let savedStyle = context.pdf.style
+            let cellY = tableCtx.bounds.lly
+
+            context.with(\.table) { tc in
+                tc.deferredSpanningCells.append(.init(
+                    origin: .init(row: tc.totalRowsRendered),
+                    column: column,
+                    span: .init(
+                        col: .init(span: colspan),
+                        row: .init(span: rowspan)
+                    ),
+                    isHeader: isHeader,
+                    cell: .init(x: cellX, y: cellY, width: cellWidth),
+                    content: .init(x: contentX, width: contentWidth),
+                    savedStyle: savedStyle,
+                    text: contentText,
+                    textAlignment: textAlignment
+                ))
+                tc.spans.mark(
+                    fromRow: tc.totalRowsRendered,
+                    column: column,
+                    rowspan: rowspan,
+                    colspan: colspan,
+                    columnCount: tc.columnCount
+                )
+                if isHeader && tc.header.isCapturing {
+                    tc.header.addCell(.init(text: contentText, colspan: colspan))
+                }
+                tc.currentColumn += colspan
+            }
+        } else {
+            PDF.HTML.renderInlineDynamic(view.content, context: &context)
+            if context.pdf.hasInlineRuns {
+                context.pdf.flushInlineRuns()
+            }
+            let contentEndY = context.pdf.layoutBox.lly
+            actualContentHeight = PDF.UserSpace.Height(abs((contentEndY - contentStartY)._rawValue))
+
+            context.with(\.table) { tc in
+                tc.pendingCellBorders.append(.init(
+                    column: column,
+                    colspan: colspan,
+                    rowspan: rowspan,
+                    isHeader: isHeader,
+                    textAlignment: textAlignment
+                ))
+                if isHeader && tc.header.isCapturing {
+                    let cellText = extractCellText(from: view.content)
+                    tc.header.addCell(.init(text: cellText, colspan: colspan))
+                }
+                tc.currentColumn += colspan
+            }
+        }
+
+        let cellHeight = actualContentHeight + tableCtx.cell.padding.height * 2
+        context.with(\.table) { tc in
+            if cellHeight > tc.maxCellHeightInCurrentRow {
+                tc.maxCellHeightInCurrentRow = cellHeight
+            }
+        }
+
+        context.pdf.layoutBox = savedLayoutBox
+    }
+}
+

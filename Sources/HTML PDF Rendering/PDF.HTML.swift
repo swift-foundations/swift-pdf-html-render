@@ -442,20 +442,36 @@ extension PDF.HTML {
             V._render(v, context: &context)
         }
 
-        // Try static dispatch if type conforms to PDF.HTML.View
+        // 1. Try static dispatch if type conforms to PDF.HTML.View
         if let pdfView = view as? any PDF.HTML.View {
             renderPDFView(pdfView)
             return
         }
 
-        // Handle _Tuple specially - Swift can't verify variadic conditional conformances at runtime
-        // We use a marker protocol to enable dynamic rendering of tuple elements
+        // 2. Handle _Tuple specially - Swift can't verify variadic conditional conformances at runtime
         if let tuple = view as? any _TupleContent {
             tuple._renderEachElementDynamically(context: &context)
             return
         }
 
-        // Fallback: render the body recursively
+        // 3. Handle HTML.Element.Tag - Swift can't verify conditional conformance at runtime
+        if let element = view as? any _HTMLElementContent {
+            element._renderElementDynamically(context: &context)
+            return
+        }
+
+        // 4. Handle HTML.Raw - ignore in PDF context (no meaningful representation)
+        if view is any _HTMLRawContent {
+            return
+        }
+
+        // 5. Handle Optional - Swift can't verify conditional conformance at runtime
+        if let optional = view as? any _OptionalContent {
+            optional._renderOptionalDynamically(context: &context)
+            return
+        }
+
+        // 6. Fallback: render the body recursively (for custom HTML.View types)
         func renderBody<V: HTML.View>(_ v: V) {
             renderHTMLView(v.body, context: &context)
         }
@@ -463,7 +479,7 @@ extension PDF.HTML {
     }
 }
 
-// MARK: - _Tuple Dynamic Dispatch Support
+// MARK: - Dynamic Dispatch Support Protocols
 
 /// Internal protocol to enable dynamic dispatch for _Tuple without variadic constraints.
 ///
@@ -472,6 +488,30 @@ extension PDF.HTML {
 package protocol _TupleContent {
     /// Render each element of the tuple using dynamic dispatch.
     func _renderEachElementDynamically(context: inout PDF.HTML.Context)
+}
+
+/// Marker protocol for HTML.Element.Tag dynamic dispatch.
+///
+/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
+/// conditional conformances like `HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View`.
+package protocol _HTMLElementContent {
+    /// Render this element using dynamic dispatch for content.
+    func _renderElementDynamically(context: inout PDF.HTML.Context)
+}
+
+/// Marker protocol for HTML.Raw (renders as empty in PDF context).
+///
+/// Raw HTML content (like `<script>...</script>`) doesn't have a meaningful
+/// PDF representation and is safely ignored during PDF rendering.
+package protocol _HTMLRawContent {}
+
+/// Marker protocol for Optional dynamic dispatch.
+///
+/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
+/// conditional conformances like `Optional: PDF.HTML.View where Wrapped: PDF.HTML.View`.
+package protocol _OptionalContent {
+    /// Render the optional's wrapped value if present, using dynamic dispatch.
+    func _renderOptionalDynamically(context: inout PDF.HTML.Context)
 }
 
 // MARK: - Block and Inline Helpers
@@ -520,5 +560,42 @@ extension PDF.HTML {
         if let content {
             C._render(content, context: &context)
         }
+    }
+
+    // MARK: - Dynamic Dispatch Helpers
+
+    /// Dynamic dispatch version of renderBlock.
+    ///
+    /// Use this when the content type is only known to conform to `HTML.View`,
+    /// not `PDF.HTML.View`. This enables rendering of content that uses custom
+    /// view types without explicit PDF conformance.
+    public static func renderBlockDynamic(
+        _ content: some HTML.View,
+        context: inout PDF.HTML.Context
+    ) {
+        // Flush pending inline runs
+        if context.pdf.hasInlineRuns {
+            context.pdf.flushInlineRuns()
+        }
+
+        // Render content using dynamic dispatch
+        renderHTMLView(content, context: &context)
+
+        // Flush inline runs from content
+        if context.pdf.hasInlineRuns {
+            context.pdf.flushInlineRuns()
+        }
+    }
+
+    /// Dynamic dispatch version of renderInline.
+    ///
+    /// Use this when the content type is only known to conform to `HTML.View`,
+    /// not `PDF.HTML.View`. This enables rendering of content that uses custom
+    /// view types without explicit PDF conformance.
+    public static func renderInlineDynamic(
+        _ content: some HTML.View,
+        context: inout PDF.HTML.Context
+    ) {
+        renderHTMLView(content, context: &context)
     }
 }
