@@ -58,8 +58,16 @@ extension PDF.HTML {
         public var deferredKeepWithNextRender: DeferredRender?
         
         /// Flag indicating the current element should avoid page break after it.
-        /// Set by `page-break-after: avoid` CSS property.
+        /// Set by `page-break-after: avoid` or `break-after: avoid` CSS property.
         public var avoidPageBreakAfter: Bool = false
+
+        /// Flag indicating a page break should be forced after the current element.
+        /// Set by `break-after: always/page` or similar CSS properties.
+        public var forcePageBreakAfter: Bool = false
+
+        /// Flag indicating breaks should be avoided inside the current element.
+        /// Set by `page-break-inside: avoid` or `break-inside: avoid` CSS property.
+        public var avoidPageBreakInside: Bool = false
 
         // MARK: - Section Tracking (for headers/footers)
 
@@ -88,6 +96,8 @@ extension PDF.HTML {
             self.pendingBottomMargin = 0
             self.deferredKeepWithNextRender = nil
             self.avoidPageBreakAfter = false
+            self.forcePageBreakAfter = false
+            self.avoidPageBreakInside = false
             self.currentSectionTitle = nil
             self.pageSectionTitles = [:]
             self.collectedHeadings = []

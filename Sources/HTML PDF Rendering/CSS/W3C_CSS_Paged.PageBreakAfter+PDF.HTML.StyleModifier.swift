@@ -11,11 +11,10 @@ extension W3C_CSS_Paged.PageBreakAfter: PDF.HTML.HTMLContextStyleModifier {
         case .avoid:
             // Set flag to defer this element for sticky behavior with next element
             context.avoidPageBreakAfter = true
-        case .always:
+        case .always, .left, .right:
             // Force a page break after this element
-            // This is handled after content rendering, not here
-            break
-        case .auto, .left, .right, .global:
+            context.forcePageBreakAfter = true
+        case .auto, .global:
             break
         }
     }

@@ -29,32 +29,67 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             context.pdf.style = savedStyle
         }
 
-        // Check if this is a page-break-after: avoid style
+        // Check for break-related styles
         var shouldAvoidPageBreakAfter = false
+        var shouldForcePageBreakAfter = false
+        var shouldAvoidPageBreakInside = false
+
         if let property = view.property {
             // Check for PDF context modifier
             if let modifier = property as? any PDF.HTML.StyleModifier {
                 modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
-            // Check for HTML context modifier (for page-break-after, etc.)
+            // Check for HTML context modifier (for page-break-after, break-inside, etc.)
             if let htmlModifier = property as? any PDF.HTML.HTMLContextStyleModifier {
                 htmlModifier.apply(to: &context)
             }
-            // Check if this is page-break-after: avoid
+
+            // Capture and reset break flags
             if context.avoidPageBreakAfter {
                 shouldAvoidPageBreakAfter = true
-                context.avoidPageBreakAfter = false  // Reset the flag
+                context.avoidPageBreakAfter = false
+            }
+            if context.forcePageBreakAfter {
+                shouldForcePageBreakAfter = true
+                context.forcePageBreakAfter = false
+            }
+            if context.avoidPageBreakInside {
+                shouldAvoidPageBreakInside = true
+                context.avoidPageBreakInside = false
             }
         }
 
+        // Handle break-inside: avoid
+        // If element won't fit on current page but would fit on a fresh page, break first
+        if shouldAvoidPageBreakInside {
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
+            let configuration = context.configuration
+            let pendingBottomMargin = context.pendingBottomMargin
+
+            // Measure the element's total height
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                Content._render(view.content, context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+            }
+
+            // If it won't fit on current page but would fit on a fresh page, break before
+            let pageContentHeight = context.configuration.content.height
+            if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
+                context.pdf.startNewPage()
+            }
+        }
+
+        // Handle break-after: avoid (sticky header behavior)
         if shouldAvoidPageBreakAfter {
             // Capture context snapshot for restoration during deferred render
             let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
             let configuration = context.configuration
 
             // Measure the content height without rendering (measurement mode suppresses operations)
-            // We need to create a fresh HTML context inside the measure closure to avoid access conflicts
-            // Copy pending margin state to get accurate height including collapsed margins
             let pendingBottomMargin = context.pendingBottomMargin
             let measuredHeight = context.pdf.measure { measureContext in
                 var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
@@ -62,9 +97,9 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 snapshot.restore(to: &tempHTMLContext.pdf)
                 Content._render(view.content, context: &tempHTMLContext)
                 tempHTMLContext.pdf.flushInlineRuns()
-                // Write back the Y position to measureContext so the measure function can calculate height
                 measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
             }
+
             // Check if there's already deferred content (consecutive sticky headers)
             if let existingDeferred = context.deferredKeepWithNextRender {
                 // Chain: combine heights and render in sequence
@@ -94,6 +129,12 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
         } else {
             // Normal rendering
             Content._render(view.content, context: &context)
+
+            // Handle break-after: always/page (force page break)
+            if shouldForcePageBreakAfter {
+                context.pdf.flushInlineRuns()
+                context.pdf.startNewPage()
+            }
         }
     }
 }
