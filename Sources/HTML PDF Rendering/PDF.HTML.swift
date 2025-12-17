@@ -425,95 +425,117 @@ extension PDF.HTML {
 }
 
 extension PDF.HTML {
-    /// Dynamic dispatch helper for rendering any HTML.View.
+    /// Dynamic dispatch entry point for rendering any HTML.View to PDF.
     ///
-    /// Uses Mirror-based detection for HTML.Styled to avoid Swift runtime crashes
-    /// on deeply nested generic types like `HTML.Styled<HTML.Styled<...>>`.
+    /// This function determines HOW to render an arbitrary HTML.View at runtime.
+    /// It must handle the "wrapper type problem" where types like HTML.Styled,
+    /// HTML.CSS, and HTML._Attributes create deeply nested generic types that
+    /// crash Swift's runtime when we try to use `as?` casts on them.
     ///
-    /// The Mirror approach identifies HTML.Styled by field structure rather than
-    /// protocol conformance, which doesn't trigger the problematic type metadata
-    /// instantiation that causes `EXC_BAD_ACCESS` crashes.
+    /// See the detailed explanation in "Mirror-Based Rendering" section below.
+    ///
+    /// - Important: This function MUST check for wrapper types via Mirror BEFORE
+    ///   attempting any `as?` cast. The order of checks matters for correctness.
     public static func renderHTMLView(
         _ view: some HTML.View,
         context: inout PDF.HTML.Context
     ) {
-        // CRITICAL: Use Mirror to detect wrapper types BEFORE any as? cast.
-        // Doing `as?` on deeply nested generics crashes Swift's runtime.
+        // ════════════════════════════════════════════════════════════════════════
+        // PHASE 1: Mirror-based detection of wrapper types (MUST come first!)
+        //
+        // These types create deeply nested generics that crash on `as?` casts.
+        // We detect them by examining field names via Mirror, which doesn't
+        // trigger the problematic type metadata instantiation.
+        // ════════════════════════════════════════════════════════════════════════
+
         let mirror = Mirror(reflecting: view)
 
-        // Check for HTML.Styled (has "content" and "property" fields)
+        // HTML.Styled: wraps content with CSS property (.inlineStyle(...))
+        // Identified by: "content" + "property" fields
         if isStyledType(mirror) {
             renderStyledViaMirror(view, context: &context)
             return
         }
 
-        // Check for HTML.CSS wrapper (has only "base" field)
-        // This can also create deep nesting when combined with Styled
+        // HTML.CSS: wraps content for CSS chaining (.css.display().flex())
+        // Identified by: "base" field (without "renderFunction")
         if isCSSWrapperType(mirror) {
             renderCSSWrapperViaMirror(mirror, context: &context)
             return
         }
 
-        // Check for HTML._Attributes wrapper (has "content" and "attributes" fields)
-        // This can also create deep nesting when chaining .attribute() calls
+        // HTML._Attributes: wraps content with HTML attributes (.attribute(...))
+        // Identified by: "content" + "attributes" fields
         if isAttributesType(mirror) {
             renderAttributesViaMirror(mirror, context: &context)
             return
         }
 
-        // For non-wrapper types, as? casts are safe (they don't create deep generic nesting)
+        // ════════════════════════════════════════════════════════════════════════
+        // PHASE 2: Safe `as?` casts (only reached for non-wrapper types)
+        //
+        // At this point, we've confirmed the view is NOT a wrapper type, so it's
+        // safe to use `as?` casts. These won't crash because the type isn't
+        // deeply nested in wrapper generics.
+        // ════════════════════════════════════════════════════════════════════════
+
+        // Helper to invoke static dispatch once we have a PDF.HTML.View
         func renderPDFView<V: PDF.HTML.View>(_ v: V) {
             V._render(v, context: &context)
         }
 
-        // 1. Handle HTML.AnyView first (before static dispatch to avoid infinite recursion)
+        // 1. HTML.AnyView: type-erased wrapper - must handle before PDF.HTML.View
+        //    check to avoid infinite recursion (AnyView conforms to PDF.HTML.View)
         if let anyView = view as? any _AnyViewContent {
             anyView._renderAnyViewDynamically(context: &context)
             return
         }
 
-        // 2. Try static dispatch for PDF.HTML.View conforming types
+        // 2. PDF.HTML.View: types with explicit PDF rendering - use static dispatch
         if let pdfView = view as? any PDF.HTML.View {
             renderPDFView(pdfView)
             return
         }
 
-        // 3. Handle _Tuple - Swift can't verify variadic conditional conformances at runtime
+        // 3-8. Types with conditional conformances that Swift can't verify at runtime.
+        //      We use marker protocols (_TupleContent, etc.) that are always conformed
+        //      to, enabling dynamic dispatch to the correct render implementation.
+
         if let tuple = view as? any _TupleContent {
             tuple._renderEachElementDynamically(context: &context)
             return
         }
 
-        // 4. Handle HTML.Element.Tag - Swift can't verify conditional conformance at runtime
         if let element = view as? any _HTMLElementContent {
             element._renderElementDynamically(context: &context)
             return
         }
 
-        // 5. Handle HTML.Raw - ignore in PDF context
         if view is any _HTMLRawContent {
-            return
+            return // Raw HTML (scripts, etc.) has no PDF representation
         }
 
-        // 6. Handle Optional - Swift can't verify conditional conformance at runtime
         if let optional = view as? any _OptionalContent {
             optional._renderOptionalDynamically(context: &context)
             return
         }
 
-        // 7. Handle _Conditional - Swift can't verify conditional conformance at runtime
         if let conditional = view as? any _ConditionalContent {
             conditional._renderConditionalDynamically(context: &context)
             return
         }
 
-        // 8. Handle _Array - Swift can't verify conditional conformance at runtime
         if let array = view as? any _ArrayContent {
             array._renderArrayDynamically(context: &context)
             return
         }
 
-        // 9. Fallback: render the body recursively (for custom HTML.View types)
+        // 9. Fallback: custom HTML.View types without explicit PDF conformance.
+        //    Render their body, which will recursively call renderHTMLView.
+        //
+        //    ⚠️ This calls .body, which crashes for wrapper types with
+        //    `var body: Never { fatalError(...) }`. Safe here because we already
+        //    filtered out wrapper types in Phase 1.
         func renderBody<V: HTML.View>(_ v: V) {
             renderHTMLView(v.body, context: &context)
         }
@@ -646,14 +668,95 @@ extension PDF.HTML {
     }
 }
 
-// MARK: - Mirror-Based Rendering (Avoids as? crashes on deeply nested generics)
+// MARK: - Mirror-Based Rendering (Workaround for Swift Runtime Crash)
+//
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║                           WHY THIS CODE EXISTS                               ║
+// ╠══════════════════════════════════════════════════════════════════════════════╣
+// ║                                                                              ║
+// ║  THE PROBLEM:                                                                ║
+// ║  ────────────                                                                ║
+// ║  Swift's runtime crashes with EXC_BAD_ACCESS when performing `as?` casts    ║
+// ║  on deeply nested generic types. This happens in the function               ║
+// ║  `swift_conformsToProtocolMaybeInstantiateSuperclasses` when it tries to    ║
+// ║  instantiate type metadata for types like:                                  ║
+// ║                                                                              ║
+// ║    HTML.Styled<HTML.Styled<HTML._Attributes<HTML._Attributes<               ║
+// ║      HTML._Attributes<HTML._Attributes<HTML._Attributes<HTML._Attributes<   ║
+// ║        HTML._Attributes<HTML._Attributes<HTML.Element.Tag<...>>>>>>>>>>     ║
+// ║                                                                              ║
+// ║  These deeply nested types are created naturally when chaining modifiers:   ║
+// ║                                                                              ║
+// ║    div { ... }                                                              ║
+// ║      .inlineStyle(Color.red)        // Wraps in HTML.Styled                 ║
+// ║      .inlineStyle(FontWeight.bold)  // Wraps again in HTML.Styled           ║
+// ║      .attribute("id", "foo")        // Wraps in HTML._Attributes            ║
+// ║      .attribute("class", "bar")     // Wraps again in HTML._Attributes      ║
+// ║      .css.display(.flex)            // Wraps in HTML.CSS                    ║
+// ║      ...                            // Each call adds another wrapper layer ║
+// ║                                                                              ║
+// ║  WHY STATIC DISPATCH WORKS (in swift-html-rendering):                       ║
+// ║  ────────────────────────────────────────────────────────────────────────── ║
+// ║  In swift-html-rendering, the compiler knows the exact type at compile      ║
+// ║  time, so it can resolve the correct `_render` method statically:           ║
+// ║                                                                              ║
+// ║    extension HTML.Styled: HTML.View where Content: HTML.View {              ║
+// ║      static func _render(_ view: Self, ...) {                               ║
+// ║        Content._render(view.content, ...)  // Type known at compile time!   ║
+// ║      }                                                                       ║
+// ║    }                                                                         ║
+// ║                                                                              ║
+// ║  WHY DYNAMIC DISPATCH CRASHES (in swift-pdf-html-rendering):                ║
+// ║  ────────────────────────────────────────────────────────────────────────── ║
+// ║  Here, we receive `some HTML.View` and need to determine HOW to render it   ║
+// ║  at runtime. Any `as?` cast triggers type metadata instantiation:           ║
+// ║                                                                              ║
+// ║    func renderHTMLView(_ view: some HTML.View, ...) {                       ║
+// ║      if let styled = view as? any _HTMLStyledContent { ... }  // 💥 CRASH!  ║
+// ║    }                                                                         ║
+// ║                                                                              ║
+// ║  THE SOLUTION:                                                              ║
+// ║  ─────────────                                                              ║
+// ║  Use Swift's Mirror API to inspect type structure by examining FIELD NAMES  ║
+// ║  rather than checking protocol conformance. Mirror doesn't trigger the      ║
+// ║  same metadata instantiation that causes the crash.                         ║
+// ║                                                                              ║
+// ║  We identify wrapper types by their unique field signatures:                ║
+// ║    • HTML.Styled      → has "content" + "property" fields                   ║
+// ║    • HTML.CSS         → has "base" field (no "renderFunction")              ║
+// ║    • HTML._Attributes → has "content" + "attributes" fields                 ║
+// ║                                                                              ║
+// ║  IMPORTANT INVARIANTS:                                                      ║
+// ║  ─────────────────────                                                      ║
+// ║  1. ALWAYS check for wrapper types via Mirror BEFORE any `as?` cast         ║
+// ║  2. Wrapper types can nest in ANY order (Styled→CSS→Attributes→Styled→...)  ║
+// ║  3. Once we extract content via Mirror, check again - it might be wrapped!  ║
+// ║  4. Only use `as?` on values AFTER confirming they're not wrapper types     ║
+// ║  5. Property types (FontWeight, Color, etc.) are simple - safe to cast      ║
+// ║                                                                              ║
+// ║  FRAGILITY WARNING:                                                         ║
+// ║  ──────────────────                                                         ║
+// ║  This approach depends on the internal field names of types in              ║
+// ║  swift-html-rendering. If those field names change, this code will break.   ║
+// ║  There is no compile-time safety here - only runtime behavior.              ║
+// ║                                                                              ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
 
 extension PDF.HTML {
-    /// Check if a value is an HTML.Styled type using Mirror (without as? cast).
+
+    // ┌──────────────────────────────────────────────────────────────────────────┐
+    // │                        TYPE DETECTION FUNCTIONS                          │
+    // │                                                                          │
+    // │  These functions identify wrapper types by examining their field names   │
+    // │  via Mirror. This avoids triggering Swift's type metadata system.        │
+    // └──────────────────────────────────────────────────────────────────────────┘
+
+    /// Detect `HTML.Styled<Content>` by checking for "content" and "property" fields.
     ///
-    /// HTML.Styled is identified by having both "content" and "property" fields.
-    /// This avoids the Swift runtime crash that occurs when doing `as?` on deeply
-    /// nested generic types.
+    /// HTML.Styled wraps content with a CSS property for inline styling.
+    /// Structure: `struct Styled<Content> { let content: Content; let property: P? }`
+    ///
+    /// - Note: HTML._Attributes also has "content" but uses "attributes" instead of "property"
     private static func isStyledType(_ mirror: Mirror) -> Bool {
         var hasContent = false
         var hasProperty = false
@@ -665,10 +768,13 @@ extension PDF.HTML {
         return false
     }
 
-    /// Check if a value is an HTML.CSS wrapper type using Mirror.
+    /// Detect `HTML.CSS<Base>` by checking for "base" field (without "renderFunction").
     ///
-    /// HTML.CSS is identified by having only a "base" field (without "renderFunction"
-    /// which would indicate AnyView).
+    /// HTML.CSS wraps content for CSS property chaining (`.css.display().flexDirection()`).
+    /// Structure: `struct CSS<Base> { let base: Base }`
+    ///
+    /// - Note: HTML.AnyView also has "base" but additionally has "renderFunction",
+    ///   so we exclude types that have both to avoid misidentification.
     private static func isCSSWrapperType(_ mirror: Mirror) -> Bool {
         var hasBase = false
         var hasRenderFunction = false
@@ -676,14 +782,15 @@ extension PDF.HTML {
             if child.label == "base" { hasBase = true }
             if child.label == "renderFunction" { hasRenderFunction = true }
         }
-        // HTML.CSS has only "base", AnyView has both "base" and "renderFunction"
         return hasBase && !hasRenderFunction
     }
 
-    /// Check if a value is an HTML._Attributes type using Mirror.
+    /// Detect `HTML._Attributes<Content>` by checking for "content" and "attributes" fields.
     ///
-    /// HTML._Attributes is identified by having "content" and "attributes" fields.
-    /// Note: HTML.Styled also has "content" but has "property" instead of "attributes".
+    /// HTML._Attributes wraps content with HTML attributes (id, class, href, etc.).
+    /// Structure: `struct _Attributes<Content> { let content: Content; var attributes: [...] }`
+    ///
+    /// - Note: HTML.Styled also has "content" but uses "property" instead of "attributes"
     private static func isAttributesType(_ mirror: Mirror) -> Bool {
         var hasContent = false
         var hasAttributes = false
@@ -695,28 +802,50 @@ extension PDF.HTML {
         return false
     }
 
-    /// Render HTML.Styled content via Mirror traversal.
+    // ┌──────────────────────────────────────────────────────────────────────────┐
+    // │                      MIRROR-BASED RENDER FUNCTIONS                       │
+    // │                                                                          │
+    // │  These functions traverse wrapper types by extracting field values via   │
+    // │  Mirror, then recursively processing the inner content.                  │
+    // └──────────────────────────────────────────────────────────────────────────┘
+
+    /// Render `HTML.Styled` content by iteratively unwrapping nested layers.
     ///
-    /// This iteratively processes nested HTML.Styled wrappers without using `as?`,
-    /// collecting all styles and then rendering the innermost non-Styled content.
+    /// Instead of recursively calling render functions (which would still build up
+    /// call stack depth), we use a while loop to peel off Styled layers one at a time,
+    /// applying each style property as we go.
+    ///
+    /// Flow:
+    /// ```
+    /// Styled<Styled<Styled<Element, A>, B>, C>
+    ///   ↓ extract property C, apply it
+    /// Styled<Styled<Element, A>, B>
+    ///   ↓ extract property B, apply it
+    /// Styled<Element, A>
+    ///   ↓ extract property A, apply it
+    /// Element
+    ///   ↓ not a Styled type, call renderInnerContent()
+    /// ```
     static func renderStyledViaMirror(
         _ value: Any,
         context: inout PDF.HTML.Context
     ) {
-        // Save style state at the outermost level
+        // Save style state - we restore after rendering so styles don't leak
+        // to sibling elements (CSS properties should only affect descendants)
         let savedStyle = context.pdf.style
         defer { context.pdf.style = savedStyle }
 
-        // Iteratively unwrap nested HTML.Styled layers
+        // Iteratively unwrap nested HTML.Styled layers (avoids deep recursion)
         var current: Any = value
         while true {
             let mirror = Mirror(reflecting: current)
 
-            // Check if current is HTML.Styled
+            // If this is still a Styled wrapper, peel off one layer
             if isStyledType(mirror) {
                 var content: Any?
                 var property: Any?
 
+                // Extract the content and property fields from the struct
                 for child in mirror.children {
                     switch child.label {
                     case "content": content = child.value
@@ -725,68 +854,92 @@ extension PDF.HTML {
                     }
                 }
 
-                // Apply style property (property types are simple, safe to cast)
+                // Apply the style property to the PDF context.
+                // Property types (FontWeight, Color, Display, etc.) are simple value types,
+                // NOT deeply nested generics, so `as?` casts are safe here.
                 if let prop = property {
                     applyStylePropertyViaMirror(prop, context: &context)
                 }
 
-                // Continue with content
+                // Continue unwrapping with the inner content
                 if let c = content {
                     current = c
                     continue
                 } else {
-                    return // No content
+                    return // Empty content - nothing to render
                 }
             } else {
-                // Not HTML.Styled - render the inner content using safe dispatch
+                // Not a Styled wrapper anymore - hand off to inner content renderer.
+                // The inner content might still be CSS or _Attributes wrapper!
                 renderInnerContent(current, context: &context)
                 return
             }
         }
     }
 
-    /// Apply a CSS property to the context.
-    /// Property types are simple value types (not deeply nested), so casting is safe.
+    /// Apply a CSS property value to the PDF context.
+    ///
+    /// Property types are simple value types (FontWeight, Color, Display, etc.),
+    /// not deeply nested generic wrappers, so `as?` casts are safe.
+    ///
+    /// The property may be wrapped in Optional, so we unwrap that first via Mirror.
     private static func applyStylePropertyViaMirror(
         _ prop: Any,
         context: inout PDF.HTML.Context
     ) {
-        // Unwrap Optional wrapper if present
+        // The property field in HTML.Styled is `let property: P?` (optional).
+        // We need to unwrap the Optional to get the actual property value.
         let unwrapped: Any
         let propMirror = Mirror(reflecting: prop)
         if propMirror.displayStyle == .optional {
+            // It's an Optional - extract the wrapped value if present
             if let firstChild = propMirror.children.first {
                 unwrapped = firstChild.value
             } else {
-                return // nil property
+                return // Optional is nil - no property to apply
             }
         } else {
             unwrapped = prop
         }
 
-        // Cast to PDF style modifier (safe - property types are simple)
+        // Now we can safely cast to the modifier protocols.
+        // These property types are simple structs (FontWeight, Color, etc.),
+        // not deeply nested generics, so the cast won't crash.
         if let modifier = unwrapped as? any PDF.HTML.StyleModifier {
             modifier.apply(to: &context.pdf, configuration: context.configuration)
         }
 
-        // Check for HTML context modifier (for page-break-after, break-inside, etc.)
+        // Some properties affect the HTML context rather than PDF style
+        // (e.g., page-break-after, break-inside for pagination control)
         if let htmlModifier = unwrapped as? any PDF.HTML.HTMLContextStyleModifier {
             htmlModifier.apply(to: &context)
         }
     }
 
-    /// Render inner (non-Styled) content using safe dispatch methods.
+    /// Render content that has been extracted from a wrapper type.
     ///
-    /// Once we've unwrapped all HTML.Styled layers via Mirror, the inner content
-    /// is no longer deeply nested in generics, so we can safely use `as?` checks.
-    /// However, we still need to check for wrapper types via Mirror first since
-    /// they may still be nested with each other.
+    /// CRITICAL: Even after extracting content from one wrapper, it might still
+    /// be wrapped in a DIFFERENT wrapper type. For example:
+    ///
+    /// ```
+    /// CSS<Styled<_Attributes<Element>>>
+    ///   ↓ renderCSSWrapperViaMirror extracts base →
+    /// Styled<_Attributes<Element>>     // Still a wrapper!
+    ///   ↓ renderInnerContent sees it's Styled, calls renderStyledViaMirror →
+    /// _Attributes<Element>             // Still a wrapper!
+    ///   ↓ renderInnerContent sees it's _Attributes, calls renderAttributesViaMirror →
+    /// Element                          // Finally not a wrapper
+    ///   ↓ can safely use as? cast now
+    /// ```
+    ///
+    /// This is why we MUST check for wrapper types via Mirror at every entry point.
     private static func renderInnerContent(
         _ value: Any,
         context: inout PDF.HTML.Context
     ) {
-        // CRITICAL: Check for wrapper types via Mirror FIRST before any as? casts.
-        // These types can still be nested with each other (CSS wrapping Attributes, etc.)
+        // ⚠️ CRITICAL: Check for wrapper types via Mirror FIRST, before any as? cast.
+        // The content we extracted might be wrapped in a DIFFERENT wrapper type.
+        // Doing `as?` on a still-wrapped deeply-nested type will crash!
         let mirror = Mirror(reflecting: value)
 
         if isStyledType(mirror) {
@@ -804,13 +957,18 @@ extension PDF.HTML {
             return
         }
 
-        // Simple types - safe to cast
+        // ────────────────────────────────────────────────────────────────────────
+        // At this point, we've confirmed the value is NOT a wrapper type.
+        // It's now safe to use `as?` casts because the type is not deeply nested.
+        // ────────────────────────────────────────────────────────────────────────
+
+        // String is a common leaf type - render directly
         if let str = value as? String {
             String._render(str, context: &context)
             return
         }
 
-        // Check for PDF.HTML.View conformance (now safe - not deeply nested)
+        // Check for PDF.HTML.View conformance - use static dispatch if possible
         if let pdfView = value as? any PDF.HTML.View {
             func render<V: PDF.HTML.View>(_ v: V) {
                 V._render(v, context: &context)
@@ -819,7 +977,9 @@ extension PDF.HTML {
             return
         }
 
-        // Handle marker protocols for types with conditional conformances
+        // Handle types with conditional conformances that Swift can't verify at runtime.
+        // These use marker protocols that are always conformed to, allowing dynamic dispatch.
+
         if let tuple = value as? any _TupleContent {
             tuple._renderEachElementDynamically(context: &context)
             return
@@ -836,7 +996,7 @@ extension PDF.HTML {
         }
 
         if value is any _HTMLRawContent {
-            return // Ignore raw HTML in PDF
+            return // Raw HTML (scripts, etc.) has no PDF representation
         }
 
         if let optional = value as? any _OptionalContent {
@@ -854,7 +1014,12 @@ extension PDF.HTML {
             return
         }
 
-        // Fallback: try to render body for HTML.View types
+        // Last resort: if it's an HTML.View, render its body.
+        // This handles custom view types that don't have explicit PDF conformance.
+        //
+        // ⚠️ WARNING: This calls `.body` on the view, which will CRASH for wrapper
+        // types that have `var body: Never { fatalError(...) }`. That's why we
+        // MUST check for wrapper types first!
         if let htmlView = value as? any HTML.View {
             func renderBody<V: HTML.View>(_ v: V) {
                 renderHTMLView(v.body, context: &context)
@@ -863,19 +1028,22 @@ extension PDF.HTML {
         }
     }
 
-    /// Render HTML.CSS wrapper content via Mirror traversal.
+    /// Render `HTML.CSS` wrapper by extracting and rendering its base content.
     ///
-    /// HTML.CSS wraps content and may itself be nested inside HTML.Styled or vice versa.
-    /// We extract the "base" field and recursively render it.
+    /// HTML.CSS is a thin wrapper used for CSS property chaining syntax:
+    /// `element.css.display(.flex).flexDirection(.column)`
+    ///
+    /// Each CSS property call wraps in Styled, but the `.css` accessor wraps in CSS.
+    /// For PDF rendering, CSS wrapper itself has no effect - we just pass through.
     private static func renderCSSWrapperViaMirror(
         _ mirror: Mirror,
         context: inout PDF.HTML.Context
     ) {
-        // Extract the "base" field
+        // Extract the "base" field which contains the wrapped content
         for child in mirror.children {
             if child.label == "base" {
-                // The base content might be another wrapper type (Styled, CSS, or Attributes)
-                // so we need to check it again via Mirror
+                // The base content might be ANOTHER wrapper type!
+                // Check via Mirror before proceeding.
                 let baseMirror = Mirror(reflecting: child.value)
 
                 if isStyledType(baseMirror) {
@@ -885,7 +1053,7 @@ extension PDF.HTML {
                 } else if isAttributesType(baseMirror) {
                     renderAttributesViaMirror(baseMirror, context: &context)
                 } else {
-                    // Inner content is not a wrapper - render using safe dispatch
+                    // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
                 }
                 return
@@ -893,10 +1061,11 @@ extension PDF.HTML {
         }
     }
 
-    /// Render HTML._Attributes wrapper content via Mirror traversal.
+    /// Render `HTML._Attributes` wrapper by extracting and rendering its content.
     ///
-    /// HTML._Attributes wraps content with HTML attributes. The attributes are
-    /// not relevant for PDF rendering, so we just extract and render the content.
+    /// HTML._Attributes wraps content with HTML attributes (id, class, href, etc.).
+    /// These attributes are only meaningful for HTML output, not PDF, so we simply
+    /// extract the inner content and render it, ignoring the attributes.
     private static func renderAttributesViaMirror(
         _ mirror: Mirror,
         context: inout PDF.HTML.Context
@@ -904,8 +1073,8 @@ extension PDF.HTML {
         // Extract the "content" field (ignore "attributes" - not relevant for PDF)
         for child in mirror.children {
             if child.label == "content" {
-                // The content might be another wrapper type (Styled, CSS, or more Attributes)
-                // so we need to check it again via Mirror
+                // The content might be ANOTHER wrapper type!
+                // Check via Mirror before proceeding.
                 let contentMirror = Mirror(reflecting: child.value)
 
                 if isStyledType(contentMirror) {
@@ -915,7 +1084,7 @@ extension PDF.HTML {
                 } else if isAttributesType(contentMirror) {
                     renderAttributesViaMirror(contentMirror, context: &context)
                 } else {
-                    // Inner content is not a wrapper - render using safe dispatch
+                    // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
                 }
                 return
