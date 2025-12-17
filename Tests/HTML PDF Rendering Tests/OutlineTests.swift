@@ -285,3 +285,89 @@ private func containsTitle(_ items: [ISO_32000.Outline.Item], _ title: String) -
     }
     return false
 }
+
+// MARK: - Diagnostic Tests for Single vs Multiple H1
+
+@Suite("Single vs Multiple H1 Diagnostic Tests")
+struct SingleVsMultipleH1Tests {
+
+    @Test("Single H1 with H3 children - check if parent shows")
+    func singleH1Parent() throws {
+        let doc = PDF.Document(
+            info: .init(title: "Single H1 Parent Test"),
+            generateOutline: true
+        ) {
+            // Single H1 parent with H3 children (like Articles of Incorporation)
+            H1 { "DOCUMENT TITLE" }
+
+            Section {
+                H3 { "Section 1" }
+                Paragraph { "Content for section 1." }
+            }
+
+            Section {
+                H3 { "Section 2" }
+                Paragraph { "Content for section 2." }
+            }
+
+            Section {
+                H3 { "Section 3" }
+                Paragraph { "Content for section 3." }
+            }
+        }
+
+        let url = URL(fileURLWithPath: "/tmp/single-h1-parent-test.pdf")
+        try Data([UInt8](doc)).write(to: url)
+        print("Single H1 PDF written to: \(url.path)")
+
+        if let outline = doc.outline {
+            print("Single H1 outline structure:")
+            printOutlineItems(outline.items, indent: 0)
+            print("Top-level items count: \(outline.items.count)")
+        }
+    }
+
+    @Test("Multiple H1s - check if all parents show")
+    func multipleH1Parents() throws {
+        let doc = PDF.Document(
+            info: .init(title: "Multiple H1 Parents Test"),
+            generateOutline: true
+        ) {
+            // First H1 with H3 children
+            H1 { "FIRST DOCUMENT" }
+
+            Section {
+                H3 { "First Section 1" }
+                Paragraph { "Content." }
+            }
+
+            Section {
+                H3 { "First Section 2" }
+                Paragraph { "Content." }
+            }
+
+            // Second H1 with H3 children
+            H1 { "SECOND DOCUMENT" }
+
+            Section {
+                H3 { "Second Section 1" }
+                Paragraph { "Content." }
+            }
+
+            Section {
+                H3 { "Second Section 2" }
+                Paragraph { "Content." }
+            }
+        }
+
+        let url = URL(fileURLWithPath: "/tmp/multiple-h1-parents-test.pdf")
+        try Data([UInt8](doc)).write(to: url)
+        print("Multiple H1 PDF written to: \(url.path)")
+
+        if let outline = doc.outline {
+            print("Multiple H1 outline structure:")
+            printOutlineItems(outline.items, indent: 0)
+            print("Top-level items count: \(outline.items.count)")
+        }
+    }
+}
