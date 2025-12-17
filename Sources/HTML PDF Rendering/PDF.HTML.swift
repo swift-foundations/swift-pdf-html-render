@@ -471,7 +471,13 @@ extension PDF.HTML {
             return
         }
 
-        // 6. Fallback: render the body recursively (for custom HTML.View types)
+        // 6. Handle HTML.Styled - Swift can't verify conditional conformance at runtime
+        if let styled = view as? any _HTMLStyledContent {
+            styled._renderStyledDynamically(context: &context)
+            return
+        }
+
+        // 7. Fallback: render the body recursively (for custom HTML.View types)
         func renderBody<V: HTML.View>(_ v: V) {
             renderHTMLView(v.body, context: &context)
         }
@@ -504,6 +510,15 @@ package protocol _HTMLElementContent {
 /// Raw HTML content (like `<script>...</script>`) doesn't have a meaningful
 /// PDF representation and is safely ignored during PDF rendering.
 package protocol _HTMLRawContent {}
+
+/// Marker protocol for HTML.Styled dynamic dispatch.
+///
+/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
+/// conditional conformances like `HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View`.
+package protocol _HTMLStyledContent {
+    /// Render this styled content using dynamic dispatch for the wrapped content.
+    func _renderStyledDynamically(context: inout PDF.HTML.Context)
+}
 
 /// Marker protocol for Optional dynamic dispatch.
 ///

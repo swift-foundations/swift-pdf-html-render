@@ -138,3 +138,117 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
         }
     }
 }
+
+// MARK: - Dynamic Dispatch Support
+
+extension HTML.Styled: _HTMLStyledContent where Content: HTML.View {
+    public func _renderStyledDynamically(context: inout PDF.HTML.Context) {
+        // Save current style state
+        let savedStyle = context.pdf.style
+
+        defer {
+            // Restore style state after rendering content
+            context.pdf.style = savedStyle
+        }
+
+        // Check for break-related styles
+        var shouldAvoidPageBreakAfter = false
+        var shouldForcePageBreakAfter = false
+        var shouldAvoidPageBreakInside = false
+
+        if let property = property {
+            // Check for PDF context modifier
+            if let modifier = property as? any PDF.HTML.StyleModifier {
+                modifier.apply(to: &context.pdf, configuration: context.configuration)
+            }
+            // Check for HTML context modifier (for page-break-after, break-inside, etc.)
+            if let htmlModifier = property as? any PDF.HTML.HTMLContextStyleModifier {
+                htmlModifier.apply(to: &context)
+            }
+
+            // Capture and reset break flags
+            if context.avoidPageBreakAfter {
+                shouldAvoidPageBreakAfter = true
+                context.avoidPageBreakAfter = false
+            }
+            if context.forcePageBreakAfter {
+                shouldForcePageBreakAfter = true
+                context.forcePageBreakAfter = false
+            }
+            if context.avoidPageBreakInside {
+                shouldAvoidPageBreakInside = true
+                context.avoidPageBreakInside = false
+            }
+        }
+
+        // Handle break-inside: avoid
+        if shouldAvoidPageBreakInside {
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
+            let configuration = context.configuration
+            let pendingBottomMargin = context.pendingBottomMargin
+
+            // Measure the element's total height
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                PDF.HTML.renderHTMLView(content, context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+            }
+
+            // If it won't fit on current page but would fit on a fresh page, break before
+            let pageContentHeight = context.configuration.content.height
+            if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
+                context.pdf.startNewPage()
+            }
+        }
+
+        // Handle break-after: avoid (sticky header behavior)
+        if shouldAvoidPageBreakAfter {
+            let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
+            let configuration = context.configuration
+            let pendingBottomMargin = context.pendingBottomMargin
+
+            let measuredHeight = context.pdf.measure { measureContext in
+                var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+                tempHTMLContext.pendingBottomMargin = pendingBottomMargin
+                snapshot.restore(to: &tempHTMLContext.pdf)
+                PDF.HTML.renderHTMLView(content, context: &tempHTMLContext)
+                tempHTMLContext.pdf.flushInlineRuns()
+                measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+            }
+
+            if let existingDeferred = context.deferredKeepWithNextRender {
+                let combinedHeight = existingDeferred.measuredHeight + measuredHeight
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { ctx in
+                        existingDeferred.render(&ctx)
+                        snapshot.restore(to: &ctx.pdf)
+                        PDF.HTML.renderHTMLView(self.content, context: &ctx)
+                        ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: combinedHeight
+                )
+            } else {
+                context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    render: { ctx in
+                        snapshot.restore(to: &ctx.pdf)
+                        PDF.HTML.renderHTMLView(self.content, context: &ctx)
+                        ctx.pdf.flushInlineRuns()
+                    },
+                    measuredHeight: measuredHeight
+                )
+            }
+        } else {
+            // Normal rendering using dynamic dispatch
+            PDF.HTML.renderHTMLView(content, context: &context)
+
+            // Handle break-after: always/page
+            if shouldForcePageBreakAfter {
+                context.pdf.flushInlineRuns()
+                context.pdf.startNewPage()
+            }
+        }
+    }
+}
