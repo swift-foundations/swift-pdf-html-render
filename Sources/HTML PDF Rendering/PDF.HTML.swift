@@ -980,7 +980,7 @@ extension PDF.HTML {
     /// ```
     ///
     /// This is why we MUST check for wrapper types via Mirror at every entry point.
-    private static func renderInnerContent(
+    static func renderInnerContent(
         _ value: Any,
         context: inout PDF.HTML.Context
     ) {
