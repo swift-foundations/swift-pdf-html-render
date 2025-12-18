@@ -471,6 +471,14 @@ extension PDF.HTML {
             return
         }
 
+        // _Conditional: if/else branches in result builders
+        // Identified by: enum display style with "first" or "second" case
+        // Must be detected via Mirror to avoid SIGBUS on deeply nested generic branches
+        if isConditionalType(mirror) {
+            renderConditionalViaMirror(mirror, context: &context)
+            return
+        }
+
         // ════════════════════════════════════════════════════════════════════════
         // PHASE 2: Safe `as?` casts (only reached for non-wrapper types)
         //
@@ -802,6 +810,26 @@ extension PDF.HTML {
         return false
     }
 
+    /// Detect `_Conditional<First, Second>` by checking for enum display style
+    /// and "first" or "second" case labels.
+    ///
+    /// _Conditional is an enum created by if/else in result builders.
+    /// Structure: `enum _Conditional<First, Second> { case first(First); case second(Second) }`
+    ///
+    /// When branches contain deeply nested generic types (e.g., HTML.Element<TableRow<...>>),
+    /// using `as?` casts to detect conditionals can crash with SIGBUS. Mirror-based detection
+    /// avoids this by not triggering Swift's type metadata instantiation.
+    private static func isConditionalType(_ mirror: Mirror) -> Bool {
+        guard mirror.displayStyle == .enum else { return false }
+        // Enum cases appear as children with labels "first" or "second"
+        for child in mirror.children {
+            if child.label == "first" || child.label == "second" {
+                return true
+            }
+        }
+        return false
+    }
+
     // ┌──────────────────────────────────────────────────────────────────────────┐
     // │                      MIRROR-BASED RENDER FUNCTIONS                       │
     // │                                                                          │
@@ -957,6 +985,11 @@ extension PDF.HTML {
             return
         }
 
+        if isConditionalType(mirror) {
+            renderConditionalViaMirror(mirror, context: &context)
+            return
+        }
+
         // ────────────────────────────────────────────────────────────────────────
         // At this point, we've confirmed the value is NOT a wrapper type.
         // It's now safe to use `as?` casts because the type is not deeply nested.
@@ -1052,6 +1085,8 @@ extension PDF.HTML {
                     renderCSSWrapperViaMirror(baseMirror, context: &context)
                 } else if isAttributesType(baseMirror) {
                     renderAttributesViaMirror(baseMirror, context: &context)
+                } else if isConditionalType(baseMirror) {
+                    renderConditionalViaMirror(baseMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
@@ -1083,6 +1118,8 @@ extension PDF.HTML {
                     renderCSSWrapperViaMirror(contentMirror, context: &context)
                 } else if isAttributesType(contentMirror) {
                     renderAttributesViaMirror(contentMirror, context: &context)
+                } else if isConditionalType(contentMirror) {
+                    renderConditionalViaMirror(contentMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
@@ -1090,6 +1127,36 @@ extension PDF.HTML {
                 return
             }
         }
+    }
+
+    /// Render `_Conditional` by extracting the active case's associated value via Mirror.
+    ///
+    /// _Conditional is an enum with either `.first(First)` or `.second(Second)`.
+    /// We extract the associated value and render it, avoiding unsafe `as?` casts
+    /// that can crash with SIGBUS when the conditional's branches contain
+    /// deeply nested generic types.
+    ///
+    /// Flow:
+    /// ```
+    /// _Conditional<TableRow<...>, Empty>
+    ///   ↓ check displayStyle == .enum
+    ///   ↓ extract child with label "first" or "second"
+    /// TableRow<...>
+    ///   ↓ pass to renderInnerContent (which checks for more wrappers)
+    /// ```
+    private static func renderConditionalViaMirror(
+        _ mirror: Mirror,
+        context: inout PDF.HTML.Context
+    ) {
+        // Enum Mirror has one child: the active case with its associated value
+        for child in mirror.children {
+            if child.label == "first" || child.label == "second" {
+                // The associated value might itself be a wrapper type
+                renderInnerContent(child.value, context: &context)
+                return
+            }
+        }
+        // No case found (shouldn't happen for valid _Conditional)
     }
 }
 
