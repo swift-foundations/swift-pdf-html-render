@@ -6,7 +6,7 @@ import PDF_Standard
 import W3C_CSS_Paged
 
 extension W3C_CSS_Paged.PageBreakAfter: PDF.HTML.HTMLContextStyleModifier {
-    public func apply(to context: inout PDF.HTML.Context) {
+    public func apply(to context: PDF.HTML.Context) {
         switch self {
         case .avoid:
             // Set flag to defer this element for sticky behavior with next element

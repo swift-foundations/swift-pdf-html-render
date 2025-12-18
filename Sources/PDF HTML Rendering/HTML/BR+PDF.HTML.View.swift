@@ -8,7 +8,7 @@ import WHATWG_HTML
 extension BR: PDF.HTML.View {
     public static func _render(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         // Check if there are pending inline runs
         let hadContent = !context.pdf.inlineRuns.isEmpty

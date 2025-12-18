@@ -28,7 +28,7 @@ extension PDF.HTML {
         ///   - context: Combined context with PDF layout state and configuration
         static func _render(
             _ view: Self,
-            context: inout PDF.HTML.Context
+            context: PDF.HTML.Context
         )
     }
 }
@@ -41,8 +41,8 @@ extension PDF.HTML.View where Self: HTML.View, Self.Content: PDF.HTML.View {
     @_disfavoredOverload
     public static func _render(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
-        Self.Content._render(view.body, context: &context)
+        Self.Content._render(view.body, context: context)
     }
 }

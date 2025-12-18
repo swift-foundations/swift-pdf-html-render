@@ -10,14 +10,14 @@ import PDF_Rendering
 /// Marker protocol for HTML.AnyView dynamic dispatch.
 package protocol _AnyViewContent {
     /// Render the wrapped view using dynamic dispatch.
-    func _renderAnyViewDynamically(context: inout PDF.HTML.Context)
+    func _renderAnyViewDynamically(context: PDF.HTML.Context)
 }
 
 extension HTML.AnyView: _AnyViewContent {
-    public func _renderAnyViewDynamically(context: inout PDF.HTML.Context) {
+    public func _renderAnyViewDynamically(context: PDF.HTML.Context) {
         // Use dynamic dispatch to handle the wrapped type
         func renderBase<V: HTML.View>(_ v: V) {
-            PDF.HTML.renderHTMLView(v, context: &context)
+            PDF.HTML.renderHTMLView(v, context: context)
         }
         renderBase(base)
     }

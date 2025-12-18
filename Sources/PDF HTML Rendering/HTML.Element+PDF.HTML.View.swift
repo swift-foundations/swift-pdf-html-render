@@ -25,11 +25,11 @@ extension String: PDFTextExtractable {
 extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     public static func _render(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         // Handle void elements (br, hr, etc.) based on runtime check
         if view.isVoid {
-            renderVoidElement(view, context: &context)
+            renderVoidElement(view, context: context)
             return
         }
 
@@ -56,7 +56,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
 
         // Apply tag-specific style BEFORE calculating margins
         // CSS `em` units in margins are relative to the element's own font size
-        applyTagStyle(view.tagName, context: &context)
+        applyTagStyle(view.tagName, context: context)
 
         // Collect heading text for bookmarks (position captured after margin/page-break handling)
         var pendingHeading: (level: Int, text: String)? = nil
@@ -123,8 +123,8 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
             let fullPageHeight = context.configuration.content.height
             if deferred.measuredHeight > fullPageHeight * context.configuration.deferredHeaderThreshold {
                 // Just render the header without sticky behavior
-                deferred.render(&context)
-                renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+                deferred.render(context)
+                renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
                 return
             }
 
@@ -140,15 +140,15 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
             }
 
             // Now render the deferred header
-            deferred.render(&context)
+            deferred.render(context)
 
             // Continue with normal rendering of this element
-            renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+            renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
             return
         }
 
         // Render with flow and margins
-        renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+        renderWithFlow(view, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
     }
 
     /// Render with flow (block or inline) and margins
@@ -158,7 +158,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
         marginTop: PDF.UserSpace.Height,
         marginBottom: PDF.UserSpace.Height,
         pendingHeading: (level: Int, text: String)?,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         if isBlock {
             // Block elements must flush any pending inline content before rendering
@@ -206,7 +206,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Handle table containers
             if view.tagName == "table" {
-                renderTable(view, context: &context)
+                renderTable(view, context: context)
             }
             // Handle table sections (thead, tbody, tfoot)
             else if view.tagName == "thead" {
@@ -215,7 +215,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                     tc.header.startCapturing()
                 }
 
-                PDF.HTML.renderBlock(view.content, context: &context)
+                PDF.HTML.renderBlock(view.content, context: context)
 
                 // Finish capturing header and store for page break repetition
                 context.with(\.table) { tc in
@@ -228,15 +228,15 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
             }
             else if view.tagName == "tbody" || view.tagName == "tfoot" {
                 // Pass-through: table sections just render their content
-                PDF.HTML.renderBlock(view.content, context: &context)
+                PDF.HTML.renderBlock(view.content, context: context)
             }
             // Handle table rows (tr)
             else if view.tagName == "tr" {
-                renderTableRow(view, context: &context)
+                renderTableRow(view, context: context)
             }
             // Handle table cells (td, th)
             else if view.tagName == "td" || view.tagName == "th" {
-                renderTableCell(view, isHeader: view.tagName == "th", context: &context)
+                renderTableCell(view, isHeader: view.tagName == "th", context: context)
             }
             // Handle list containers (ol, ul)
             else if let listType = listType(for: view.tagName) {
@@ -252,7 +252,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = 0
 
-                PDF.HTML.renderBlock(view.content, context: &context)
+                PDF.HTML.renderBlock(view.content, context: context)
 
                 // Restore the pending margin for siblings after this list
                 context.pendingBottomMargin = savedPendingMargin
@@ -289,13 +289,13 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 context.pdf.pendingListMarker = (marker: marker, x: markerX)
 
                 // Render content - marker will be emitted when first text line renders
-                PDF.HTML.renderBlock(view.content, context: &context)
+                PDF.HTML.renderBlock(view.content, context: context)
 
                 // Clear any remaining pending marker (in case the list item was empty)
                 context.pdf.pendingListMarker = nil
             }
             else {
-                PDF.HTML.renderBlock(view.content, context: &context)
+                PDF.HTML.renderBlock(view.content, context: context)
             }
         } else {
             // Handle inline quotation (q) with curly quotes
@@ -311,7 +311,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 )
                 context.pdf.append(inline: openQuote)
 
-                PDF.HTML.renderInline(view.content, context: &context)
+                PDF.HTML.renderInline(view.content, context: context)
 
                 // Insert closing curly quote
                 let closeQuote = PDF.Context.TextRun(
@@ -324,7 +324,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 )
                 context.pdf.append(inline: closeQuote)
             } else {
-                PDF.HTML.renderInline(view.content, context: &context)
+                PDF.HTML.renderInline(view.content, context: context)
             }
         }
     }
@@ -334,7 +334,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     /// Render a table element
     private static func renderTable(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         // Save current context state
         let savedTableContext = context.table
@@ -380,7 +380,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
         context.resetMarginCollapsing()
 
         // Render table content
-        PDF.HTML.renderBlock(view.content, context: &context)
+        PDF.HTML.renderBlock(view.content, context: context)
 
         // Draw deferred spanning cells (rowspan > 1)
         // These cells need content + borders that span multiple rows
@@ -404,11 +404,11 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
 
                 // Draw background for spanning cell
                 if deferred.isHeader, let headerBg = tc.headerBackground {
-                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                 }
 
                 // Draw border for spanning cell
-                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: context)
 
                 // Render content with vertical centering
                 let cellContentHeight = totalHeight - tc.cell.padding.height * 2
@@ -452,7 +452,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
             }
 
             // Draw the table's right and bottom borders (border-collapse)
-            drawTableRightAndBottomBorders(tableCtx: tc, context: &context)
+            drawTableRightAndBottomBorders(tableCtx: tc, context: context)
         }
 
         // Advance past the table - use current layoutBox position which was updated by rows
@@ -466,11 +466,11 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     /// Render a table row
     private static func renderTableRow(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         guard var tableCtx = context.table else {
             // Fallback: render as block if not in table context
-            PDF.HTML.renderBlock(view.content, context: &context)
+            PDF.HTML.renderBlock(view.content, context: context)
             return
         }
 
@@ -512,7 +512,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 tableCtx: tableCtx,
                 fragmentStartY: tableCtx.currentFragmentStartY,
                 fragmentEndY: tableCtx.currentFragmentEndY,
-                context: &context
+                context: context
             )
         }
 
@@ -530,7 +530,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
 
         // If page break occurred and we have stored headers, repeat them
         if didPageBreak && tableCtx.header.hasHeader && tableCtx.columnsInitialized {
-            renderRepeatedHeader(context: &context)
+            renderRepeatedHeader(context: context)
             // Refresh tableCtx after header rendering
             if let tc = context.table {
                 tableCtx = tc
@@ -575,7 +575,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                 tc.measureOnly = true
                 tc.currentColumn = 0
             }
-            PDF.HTML.renderBlock(view.content, context: &context)
+            PDF.HTML.renderBlock(view.content, context: context)
 
             // After measurement, set up correct column widths
             context.with(\.table) { tc in
@@ -611,13 +611,13 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                     )
                     // First row cells are typically headers
                     if let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
 
             // Pass 3: Render content
-            PDF.HTML.renderBlock(view.content, context: &context)
+            PDF.HTML.renderBlock(view.content, context: context)
         } else {
             // Subsequent rows: Draw backgrounds first, then content
             if let tc = context.table {
@@ -635,12 +635,12 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                         height: minRowHeight
                     )
                     if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
             // Then render content
-            PDF.HTML.renderBlock(view.content, context: &context)
+            PDF.HTML.renderBlock(view.content, context: context)
         }
 
         // Flush any pending inline content
@@ -675,9 +675,9 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                         height: extensionHeight
                     )
                     if pending.isHeader, let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                     } else if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
@@ -692,7 +692,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
                     width: cellWidth,
                     height: actualRowHeight
                 )
-                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: context)
             }
         }
 
@@ -724,11 +724,11 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
     private static func renderTableCell(
         _ view: Self,
         isHeader: Bool,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         guard var tableCtx = context.table else {
             // Fallback: render as inline if not in table context
-            PDF.HTML.renderInline(view.content, context: &context)
+            PDF.HTML.renderInline(view.content, context: context)
             return
         }
 
@@ -868,7 +868,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
             }
         } else {
             // NORMAL cell - render content immediately
-            PDF.HTML.renderInline(view.content, context: &context)
+            PDF.HTML.renderInline(view.content, context: context)
 
             // Flush any pending inline content
             if context.pdf.hasInlineRuns {
@@ -925,7 +925,7 @@ extension HTML.Element.Tag {
     /// Render void element (br, hr, etc.)
     fileprivate static func renderVoidElement(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         switch view.tagName {
         case "br":
@@ -970,7 +970,7 @@ extension HTML.Element.Tag {
     }
 
     /// Apply tag-specific styling based on tag name
-    fileprivate static func applyTagStyle(_ tagName: String, context: inout PDF.HTML.Context) {
+    fileprivate static func applyTagStyle(_ tagName: String, context: PDF.HTML.Context) {
         switch tagName {
         // Headings
         case "h1":
@@ -1095,7 +1095,7 @@ extension HTML.Element.Tag {
     fileprivate static func drawCellBorder(
         bounds: PDF.UserSpace.Rectangle,
         tableCtx: PDF.HTML.Context.Table,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         let color = tableCtx.borderColor
         let width = tableCtx.borderWidth.width
@@ -1126,7 +1126,7 @@ extension HTML.Element.Tag {
         tableCtx: PDF.HTML.Context.Table,
         fragmentStartY: PDF.UserSpace.Y,
         fragmentEndY: PDF.UserSpace.Y,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         guard tableCtx.columnWidths.count > 0 else { return }
 
@@ -1155,13 +1155,13 @@ extension HTML.Element.Tag {
     /// Convenience wrapper that uses the current fragment tracking properties.
     fileprivate static func drawTableRightAndBottomBorders(
         tableCtx: PDF.HTML.Context.Table,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         drawFragmentRightAndBottomBorders(
             tableCtx: tableCtx,
             fragmentStartY: tableCtx.currentFragmentStartY,
             fragmentEndY: tableCtx.currentFragmentEndY,
-            context: &context
+            context: context
         )
     }
 
@@ -1170,7 +1170,7 @@ extension HTML.Element.Tag {
         bounds: PDF.UserSpace.Rectangle,
         color: PDF.Color,
         borderWidth: PDF.UserSpace.Size<1> = 0,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         // Inset by half the border width so border covers background edge cleanly
         let insetX = borderWidth.width / 2
@@ -1256,7 +1256,7 @@ extension HTML.Element.Tag {
     // MARK: - Header Row Repetition
 
     /// Render the stored header row (called after page break)
-    fileprivate static func renderRepeatedHeader(context: inout PDF.HTML.Context) {
+    fileprivate static func renderRepeatedHeader(context: PDF.HTML.Context) {
         guard var tableCtx = context.table,
               let headerCells = tableCtx.header.cells,
               !headerCells.isEmpty else {
@@ -1297,7 +1297,7 @@ extension HTML.Element.Tag {
 
             // Draw header background
             if let headerBg = tableCtx.headerBackground {
-                drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tableCtx.borderWidth, context: &context)
+                drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tableCtx.borderWidth, context: context)
             }
 
             cellColumn += headerCell.colspan
@@ -1365,7 +1365,7 @@ extension HTML.Element.Tag {
                 height: minRowHeight
             )
 
-            drawCellBorder(bounds: cellBounds, tableCtx: tableCtx, context: &context)
+            drawCellBorder(bounds: cellBounds, tableCtx: tableCtx, context: context)
             cellColumn += headerCell.colspan
         }
 
@@ -1393,10 +1393,10 @@ extension HTML.Element.Tag {
 /// This mirrors the static dispatch `_render` method but uses dynamic dispatch helpers
 /// (`renderBlockDynamic`, `renderInlineDynamic`) for content rendering.
 extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
-    public func _renderElementDynamically(context: inout PDF.HTML.Context) {
+    public func _renderElementDynamically(context: PDF.HTML.Context) {
         // Handle void elements (br, hr, etc.) based on runtime check
         if self.isVoid {
-            Self.renderVoidElement(self, context: &context)
+            Self.renderVoidElement(self, context: context)
             return
         }
 
@@ -1420,7 +1420,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
         }
 
         // Apply tag-specific style BEFORE calculating margins
-        Self.applyTagStyle(self.tagName, context: &context)
+        Self.applyTagStyle(self.tagName, context: context)
 
         // Collect heading text for bookmarks
         var pendingHeading: (level: Int, text: String)? = nil
@@ -1478,8 +1478,8 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
             context.deferredKeepWithNextRender = nil
             let fullPageHeight = context.configuration.content.height
             if deferred.measuredHeight > fullPageHeight * context.configuration.deferredHeaderThreshold {
-                deferred.render(&context)
-                Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+                deferred.render(context)
+                Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
                 return
             }
             let oneLineHeight = context.pdf.style.line.height
@@ -1488,12 +1488,12 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
             if context.pdf.wouldExceedPage(adding: totalNeeded) {
                 context.pdf.startNewPage()
             }
-            deferred.render(&context)
-            Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+            deferred.render(context)
+            Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
             return
         }
 
-        Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: &context)
+        Self.renderWithFlowDynamic(self, isBlock: isBlock, marginTop: marginTop, marginBottom: marginBottom, pendingHeading: pendingHeading, context: context)
     }
 
     /// Dynamic dispatch version of renderWithFlow
@@ -1503,7 +1503,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
         marginTop: PDF.UserSpace.Height,
         marginBottom: PDF.UserSpace.Height,
         pendingHeading: (level: Int, text: String)?,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         if isBlock {
             if context.pdf.hasInlineRuns {
@@ -1536,13 +1536,13 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
 
             // Handle table containers
             if view.tagName == "table" {
-                renderTableDynamic(view, context: &context)
+                renderTableDynamic(view, context: context)
             }
             else if view.tagName == "thead" {
                 context.with(\.table) { tc in
                     tc.header.startCapturing()
                 }
-                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                PDF.HTML.renderBlockDynamic(view.content, context: context)
                 context.with(\.table) { tc in
                     tc.header.finalizeCapture()
                     if !tc.rowHeights.isEmpty {
@@ -1551,13 +1551,13 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 }
             }
             else if view.tagName == "tbody" || view.tagName == "tfoot" {
-                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                PDF.HTML.renderBlockDynamic(view.content, context: context)
             }
             else if view.tagName == "tr" {
-                renderTableRowDynamic(view, context: &context)
+                renderTableRowDynamic(view, context: context)
             }
             else if view.tagName == "td" || view.tagName == "th" {
-                renderTableCellDynamic(view, isHeader: view.tagName == "th", context: &context)
+                renderTableCellDynamic(view, isHeader: view.tagName == "th", context: context)
             }
             else if let listType = listType(for: view.tagName) {
                 context.pdf.push(list: listType)
@@ -1566,7 +1566,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 context.pdf.layoutBox.llx = savedLLX + indent
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = 0
-                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                PDF.HTML.renderBlockDynamic(view.content, context: context)
                 context.pendingBottomMargin = savedPendingMargin
                 context.pdf.layoutBox.llx = savedLLX
                 context.pdf.popList()
@@ -1587,11 +1587,11 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 let markerGap = (context.pdf.style.fontSize * context.configuration.horizontalGapEm).width
                 let markerX = context.pdf.layoutBox.llx - markerWidth - markerGap
                 context.pdf.pendingListMarker = (marker: marker, x: markerX)
-                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                PDF.HTML.renderBlockDynamic(view.content, context: context)
                 context.pdf.pendingListMarker = nil
             }
             else {
-                PDF.HTML.renderBlockDynamic(view.content, context: &context)
+                PDF.HTML.renderBlockDynamic(view.content, context: context)
             }
         } else {
             if view.tagName == "q" {
@@ -1604,7 +1604,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                     verticalOffset: context.pdf.style.verticalOffset
                 )
                 context.pdf.append(inline: openQuote)
-                PDF.HTML.renderInlineDynamic(view.content, context: &context)
+                PDF.HTML.renderInlineDynamic(view.content, context: context)
                 let closeQuote = PDF.Context.TextRun(
                     bytes: [0x94],
                     font: context.pdf.style.font,
@@ -1615,7 +1615,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 )
                 context.pdf.append(inline: closeQuote)
             } else {
-                PDF.HTML.renderInlineDynamic(view.content, context: &context)
+                PDF.HTML.renderInlineDynamic(view.content, context: context)
             }
         }
     }
@@ -1623,7 +1623,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
     /// Dynamic dispatch version of renderTable
     fileprivate static func renderTableDynamic(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         let savedTableContext = context.table
         let tableStartY = context.pdf.layoutBox.lly
@@ -1652,7 +1652,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
         context.table?.totalRowsRendered = 0
         context.resetMarginCollapsing()
 
-        PDF.HTML.renderBlockDynamic(view.content, context: &context)
+        PDF.HTML.renderBlockDynamic(view.content, context: context)
 
         if let tc = context.table {
             for deferred in tc.deferredSpanningCells {
@@ -1669,9 +1669,9 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                     height: totalHeight
                 )
                 if deferred.isHeader, let headerBg = tc.headerBackground {
-                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                    drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                 }
-                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: context)
                 let cellContentHeight = totalHeight - tc.cell.padding.height * 2
                 let lineHeight = deferred.savedStyle.line.height
                 let verticalCenterOffset = max(PDF.UserSpace.Height(0), (cellContentHeight - lineHeight) / 2)
@@ -1701,7 +1701,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 context.pdf.style = savedStyle
                 context.pdf.layoutBox = savedLayoutBox
             }
-            drawTableRightAndBottomBorders(tableCtx: tc, context: &context)
+            drawTableRightAndBottomBorders(tableCtx: tc, context: context)
         }
         context.pdf.advance((context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height)
         context.table = savedTableContext
@@ -1710,10 +1710,10 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
     /// Dynamic dispatch version of renderTableRow
     fileprivate static func renderTableRowDynamic(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         guard var tableCtx = context.table else {
-            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            PDF.HTML.renderBlockDynamic(view.content, context: context)
             return
         }
 
@@ -1741,7 +1741,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 tableCtx: tableCtx,
                 fragmentStartY: tableCtx.currentFragmentStartY,
                 fragmentEndY: tableCtx.currentFragmentEndY,
-                context: &context
+                context: context
             )
         }
 
@@ -1752,7 +1752,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
             context.table = tableCtx
         }
         if didPageBreak && tableCtx.header.hasHeader && tableCtx.columnsInitialized {
-            renderRepeatedHeader(context: &context)
+            renderRepeatedHeader(context: context)
             if let tc = context.table {
                 tableCtx = tc
             }
@@ -1785,7 +1785,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 tc.measureOnly = true
                 tc.currentColumn = 0
             }
-            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            PDF.HTML.renderBlockDynamic(view.content, context: context)
             context.with(\.table) { tc in
                 tc.measureOnly = false
                 tc.columnsInitialized = true
@@ -1814,11 +1814,11 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                         height: minRowHeight
                     )
                     if let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
-            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            PDF.HTML.renderBlockDynamic(view.content, context: context)
         } else {
             if let tc = context.table {
                 for col in 0..<tc.columnCount {
@@ -1834,11 +1834,11 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                         height: minRowHeight
                     )
                     if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: cellBounds, color: altColor, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
-            PDF.HTML.renderBlockDynamic(view.content, context: &context)
+            PDF.HTML.renderBlockDynamic(view.content, context: context)
         }
 
         if context.pdf.hasInlineRuns {
@@ -1868,9 +1868,9 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                         height: extensionHeight
                     )
                     if pending.isHeader, let headerBg = tc.headerBackground {
-                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: headerBg, borderWidth: tc.borderWidth, context: context)
                     } else if tc.totalRowsRendered % 2 == 1, let altColor = tc.alternatingRowColor {
-                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: &context)
+                        drawCellBackground(bounds: extensionBounds, color: altColor, borderWidth: tc.borderWidth, context: context)
                     }
                 }
             }
@@ -1883,7 +1883,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                     width: cellWidth,
                     height: actualRowHeight
                 )
-                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: &context)
+                drawCellBorder(bounds: cellBounds, tableCtx: tc, context: context)
             }
         }
 
@@ -1910,10 +1910,10 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
     fileprivate static func renderTableCellDynamic(
         _ view: Self,
         isHeader: Bool,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         guard var tableCtx = context.table else {
-            PDF.HTML.renderInlineDynamic(view.content, context: &context)
+            PDF.HTML.renderInlineDynamic(view.content, context: context)
             return
         }
 
@@ -2001,7 +2001,7 @@ extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
                 tc.currentColumn += colspan
             }
         } else {
-            PDF.HTML.renderInlineDynamic(view.content, context: &context)
+            PDF.HTML.renderInlineDynamic(view.content, context: context)
             if context.pdf.hasInlineRuns {
                 context.pdf.flushInlineRuns()
             }

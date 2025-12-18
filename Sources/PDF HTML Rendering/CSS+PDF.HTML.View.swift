@@ -13,9 +13,9 @@ extension HTML.CSS: PDF.HTML.View where Base: PDF.HTML.View {
     @inlinable
     public static func _render(
         _ view: Self,
-        context: inout PDF.HTML.Context
+        context: PDF.HTML.Context
     ) {
         // CSS wrapper is passthrough - render the base
-        Base._render(view.base, context: &context)
+        Base._render(view.base, context: context)
     }
 }

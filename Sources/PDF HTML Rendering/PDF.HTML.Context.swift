@@ -10,10 +10,13 @@
 extension PDF.HTML {
     /// Combined context for HTML to PDF rendering.
     ///
-    /// This product type bundles `PDF.Context` (mutable layout state) with
+    /// This reference type bundles `PDF.Context` (mutable layout state) with
     /// `PDF.HTML.Configuration` (immutable rendering settings), providing
     /// a single context parameter for the render method.
-    public struct Context {
+    ///
+    /// Using a class instead of struct reduces stack frame size from ~700+ bytes
+    /// to 8 bytes (a reference), preventing stack overflow in deeply nested HTML.
+    public final class Context {
         /// The mutable PDF layout context (position, font, page state, etc.)
         public var pdf: PDF.Context
         
@@ -173,7 +176,7 @@ extension PDF.HTML.Context {
     /// - Parameters:
     ///   - topMargin: Top margin of the current element
     ///   - bottomMargin: Bottom margin of the current element (stored for next collapse)
-    public mutating func applyCollapsedMargin(
+    public func applyCollapsedMargin(
         top topMargin: PDF.UserSpace.Height,
         bottom bottomMargin: PDF.UserSpace.Height
     ) {
@@ -198,7 +201,7 @@ extension PDF.HTML.Context {
     ///
     /// Call this when starting a new formatting context (e.g., new page,
     /// entering a block formatting context like a table cell).
-    public mutating func resetMarginCollapsing() {
+    public func resetMarginCollapsing() {
         pendingBottomMargin = 0
     }
 }
@@ -232,7 +235,7 @@ extension PDF.HTML.Context {
         ///
         /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
         /// The closure captures generic view types that aren't Sendable.
-        public let render: (inout PDF.HTML.Context) -> Void
+        public let render: (PDF.HTML.Context) -> Void
         /// Measured height of the deferred content
         public let measuredHeight: PDF.UserSpace.Height
     }
@@ -240,20 +243,24 @@ extension PDF.HTML.Context {
 }
 
 extension PDF.HTML.Context {
-    public mutating func with<T>(
-        _ keyPath: WritableKeyPath<PDF.HTML.Context, T>,
+    public func with<T>(
+        _ keyPath: ReferenceWritableKeyPath<PDF.HTML.Context, T>,
         _ body: (inout T) -> Void
     ) {
-        PDF_HTML_Rendering.with(&self, keyPath, body)
+        var value = self[keyPath: keyPath]
+        body(&value)
+        self[keyPath: keyPath] = value
     }
 }
 
 extension PDF.HTML.Context {
-    public mutating func with<T>(
-        _ keyPath: WritableKeyPath<PDF.HTML.Context, T?>,
+    public func with<T>(
+        _ keyPath: ReferenceWritableKeyPath<PDF.HTML.Context, T?>,
         _ body: (inout T) -> Void
     ) {
-        PDF_HTML_Rendering.with(&self, keyPath, body)
+        guard var value = self[keyPath: keyPath] else { return }
+        body(&value)
+        self[keyPath: keyPath] = value
     }
 }
 

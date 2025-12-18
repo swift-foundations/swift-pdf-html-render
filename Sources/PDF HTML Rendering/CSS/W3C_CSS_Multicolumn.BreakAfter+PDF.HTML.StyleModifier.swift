@@ -9,7 +9,7 @@ import PDF_Rendering
 import W3C_CSS_Multicolumn
 
 extension W3C_CSS_Multicolumn.BreakAfter: PDF.HTML.HTMLContextStyleModifier {
-    public func apply(to context: inout PDF.HTML.Context) {
+    public func apply(to context: PDF.HTML.Context) {
         switch self {
         // Avoid values → sticky header behavior (keep with next element)
         case .avoid, .avoidPage:
