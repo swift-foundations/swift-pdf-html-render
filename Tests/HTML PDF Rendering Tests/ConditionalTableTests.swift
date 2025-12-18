@@ -192,4 +192,87 @@ struct ConditionalTableTests {
         }
         let _ = [UInt8](document)
     }
+
+    /// Test Optional (if without else) inside TableBody - this creates Optional<TableRow<...>>
+    /// which is different from _Conditional and needs separate Mirror-based handling.
+    @Test("Optional TableRow inside TableBody (if without else)")
+    func optionalTableRowInsideTableBody() {
+        struct TestChecklist: HTML.View {
+            let showSCorpRow = true
+            var body: some HTML.View {
+                Table {
+                    TableHead {
+                        TableRow {
+                            TableHeader { "Task" }
+                            TableHeader { "Fee" }
+                            TableHeader { "Deadline" }
+                        }
+                    }
+                    TableBody {
+                        TableRow {
+                            TableDataCell {
+                                StrongImportance { "Apply for EIN" }
+                            }
+                            TableDataCell { "Free" }
+                            TableDataCell { "Before banking" }
+                        }
+                        // This is an 'if' WITHOUT 'else' - creates Optional<TableRow<...>>
+                        if showSCorpRow {
+                            TableRow {
+                                TableDataCell {
+                                    StrongImportance { "File Form 2553 (S-Corp Election)" }
+                                }
+                                TableDataCell { "Free" }
+                                TableDataCell { "Within 75 days" }
+                            }
+                        }
+                        TableRow {
+                            TableDataCell {
+                                StrongImportance { "Open Business Bank Account" }
+                            }
+                            TableDataCell { "Varies" }
+                            TableDataCell { "After EIN" }
+                        }
+                    }
+                }
+            }
+        }
+
+        let document = PDF.Document {
+            HTML.Document { TestChecklist() }
+        }
+        let _ = [UInt8](document)
+    }
+
+    /// Test Optional with false condition (nil case)
+    @Test("Optional TableRow with false condition (nil case)")
+    func optionalTableRowNilCase() {
+        struct TestTable: HTML.View {
+            let showOptionalRow = false
+            var body: some HTML.View {
+                Table {
+                    TableBody {
+                        TableRow {
+                            TableDataCell { "Always shown" }
+                        }
+                        if showOptionalRow {
+                            TableRow {
+                                TableDataCell {
+                                    StrongImportance { "This should not appear" }
+                                }
+                            }
+                        }
+                        TableRow {
+                            TableDataCell { "Also always shown" }
+                        }
+                    }
+                }
+            }
+        }
+
+        let document = PDF.Document {
+            HTML.Document { TestTable() }
+        }
+        let _ = [UInt8](document)
+    }
 }

@@ -479,6 +479,14 @@ extension PDF.HTML {
             return
         }
 
+        // Optional: if-without-else in result builders (buildOptional)
+        // Identified by: optional display style
+        // Must be detected via Mirror to avoid SIGBUS on deeply nested generic wrapped types
+        if isOptionalType(mirror) {
+            renderOptionalViaMirror(mirror, context: &context)
+            return
+        }
+
         // ════════════════════════════════════════════════════════════════════════
         // PHASE 2: Safe `as?` casts (only reached for non-wrapper types)
         //
@@ -830,6 +838,17 @@ extension PDF.HTML {
         return false
     }
 
+    /// Detect `Optional<Wrapped>` by checking for optional display style.
+    ///
+    /// Optional is created by `if` without `else` in result builders (buildOptional).
+    /// Structure: `enum Optional<Wrapped> { case none; case some(Wrapped) }`
+    ///
+    /// When the wrapped type is deeply nested (e.g., Optional<TableRow<...>>),
+    /// using `as?` casts can crash with SIGBUS. Mirror-based detection avoids this.
+    private static func isOptionalType(_ mirror: Mirror) -> Bool {
+        return mirror.displayStyle == .optional
+    }
+
     // ┌──────────────────────────────────────────────────────────────────────────┐
     // │                      MIRROR-BASED RENDER FUNCTIONS                       │
     // │                                                                          │
@@ -990,6 +1009,11 @@ extension PDF.HTML {
             return
         }
 
+        if isOptionalType(mirror) {
+            renderOptionalViaMirror(mirror, context: &context)
+            return
+        }
+
         // ────────────────────────────────────────────────────────────────────────
         // At this point, we've confirmed the value is NOT a wrapper type.
         // It's now safe to use `as?` casts because the type is not deeply nested.
@@ -1087,6 +1111,8 @@ extension PDF.HTML {
                     renderAttributesViaMirror(baseMirror, context: &context)
                 } else if isConditionalType(baseMirror) {
                     renderConditionalViaMirror(baseMirror, context: &context)
+                } else if isOptionalType(baseMirror) {
+                    renderOptionalViaMirror(baseMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
@@ -1120,6 +1146,8 @@ extension PDF.HTML {
                     renderAttributesViaMirror(contentMirror, context: &context)
                 } else if isConditionalType(contentMirror) {
                     renderConditionalViaMirror(contentMirror, context: &context)
+                } else if isOptionalType(contentMirror) {
+                    renderOptionalViaMirror(contentMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
                     renderInnerContent(child.value, context: &context)
@@ -1157,6 +1185,37 @@ extension PDF.HTML {
             }
         }
         // No case found (shouldn't happen for valid _Conditional)
+    }
+
+    /// Render `Optional` by extracting the wrapped value via Mirror.
+    ///
+    /// Optional is an enum with `.none` or `.some(Wrapped)`.
+    /// For `if` without `else` in result builders, buildOptional returns Optional<T>.
+    /// We extract the wrapped value (if present) and render it.
+    ///
+    /// Flow:
+    /// ```
+    /// Optional<TableRow<...>>
+    ///   ↓ check displayStyle == .optional
+    ///   ↓ if .some, extract the wrapped value (first child)
+    /// TableRow<...>
+    ///   ↓ pass to renderInnerContent (which checks for more wrappers)
+    /// ```
+    private static func renderOptionalViaMirror(
+        _ mirror: Mirror,
+        context: inout PDF.HTML.Context
+    ) {
+        // Optional Mirror has either:
+        // - No children for .none
+        // - One child with label "some" for .some(value)
+        for child in mirror.children {
+            if child.label == "some" {
+                // The wrapped value might itself be a wrapper type
+                renderInnerContent(child.value, context: &context)
+                return
+            }
+        }
+        // .none case - nothing to render
     }
 }
 
