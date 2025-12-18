@@ -10,47 +10,157 @@
 extension PDF.HTML {
     /// Combined context for HTML to PDF rendering.
     ///
-    /// This reference type bundles `PDF.Context` (mutable layout state) with
+    /// This value type bundles `PDF.Context` (mutable layout state) with
     /// `PDF.HTML.Configuration` (immutable rendering settings), providing
     /// a single context parameter for the render method.
     ///
-    /// Using a class instead of struct reduces stack frame size from ~700+ bytes
-    /// to 8 bytes (a reference), preventing stack overflow in deeply nested HTML.
-    public final class Context {
+    /// Uses Copy-on-Write (CoW) semantics for efficiency: the struct holds
+    /// a reference to storage (8 bytes on stack), and only copies the storage
+    /// when mutating a shared instance. This prevents stack overflow while
+    /// maintaining value semantics.
+    public struct Context {
+        // MARK: - Copy-on-Write Storage
+
+        private final class Storage {
+            var pdf: PDF.Context
+            let configuration: PDF.HTML.Configuration
+            var table: Context.Table?
+            var attributes: OrderedDictionary<String, String>
+            var currentLinkURL: String?
+            var currentInternalLinkId: String?
+            var pendingBottomMargin: PDF.UserSpace.Height
+            var deferredKeepWithNextRender: DeferredRender?
+            var avoidPageBreakAfter: Bool
+            var forcePageBreakAfter: Bool
+            var avoidPageBreakInside: Bool
+            var currentSectionTitle: String?
+            var pageSectionTitles: [Int: String]
+            var collectedHeadings: [HeadingEntry]
+            var namedDestinations: [String: DestinationInfo]
+            var pendingInternalLinks: [PendingInternalLink]
+
+            init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
+                self.pdf = pdf
+                self.configuration = configuration
+                self.table = nil
+                self.attributes = [:]
+                self.currentLinkURL = nil
+                self.currentInternalLinkId = nil
+                self.pendingBottomMargin = 0
+                self.deferredKeepWithNextRender = nil
+                self.avoidPageBreakAfter = false
+                self.forcePageBreakAfter = false
+                self.avoidPageBreakInside = false
+                self.currentSectionTitle = nil
+                self.pageSectionTitles = [:]
+                self.collectedHeadings = []
+                self.namedDestinations = [:]
+                self.pendingInternalLinks = []
+            }
+
+            init(copying other: Storage) {
+                self.pdf = other.pdf
+                self.configuration = other.configuration
+                self.table = other.table
+                self.attributes = other.attributes
+                self.currentLinkURL = other.currentLinkURL
+                self.currentInternalLinkId = other.currentInternalLinkId
+                self.pendingBottomMargin = other.pendingBottomMargin
+                self.deferredKeepWithNextRender = other.deferredKeepWithNextRender
+                self.avoidPageBreakAfter = other.avoidPageBreakAfter
+                self.forcePageBreakAfter = other.forcePageBreakAfter
+                self.avoidPageBreakInside = other.avoidPageBreakInside
+                self.currentSectionTitle = other.currentSectionTitle
+                self.pageSectionTitles = other.pageSectionTitles
+                self.collectedHeadings = other.collectedHeadings
+                self.namedDestinations = other.namedDestinations
+                self.pendingInternalLinks = other.pendingInternalLinks
+            }
+        }
+
+        private var storage: Storage
+
+        /// Ensures unique ownership of storage before mutation (CoW).
+        private mutating func ensureUnique() {
+            if !isKnownUniquelyReferenced(&storage) {
+                storage = Storage(copying: storage)
+            }
+        }
+
+        // MARK: - Public Properties
+
         /// The mutable PDF layout context (position, font, page state, etc.)
-        public var pdf: PDF.Context
-        
+        public var pdf: PDF.Context {
+            get { storage.pdf }
+            set {
+                ensureUnique()
+                storage.pdf = newValue
+            }
+        }
+
         /// The immutable rendering configuration
-        public let configuration: PDF.HTML.Configuration
-        
+        public var configuration: PDF.HTML.Configuration {
+            storage.configuration
+        }
+
         /// Active table layout context (nil when not in a table)
-        public var table: Context.Table?
-        
+        public var table: Context.Table? {
+            get { storage.table }
+            set {
+                ensureUnique()
+                storage.table = newValue
+            }
+        }
+
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.
         /// Used by table cell rendering to extract colspan/rowspan values.
-        public var attributes: OrderedDictionary<String, String> = [:]
-        
+        public var attributes: OrderedDictionary<String, String> {
+            get { storage.attributes }
+            set {
+                ensureUnique()
+                storage.attributes = newValue
+            }
+        }
+
         /// Current link URL for text being rendered inside an anchor element.
         ///
         /// Set by `Anchor+PDF.HTML.View` when rendering anchor content.
         /// Used by `String+PDF.HTML.View` to pass URL to TextRun for PDF annotations.
-        public var currentLinkURL: String?
+        public var currentLinkURL: String? {
+            get { storage.currentLinkURL }
+            set {
+                ensureUnique()
+                storage.currentLinkURL = newValue
+            }
+        }
 
         /// Current internal link target ID for text being rendered inside an anchor element.
         ///
         /// Set when rendering `<a href="#section-id">` links. The ID is stored without the # prefix.
         /// Used to create pending internal links that are resolved after rendering completes.
-        public var currentInternalLinkId: String?
-        
+        public var currentInternalLinkId: String? {
+            get { storage.currentInternalLinkId }
+            set {
+                ensureUnique()
+                storage.currentInternalLinkId = newValue
+            }
+        }
+
         /// Pending bottom margin from previous block element (for margin collapsing).
         ///
         /// In CSS, adjacent vertical margins collapse - only the larger margin is used.
         /// This tracks the bottom margin of the previous block element so it can be
         /// collapsed with the top margin of the next block element.
-        public var pendingBottomMargin: PDF.UserSpace.Height = 0
-        
+        public var pendingBottomMargin: PDF.UserSpace.Height {
+            get { storage.pendingBottomMargin }
+            set {
+                ensureUnique()
+                storage.pendingBottomMargin = newValue
+            }
+        }
+
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
         ///
         /// When an element with `page-break-after: avoid` is encountered, instead of
@@ -58,54 +168,98 @@ extension PDF.HTML {
         /// When the next block element is rendered, we check if the deferred header
         /// plus at least one line of content fits on the current page. If not, we
         /// start a new page before rendering the deferred content.
-        public var deferredKeepWithNextRender: DeferredRender?
-        
+        public var deferredKeepWithNextRender: DeferredRender? {
+            get { storage.deferredKeepWithNextRender }
+            set {
+                ensureUnique()
+                storage.deferredKeepWithNextRender = newValue
+            }
+        }
+
         /// Flag indicating the current element should avoid page break after it.
         /// Set by `page-break-after: avoid` or `break-after: avoid` CSS property.
-        public var avoidPageBreakAfter: Bool = false
+        public var avoidPageBreakAfter: Bool {
+            get { storage.avoidPageBreakAfter }
+            set {
+                ensureUnique()
+                storage.avoidPageBreakAfter = newValue
+            }
+        }
 
         /// Flag indicating a page break should be forced after the current element.
         /// Set by `break-after: always/page` or similar CSS properties.
-        public var forcePageBreakAfter: Bool = false
+        public var forcePageBreakAfter: Bool {
+            get { storage.forcePageBreakAfter }
+            set {
+                ensureUnique()
+                storage.forcePageBreakAfter = newValue
+            }
+        }
 
         /// Flag indicating breaks should be avoided inside the current element.
         /// Set by `page-break-inside: avoid` or `break-inside: avoid` CSS property.
-        public var avoidPageBreakInside: Bool = false
+        public var avoidPageBreakInside: Bool {
+            get { storage.avoidPageBreakInside }
+            set {
+                ensureUnique()
+                storage.avoidPageBreakInside = newValue
+            }
+        }
 
         // MARK: - Section Tracking (for headers/footers)
 
         /// Current section title (from most recent H1-H3 heading)
-        public var currentSectionTitle: String?
+        public var currentSectionTitle: String? {
+            get { storage.currentSectionTitle }
+            set {
+                ensureUnique()
+                storage.currentSectionTitle = newValue
+            }
+        }
 
         /// Section titles at the start of each page (page number -> section title)
         /// Populated during rendering when headings are encountered.
-        public var pageSectionTitles: [Int: String] = [:]
+        public var pageSectionTitles: [Int: String] {
+            get { storage.pageSectionTitles }
+            set {
+                ensureUnique()
+                storage.pageSectionTitles = newValue
+            }
+        }
 
         /// Collected heading entries for bookmark generation
-        public var collectedHeadings: [HeadingEntry] = []
+        public var collectedHeadings: [HeadingEntry] {
+            get { storage.collectedHeadings }
+            set {
+                ensureUnique()
+                storage.collectedHeadings = newValue
+            }
+        }
 
         // MARK: - Anchor Tracking (for internal links)
 
         /// Named destinations for internal links (id -> page/position)
-        public var namedDestinations: [String: DestinationInfo] = [:]
+        public var namedDestinations: [String: DestinationInfo] {
+            get { storage.namedDestinations }
+            set {
+                ensureUnique()
+                storage.namedDestinations = newValue
+            }
+        }
 
         /// Pending internal links to resolve (href="#id" links)
-        public var pendingInternalLinks: [PendingInternalLink] = []
+        public var pendingInternalLinks: [PendingInternalLink] {
+            get { storage.pendingInternalLinks }
+            set {
+                ensureUnique()
+                storage.pendingInternalLinks = newValue
+            }
+        }
+
+        // MARK: - Initializer
 
         public init(pdf: PDF.Context, configuration: PDF.HTML.Configuration) {
-            self.pdf = pdf
-            self.configuration = configuration
-            self.table = nil
-            self.pendingBottomMargin = 0
-            self.deferredKeepWithNextRender = nil
-            self.avoidPageBreakAfter = false
-            self.forcePageBreakAfter = false
-            self.avoidPageBreakInside = false
-            self.currentSectionTitle = nil
-            self.pageSectionTitles = [:]
-            self.collectedHeadings = []
-            self.namedDestinations = [:]
-            self.pendingInternalLinks = []
+            self.storage = Storage(pdf: pdf, configuration: configuration)
         }
     }
 }
@@ -176,7 +330,7 @@ extension PDF.HTML.Context {
     /// - Parameters:
     ///   - topMargin: Top margin of the current element
     ///   - bottomMargin: Bottom margin of the current element (stored for next collapse)
-    public func applyCollapsedMargin(
+    public mutating func applyCollapsedMargin(
         top topMargin: PDF.UserSpace.Height,
         bottom bottomMargin: PDF.UserSpace.Height
     ) {
@@ -196,12 +350,12 @@ extension PDF.HTML.Context {
         // Store bottom margin for next collapse
         pendingBottomMargin = bottomMargin
     }
-    
+
     /// Reset margin collapsing state.
     ///
     /// Call this when starting a new formatting context (e.g., new page,
     /// entering a block formatting context like a table cell).
-    public func resetMarginCollapsing() {
+    public mutating func resetMarginCollapsing() {
         pendingBottomMargin = 0
     }
 }
@@ -235,7 +389,7 @@ extension PDF.HTML.Context {
         ///
         /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
         /// The closure captures generic view types that aren't Sendable.
-        public let render: (PDF.HTML.Context) -> Void
+        public let render: (inout PDF.HTML.Context) -> Void
         /// Measured height of the deferred content
         public let measuredHeight: PDF.UserSpace.Height
     }
@@ -243,8 +397,8 @@ extension PDF.HTML.Context {
 }
 
 extension PDF.HTML.Context {
-    public func with<T>(
-        _ keyPath: ReferenceWritableKeyPath<PDF.HTML.Context, T>,
+    public mutating func with<T>(
+        _ keyPath: WritableKeyPath<PDF.HTML.Context, T>,
         _ body: (inout T) -> Void
     ) {
         var value = self[keyPath: keyPath]
@@ -254,8 +408,8 @@ extension PDF.HTML.Context {
 }
 
 extension PDF.HTML.Context {
-    public func with<T>(
-        _ keyPath: ReferenceWritableKeyPath<PDF.HTML.Context, T?>,
+    public mutating func with<T>(
+        _ keyPath: WritableKeyPath<PDF.HTML.Context, T?>,
         _ body: (inout T) -> Void
     ) {
         guard var value = self[keyPath: keyPath] else { return }
@@ -263,4 +417,3 @@ extension PDF.HTML.Context {
         self[keyPath: keyPath] = value
     }
 }
-

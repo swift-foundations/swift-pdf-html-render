@@ -10,10 +10,10 @@ extension _Array: PDF.HTML.View where Element: PDF.HTML.View {
     @inlinable
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         for element in view.elements {
-            Element._render(element, context: context)
+            Element._render(element, context: &context)
         }
     }
 }
@@ -21,9 +21,9 @@ extension _Array: PDF.HTML.View where Element: PDF.HTML.View {
 // MARK: - Dynamic Dispatch Support
 
 extension _Array: _ArrayContent where Element: HTML.View {
-    public func _renderArrayDynamically(context: PDF.HTML.Context) {
+    public func _renderArrayDynamically(context: inout PDF.HTML.Context) {
         for element in elements {
-            PDF.HTML.renderHTMLView(element, context: context)
+            PDF.HTML.renderHTMLView(element, context: &context)
         }
     }
 }

@@ -11,13 +11,13 @@ where First: PDF.HTML.View, Second: PDF.HTML.View {
     @inlinable
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         switch view {
         case .first(let first):
-            First._render(first, context: context)
+            First._render(first, context: &context)
         case .second(let second):
-            Second._render(second, context: context)
+            Second._render(second, context: &context)
         }
     }
 }
@@ -25,12 +25,12 @@ where First: PDF.HTML.View, Second: PDF.HTML.View {
 // MARK: - Dynamic Dispatch Support
 
 extension _Conditional: _ConditionalContent where First: HTML.View, Second: HTML.View {
-    public func _renderConditionalDynamically(context: PDF.HTML.Context) {
+    public func _renderConditionalDynamically(context: inout PDF.HTML.Context) {
         switch self {
         case .first(let first):
-            PDF.HTML.renderHTMLView(first, context: context)
+            PDF.HTML.renderHTMLView(first, context: &context)
         case .second(let second):
-            PDF.HTML.renderHTMLView(second, context: context)
+            PDF.HTML.renderHTMLView(second, context: &context)
         }
     }
 }

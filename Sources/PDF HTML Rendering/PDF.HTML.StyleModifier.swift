@@ -37,7 +37,7 @@ extension PDF.HTML {
     /// the HTML-level rendering state (e.g., deferred content for sticky headers).
     public protocol HTMLContextStyleModifier {
         /// Apply this style to the HTML rendering context.
-        func apply(to context: PDF.HTML.Context)
+        func apply(to context: inout PDF.HTML.Context)
     }
 }
 
@@ -107,6 +107,6 @@ extension PDF.HTML {
     /// perform their action directly without rendering any child content.
     internal protocol VoidElementRenderer {
         /// Render this void element's effect (e.g., line break, horizontal rule).
-        static func render(context: PDF.HTML.Context)
+        static func render(context: inout PDF.HTML.Context)
     }
 }

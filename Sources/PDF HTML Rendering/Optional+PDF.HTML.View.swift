@@ -10,10 +10,10 @@ extension Optional: PDF.HTML.View where Wrapped: PDF.HTML.View {
     @inlinable
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         if let wrapped = view {
-            Wrapped._render(wrapped, context: context)
+            Wrapped._render(wrapped, context: &context)
         }
     }
 }
@@ -21,9 +21,9 @@ extension Optional: PDF.HTML.View where Wrapped: PDF.HTML.View {
 // MARK: - Dynamic Dispatch Support
 
 extension Optional: _OptionalContent where Wrapped: HTML.View {
-    public func _renderOptionalDynamically(context: PDF.HTML.Context) {
+    public func _renderOptionalDynamically(context: inout PDF.HTML.Context) {
         if let wrapped = self {
-            PDF.HTML.renderHTMLView(wrapped, context: context)
+            PDF.HTML.renderHTMLView(wrapped, context: &context)
         }
     }
 }

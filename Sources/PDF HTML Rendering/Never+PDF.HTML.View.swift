@@ -6,7 +6,7 @@ import PDF_Rendering
 extension Swift.Never: PDF.HTML.View {
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Never is uninhabited - this will never be called
     }

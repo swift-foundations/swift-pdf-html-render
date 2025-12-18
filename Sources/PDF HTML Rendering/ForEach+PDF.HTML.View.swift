@@ -10,8 +10,8 @@ extension ForEach: PDF.HTML.View where Content: PDF.HTML.View {
     @inlinable
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
-        _Array._render(view.content, context: context)
+        _Array._render(view.content, context: &context)
     }
 }

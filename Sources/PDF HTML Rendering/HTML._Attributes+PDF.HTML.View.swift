@@ -29,7 +29,7 @@ import PDF_Rendering
 extension HTML._Attributes: PDF.HTML.View where Content: PDF.HTML.View {
          public static func _render(
              _ view: Self,
-             context: PDF.HTML.Context
+             context: inout PDF.HTML.Context
          ) {
              // Save previous attributes
              let previousAttributes = context.attributes
@@ -85,7 +85,7 @@ extension HTML._Attributes: PDF.HTML.View where Content: PDF.HTML.View {
                          }
                                                                                                                       
                          // Use dynamic dispatch to render the inner content
-                         PDF.HTML.renderInnerContent(content, context: context)
+                         PDF.HTML.renderInnerContent(content, context: &context)
                          return
                      }
                  } else {

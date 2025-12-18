@@ -8,7 +8,7 @@ import WHATWG_HTML
 extension ThematicBreak: PDF.HTML.View {
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Flush any pending inline runs (HR is block-level)
         if context.pdf.hasInlineRuns {

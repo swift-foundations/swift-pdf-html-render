@@ -9,7 +9,7 @@ import PDF_Rendering
 import W3C_CSS_Paged
 
 extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.HTMLContextStyleModifier {
-    public func apply(to context: PDF.HTML.Context) {
+    public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         case .avoid:
             // Prevent element from splitting across pages

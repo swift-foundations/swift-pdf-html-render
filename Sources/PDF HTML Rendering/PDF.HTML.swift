@@ -48,15 +48,15 @@ extension PDF.HTML {
         ))
         
         // Create combined context
-        let context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
-        
+        var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
+
         // Render HTML to PDF using static dispatch
-        H._render(html(), context: context)
-        
+        H._render(html(), context: &context)
+
         // Handle any remaining deferred content (e.g., sticky header at end of document)
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(context)
+            deferred.render(&context)
         }
         
         // Flush any remaining inline runs
@@ -111,15 +111,15 @@ extension PDF.HTML {
         ))
 
         // Create combined context
-        let context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
+        var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
 
         // Render HTML to PDF using static dispatch
-        H._render(html(), context: context)
+        H._render(html(), context: &context)
 
         // Handle any remaining deferred content
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(context)
+            deferred.render(&context)
         }
 
         // Flush any remaining inline runs
@@ -172,15 +172,15 @@ extension PDF.HTML {
         ))
 
         // Create combined context
-        let context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
+        var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
 
         // Render using dynamic dispatch
-        renderHTMLView(html(), context: context)
+        renderHTMLView(html(), context: &context)
 
         // Handle any remaining deferred content
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(context)
+            deferred.render(&context)
         }
 
         // Flush any remaining inline runs
@@ -237,15 +237,15 @@ extension PDF.HTML {
         ))
         
         // Create combined context
-        let context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
-        
+        var context = PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
+
         // Render using dynamic dispatch
-        renderHTMLView(html(), context: context)
-        
+        renderHTMLView(html(), context: &context)
+
         // Handle any remaining deferred content (e.g., sticky header at end of document)
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
-            deferred.render(context)
+            deferred.render(&context)
         }
         
         // Flush any remaining inline runs
@@ -327,11 +327,11 @@ extension PDF.HTML {
 
         var pass1Context = PDF.HTML.Context(pdf: pass1PdfContext, configuration: pass1Config)
         let contentView = content()
-        Content._render(contentView, context: pass1Context)
+        Content._render(contentView, context: &pass1Context)
 
         if let deferred = pass1Context.deferredKeepWithNextRender {
             pass1Context.deferredKeepWithNextRender = nil
-            deferred.render(pass1Context)
+            deferred.render(&pass1Context)
         }
         pass1Context.pdf.flushInlineRuns()
 
@@ -365,7 +365,7 @@ extension PDF.HTML {
             headerContext.style = pass1PdfContext.style
 
             var headerHTMLContext = PDF.HTML.Context(pdf: headerContext, configuration: configuration)
-            renderHTMLView(header(pageInfo), context: headerHTMLContext)
+            renderHTMLView(header(pageInfo), context: &headerHTMLContext)
             headerHTMLContext.pdf.flushInlineRuns()
 
             // Create a single-page context for footer
@@ -381,7 +381,7 @@ extension PDF.HTML {
             footerContext.style = pass1PdfContext.style
 
             var footerHTMLContext = PDF.HTML.Context(pdf: footerContext, configuration: configuration)
-            renderHTMLView(footer(pageInfo), context: footerHTMLContext)
+            renderHTMLView(footer(pageInfo), context: &footerHTMLContext)
             footerHTMLContext.pdf.flushInlineRuns()
 
             // Combine: get content page, header content, footer content
@@ -438,7 +438,7 @@ extension PDF.HTML {
     ///   attempting any `as?` cast. The order of checks matters for correctness.
     public static func renderHTMLView(
         _ view: some HTML.View,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // ════════════════════════════════════════════════════════════════════════
         // PHASE 1: Mirror-based detection of wrapper types (MUST come first!)
@@ -453,21 +453,21 @@ extension PDF.HTML {
         // HTML.Styled: wraps content with CSS property (.inlineStyle(...))
         // Identified by: "content" + "property" fields
         if isStyledType(mirror) {
-            renderStyledViaMirror(view, context: context)
+            renderStyledViaMirror(view, context: &context)
             return
         }
 
         // HTML.CSS: wraps content for CSS chaining (.css.display().flex())
         // Identified by: "base" field (without "renderFunction")
         if isCSSWrapperType(mirror) {
-            renderCSSWrapperViaMirror(mirror, context: context)
+            renderCSSWrapperViaMirror(mirror, context: &context)
             return
         }
 
         // HTML._Attributes: wraps content with HTML attributes (.attribute(...))
         // Identified by: "content" + "attributes" fields
         if isAttributesType(mirror) {
-            renderAttributesViaMirror(mirror, context: context)
+            renderAttributesViaMirror(mirror, context: &context)
             return
         }
 
@@ -475,7 +475,7 @@ extension PDF.HTML {
         // Identified by: enum display style with "first" or "second" case
         // Must be detected via Mirror to avoid SIGBUS on deeply nested generic branches
         if isConditionalType(mirror) {
-            renderConditionalViaMirror(mirror, context: context)
+            renderConditionalViaMirror(mirror, context: &context)
             return
         }
 
@@ -483,7 +483,7 @@ extension PDF.HTML {
         // Identified by: optional display style
         // Must be detected via Mirror to avoid SIGBUS on deeply nested generic wrapped types
         if isOptionalType(mirror) {
-            renderOptionalViaMirror(mirror, context: context)
+            renderOptionalViaMirror(mirror, context: &context)
             return
         }
 
@@ -497,13 +497,13 @@ extension PDF.HTML {
 
         // Helper to invoke static dispatch once we have a PDF.HTML.View
         func renderPDFView<V: PDF.HTML.View>(_ v: V) {
-            V._render(v, context: context)
+            V._render(v, context: &context)
         }
 
         // 1. HTML.AnyView: type-erased wrapper - must handle before PDF.HTML.View
         //    check to avoid infinite recursion (AnyView conforms to PDF.HTML.View)
         if let anyView = view as? any _AnyViewContent {
-            anyView._renderAnyViewDynamically(context: context)
+            anyView._renderAnyViewDynamically(context: &context)
             return
         }
 
@@ -518,12 +518,12 @@ extension PDF.HTML {
         //      to, enabling dynamic dispatch to the correct render implementation.
 
         if let tuple = view as? any _TupleContent {
-            tuple._renderEachElementDynamically(context: context)
+            tuple._renderEachElementDynamically(context: &context)
             return
         }
 
         if let element = view as? any _HTMLElementContent {
-            element._renderElementDynamically(context: context)
+            element._renderElementDynamically(context: &context)
             return
         }
 
@@ -532,17 +532,17 @@ extension PDF.HTML {
         }
 
         if let optional = view as? any _OptionalContent {
-            optional._renderOptionalDynamically(context: context)
+            optional._renderOptionalDynamically(context: &context)
             return
         }
 
         if let conditional = view as? any _ConditionalContent {
-            conditional._renderConditionalDynamically(context: context)
+            conditional._renderConditionalDynamically(context: &context)
             return
         }
 
         if let array = view as? any _ArrayContent {
-            array._renderArrayDynamically(context: context)
+            array._renderArrayDynamically(context: &context)
             return
         }
 
@@ -553,7 +553,7 @@ extension PDF.HTML {
         //    `var body: Never { fatalError(...) }`. Safe here because we already
         //    filtered out wrapper types in Phase 1.
         func renderBody<V: HTML.View>(_ v: V) {
-            renderHTMLView(v.body, context: context)
+            renderHTMLView(v.body, context: &context)
         }
         renderBody(view)
     }
@@ -576,7 +576,7 @@ extension PDF.HTML {
     /// ```
     static func renderFlattenedStyledContent(
         _ initialStyled: any _HTMLStyledContent,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Save current style state - we'll restore after all nested styles
         let savedStyle = context.pdf.style
@@ -600,7 +600,7 @@ extension PDF.HTML {
         var shouldAvoidPageBreakInside = false
 
         for styled in styledLayers {
-            let flags = styled.applyStyle(to: context)
+            let flags = styled.applyStyle(to: &context)
             // Accumulate break flags - any layer requesting it wins
             if flags.avoidBreakAfter { shouldAvoidPageBreakAfter = true }
             if flags.forceBreakAfter { shouldForcePageBreakAfter = true }
@@ -623,7 +623,7 @@ extension PDF.HTML {
                 var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
                 tempHTMLContext.pendingBottomMargin = pendingBottomMargin
                 snapshot.restore(to: &tempHTMLContext.pdf)
-                innermostStyled.renderWrappedContent(context: tempHTMLContext)
+                innermostStyled.renderWrappedContent(context: &tempHTMLContext)
                 tempHTMLContext.pdf.flushInlineRuns()
                 measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
             }
@@ -645,7 +645,7 @@ extension PDF.HTML {
                 var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
                 tempHTMLContext.pendingBottomMargin = pendingBottomMargin
                 snapshot.restore(to: &tempHTMLContext.pdf)
-                innermostStyled.renderWrappedContent(context: tempHTMLContext)
+                innermostStyled.renderWrappedContent(context: &tempHTMLContext)
                 tempHTMLContext.pdf.flushInlineRuns()
                 measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
             }
@@ -654,9 +654,9 @@ extension PDF.HTML {
                 let combinedHeight = existingDeferred.measuredHeight + measuredHeight
                 context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
                     render: { ctx in
-                        existingDeferred.render(ctx)
+                        existingDeferred.render(&ctx)
                         snapshot.restore(to: &ctx.pdf)
-                        innermostStyled.renderWrappedContent(context: ctx)
+                        innermostStyled.renderWrappedContent(context: &ctx)
                         ctx.pdf.flushInlineRuns()
                     },
                     measuredHeight: combinedHeight
@@ -665,7 +665,7 @@ extension PDF.HTML {
                 context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
                     render: { ctx in
                         snapshot.restore(to: &ctx.pdf)
-                        innermostStyled.renderWrappedContent(context: ctx)
+                        innermostStyled.renderWrappedContent(context: &ctx)
                         ctx.pdf.flushInlineRuns()
                     },
                     measuredHeight: measuredHeight
@@ -673,7 +673,7 @@ extension PDF.HTML {
             }
         } else {
             // Normal rendering - render the innermost content
-            innermostStyled.renderWrappedContent(context: context)
+            innermostStyled.renderWrappedContent(context: &context)
 
             // Handle break-after: always/page
             if shouldForcePageBreakAfter {
@@ -875,7 +875,7 @@ extension PDF.HTML {
     /// ```
     static func renderStyledViaMirror(
         _ value: Any,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Save style state - we restore after rendering so styles don't leak
         // to sibling elements (CSS properties should only affect descendants)
@@ -905,7 +905,7 @@ extension PDF.HTML {
                 // Property types (FontWeight, Color, Display, etc.) are simple value types,
                 // NOT deeply nested generics, so `as?` casts are safe here.
                 if let prop = property {
-                    applyStylePropertyViaMirror(prop, context: context)
+                    applyStylePropertyViaMirror(prop, context: &context)
                 }
 
                 // Continue unwrapping with the inner content
@@ -918,7 +918,7 @@ extension PDF.HTML {
             } else {
                 // Not a Styled wrapper anymore - hand off to inner content renderer.
                 // The inner content might still be CSS or _Attributes wrapper!
-                renderInnerContent(current, context: context)
+                renderInnerContent(current, context: &context)
                 return
             }
         }
@@ -932,7 +932,7 @@ extension PDF.HTML {
     /// The property may be wrapped in Optional, so we unwrap that first via Mirror.
     private static func applyStylePropertyViaMirror(
         _ prop: Any,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // The property field in HTML.Styled is `let property: P?` (optional).
         // We need to unwrap the Optional to get the actual property value.
@@ -959,7 +959,7 @@ extension PDF.HTML {
         // Some properties affect the HTML context rather than PDF style
         // (e.g., page-break-after, break-inside for pagination control)
         if let htmlModifier = unwrapped as? any PDF.HTML.HTMLContextStyleModifier {
-            htmlModifier.apply(to: context)
+            htmlModifier.apply(to: &context)
         }
     }
 
@@ -982,7 +982,7 @@ extension PDF.HTML {
     /// This is why we MUST check for wrapper types via Mirror at every entry point.
     static func renderInnerContent(
         _ value: Any,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // ⚠️ CRITICAL: Check for wrapper types via Mirror FIRST, before any as? cast.
         // The content we extracted might be wrapped in a DIFFERENT wrapper type.
@@ -990,27 +990,27 @@ extension PDF.HTML {
         let mirror = Mirror(reflecting: value)
 
         if isStyledType(mirror) {
-            renderStyledViaMirror(value, context: context)
+            renderStyledViaMirror(value, context: &context)
             return
         }
 
         if isCSSWrapperType(mirror) {
-            renderCSSWrapperViaMirror(mirror, context: context)
+            renderCSSWrapperViaMirror(mirror, context: &context)
             return
         }
 
         if isAttributesType(mirror) {
-            renderAttributesViaMirror(mirror, context: context)
+            renderAttributesViaMirror(mirror, context: &context)
             return
         }
 
         if isConditionalType(mirror) {
-            renderConditionalViaMirror(mirror, context: context)
+            renderConditionalViaMirror(mirror, context: &context)
             return
         }
 
         if isOptionalType(mirror) {
-            renderOptionalViaMirror(mirror, context: context)
+            renderOptionalViaMirror(mirror, context: &context)
             return
         }
 
@@ -1021,14 +1021,14 @@ extension PDF.HTML {
 
         // String is a common leaf type - render directly
         if let str = value as? String {
-            String._render(str, context: context)
+            String._render(str, context: &context)
             return
         }
 
         // Check for PDF.HTML.View conformance - use static dispatch if possible
         if let pdfView = value as? any PDF.HTML.View {
             func render<V: PDF.HTML.View>(_ v: V) {
-                V._render(v, context: context)
+                V._render(v, context: &context)
             }
             render(pdfView)
             return
@@ -1038,17 +1038,17 @@ extension PDF.HTML {
         // These use marker protocols that are always conformed to, allowing dynamic dispatch.
 
         if let tuple = value as? any _TupleContent {
-            tuple._renderEachElementDynamically(context: context)
+            tuple._renderEachElementDynamically(context: &context)
             return
         }
 
         if let element = value as? any _HTMLElementContent {
-            element._renderElementDynamically(context: context)
+            element._renderElementDynamically(context: &context)
             return
         }
 
         if let anyView = value as? any _AnyViewContent {
-            anyView._renderAnyViewDynamically(context: context)
+            anyView._renderAnyViewDynamically(context: &context)
             return
         }
 
@@ -1057,17 +1057,17 @@ extension PDF.HTML {
         }
 
         if let optional = value as? any _OptionalContent {
-            optional._renderOptionalDynamically(context: context)
+            optional._renderOptionalDynamically(context: &context)
             return
         }
 
         if let conditional = value as? any _ConditionalContent {
-            conditional._renderConditionalDynamically(context: context)
+            conditional._renderConditionalDynamically(context: &context)
             return
         }
 
         if let array = value as? any _ArrayContent {
-            array._renderArrayDynamically(context: context)
+            array._renderArrayDynamically(context: &context)
             return
         }
 
@@ -1079,7 +1079,7 @@ extension PDF.HTML {
         // MUST check for wrapper types first!
         if let htmlView = value as? any HTML.View {
             func renderBody<V: HTML.View>(_ v: V) {
-                renderHTMLView(v.body, context: context)
+                renderHTMLView(v.body, context: &context)
             }
             renderBody(htmlView)
         }
@@ -1094,7 +1094,7 @@ extension PDF.HTML {
     /// For PDF rendering, CSS wrapper itself has no effect - we just pass through.
     private static func renderCSSWrapperViaMirror(
         _ mirror: Mirror,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Extract the "base" field which contains the wrapped content
         for child in mirror.children {
@@ -1104,18 +1104,18 @@ extension PDF.HTML {
                 let baseMirror = Mirror(reflecting: child.value)
 
                 if isStyledType(baseMirror) {
-                    renderStyledViaMirror(child.value, context: context)
+                    renderStyledViaMirror(child.value, context: &context)
                 } else if isCSSWrapperType(baseMirror) {
-                    renderCSSWrapperViaMirror(baseMirror, context: context)
+                    renderCSSWrapperViaMirror(baseMirror, context: &context)
                 } else if isAttributesType(baseMirror) {
-                    renderAttributesViaMirror(baseMirror, context: context)
+                    renderAttributesViaMirror(baseMirror, context: &context)
                 } else if isConditionalType(baseMirror) {
-                    renderConditionalViaMirror(baseMirror, context: context)
+                    renderConditionalViaMirror(baseMirror, context: &context)
                 } else if isOptionalType(baseMirror) {
-                    renderOptionalViaMirror(baseMirror, context: context)
+                    renderOptionalViaMirror(baseMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
-                    renderInnerContent(child.value, context: context)
+                    renderInnerContent(child.value, context: &context)
                 }
                 return
             }
@@ -1129,7 +1129,7 @@ extension PDF.HTML {
     /// extract the inner content and render it, ignoring the attributes.
     private static func renderAttributesViaMirror(
         _ mirror: Mirror,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Extract the "content" field (ignore "attributes" - not relevant for PDF)
         for child in mirror.children {
@@ -1139,18 +1139,18 @@ extension PDF.HTML {
                 let contentMirror = Mirror(reflecting: child.value)
 
                 if isStyledType(contentMirror) {
-                    renderStyledViaMirror(child.value, context: context)
+                    renderStyledViaMirror(child.value, context: &context)
                 } else if isCSSWrapperType(contentMirror) {
-                    renderCSSWrapperViaMirror(contentMirror, context: context)
+                    renderCSSWrapperViaMirror(contentMirror, context: &context)
                 } else if isAttributesType(contentMirror) {
-                    renderAttributesViaMirror(contentMirror, context: context)
+                    renderAttributesViaMirror(contentMirror, context: &context)
                 } else if isConditionalType(contentMirror) {
-                    renderConditionalViaMirror(contentMirror, context: context)
+                    renderConditionalViaMirror(contentMirror, context: &context)
                 } else if isOptionalType(contentMirror) {
-                    renderOptionalViaMirror(contentMirror, context: context)
+                    renderOptionalViaMirror(contentMirror, context: &context)
                 } else {
                     // Not a wrapper - safe to process with potential as? casts
-                    renderInnerContent(child.value, context: context)
+                    renderInnerContent(child.value, context: &context)
                 }
                 return
             }
@@ -1174,13 +1174,13 @@ extension PDF.HTML {
     /// ```
     private static func renderConditionalViaMirror(
         _ mirror: Mirror,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Enum Mirror has one child: the active case with its associated value
         for child in mirror.children {
             if child.label == "first" || child.label == "second" {
                 // The associated value might itself be a wrapper type
-                renderInnerContent(child.value, context: context)
+                renderInnerContent(child.value, context: &context)
                 return
             }
         }
@@ -1203,7 +1203,7 @@ extension PDF.HTML {
     /// ```
     private static func renderOptionalViaMirror(
         _ mirror: Mirror,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Optional Mirror has either:
         // - No children for .none
@@ -1211,7 +1211,7 @@ extension PDF.HTML {
         for child in mirror.children {
             if child.label == "some" {
                 // The wrapped value might itself be a wrapper type
-                renderInnerContent(child.value, context: context)
+                renderInnerContent(child.value, context: &context)
                 return
             }
         }
@@ -1227,7 +1227,7 @@ extension PDF.HTML {
 /// don't work correctly for conditional conformances on variadic generics.
 package protocol _TupleContent {
     /// Render each element of the tuple using dynamic dispatch.
-    func _renderEachElementDynamically(context: PDF.HTML.Context)
+    func _renderEachElementDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for HTML.Element.Tag dynamic dispatch.
@@ -1236,7 +1236,7 @@ package protocol _TupleContent {
 /// conditional conformances like `HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View`.
 package protocol _HTMLElementContent {
     /// Render this element using dynamic dispatch for content.
-    func _renderElementDynamically(context: PDF.HTML.Context)
+    func _renderElementDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for HTML.Raw (renders as empty in PDF context).
@@ -1251,20 +1251,20 @@ package protocol _HTMLRawContent {}
 /// conditional conformances like `HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View`.
 package protocol _HTMLStyledContent {
     /// Render this styled content using dynamic dispatch for the wrapped content.
-    func _renderStyledDynamically(context: PDF.HTML.Context)
+    func _renderStyledDynamically(context: inout PDF.HTML.Context)
 
     /// The CSS property to apply (may be nil).
     var styledProperty: Any? { get }
 
     /// Apply this styled element's property to the context.
     /// Returns flags for break handling.
-    func applyStyle(to context: PDF.HTML.Context) -> (avoidBreakAfter: Bool, forceBreakAfter: Bool, avoidBreakInside: Bool)
+    func applyStyle(to context: inout PDF.HTML.Context) -> (avoidBreakAfter: Bool, forceBreakAfter: Bool, avoidBreakInside: Bool)
 
     /// Get the wrapped content as _HTMLStyledContent if it is one (avoids existential boxing).
     var wrappedStyledContent: (any _HTMLStyledContent)? { get }
 
     /// Render the wrapped content directly (avoids existential boxing of content).
-    func renderWrappedContent(context: PDF.HTML.Context)
+    func renderWrappedContent(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for _Conditional dynamic dispatch.
@@ -1273,7 +1273,7 @@ package protocol _HTMLStyledContent {
 /// conditional conformances like `_Conditional: PDF.HTML.View where First: PDF.HTML.View, Second: PDF.HTML.View`.
 package protocol _ConditionalContent {
     /// Render the active branch of this conditional using dynamic dispatch.
-    func _renderConditionalDynamically(context: PDF.HTML.Context)
+    func _renderConditionalDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for _Array dynamic dispatch.
@@ -1282,7 +1282,7 @@ package protocol _ConditionalContent {
 /// conditional conformances like `_Array: PDF.HTML.View where Element: PDF.HTML.View`.
 package protocol _ArrayContent {
     /// Render all elements in the array using dynamic dispatch.
-    func _renderArrayDynamically(context: PDF.HTML.Context)
+    func _renderArrayDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for Optional dynamic dispatch.
@@ -1291,7 +1291,7 @@ package protocol _ArrayContent {
 /// conditional conformances like `Optional: PDF.HTML.View where Wrapped: PDF.HTML.View`.
 package protocol _OptionalContent {
     /// Render the optional's wrapped value if present, using dynamic dispatch.
-    func _renderOptionalDynamically(context: PDF.HTML.Context)
+    func _renderOptionalDynamically(context: inout PDF.HTML.Context)
 }
 
 // MARK: - Block and Inline Helpers
@@ -1301,7 +1301,7 @@ extension PDF.HTML {
     @inlinable
     public static func renderBlock<C: PDF.HTML.View>(
         _ content: C?,
-        context: PDF.HTML.Context,
+        context: inout PDF.HTML.Context,
         beforeSpacing: PDF.UserSpace.Height = 0,
         afterSpacing: PDF.UserSpace.Height = 0
     ) {
@@ -1317,7 +1317,7 @@ extension PDF.HTML {
 
         // Render content
         if let content {
-            C._render(content, context: context)
+            C._render(content, context: &context)
         }
 
         // Flush inline runs from content
@@ -1335,10 +1335,10 @@ extension PDF.HTML {
     @inlinable
     public static func renderInline<C: PDF.HTML.View>(
         _ content: C?,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         if let content {
-            C._render(content, context: context)
+            C._render(content, context: &context)
         }
     }
 
@@ -1351,7 +1351,7 @@ extension PDF.HTML {
     /// view types without explicit PDF conformance.
     public static func renderBlockDynamic(
         _ content: some HTML.View,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Flush pending inline runs
         if context.pdf.hasInlineRuns {
@@ -1359,7 +1359,7 @@ extension PDF.HTML {
         }
 
         // Render content using dynamic dispatch
-        renderHTMLView(content, context: context)
+        renderHTMLView(content, context: &context)
 
         // Flush inline runs from content
         if context.pdf.hasInlineRuns {
@@ -1374,8 +1374,8 @@ extension PDF.HTML {
     /// view types without explicit PDF conformance.
     public static func renderInlineDynamic(
         _ content: some HTML.View,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
-        renderHTMLView(content, context: context)
+        renderHTMLView(content, context: &context)
     }
 }

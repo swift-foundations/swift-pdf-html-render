@@ -6,7 +6,7 @@ import PDF_Rendering
 extension String: PDF.HTML.View {
     public static func _render(
         _ view: Self,
-        context: PDF.HTML.Context
+        context: inout PDF.HTML.Context
     ) {
         // Create text runs with automatic symbol font support
         // This handles characters like ✓ by switching to ZapfDingbats
