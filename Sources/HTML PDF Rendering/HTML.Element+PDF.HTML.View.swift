@@ -44,6 +44,7 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
         let savedPreserveWhitespace = context.pdf.preserveWhitespace
         let savedLinkURL = context.currentLinkURL
         let savedInternalLinkId = context.currentInternalLinkId
+
         defer {
             context.pdf.style = savedStyle
             context.pdf.layoutBox.llx = savedLLX

@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/coenttb/swift-html-rendering", from: "0.1.12"),
-        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.4.1"),
+        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.4.3"),
         .package(url: "https://github.com/coenttb/swift-css", from: "0.3.1"),
         .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.6"),
         .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.6"),
