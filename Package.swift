@@ -33,7 +33,7 @@ let package = Package(
             dependencies: [
                 .product(name: "HTML Renderable", package: "swift-html-rendering"),
                 .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
-                .product(name: "CopyOnWrite", package: "swift-copy-on-write"),
+                .product(name: "Copy on Write", package: "swift-copy-on-write"),
                 .product(name: "CSS", package: "swift-css"),
                 .product(name: "HTML Standard", package: "swift-html-standard"),
                 .product(name: "CSS Standard", package: "swift-css-standard"),

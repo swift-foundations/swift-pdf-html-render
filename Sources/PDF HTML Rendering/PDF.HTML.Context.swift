@@ -5,7 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 10/12/2025.
 //
 
-import CopyOnWrite
+import Copy_on_Write
 
 // MARK: - Context combining PDF.Context and Configuration
 
