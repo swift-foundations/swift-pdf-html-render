@@ -16,7 +16,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/coenttb/swift-html-rendering", from: "0.1.12"),
-        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.4.3"),
+        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.5.0"),
+        .package(url: "https://github.com/coenttb/swift-copy-on-write", from: "0.3.0"),
         .package(url: "https://github.com/coenttb/swift-css", from: "0.3.1"),
         .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.6"),
         .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.6"),
@@ -32,6 +33,7 @@ let package = Package(
             dependencies: [
                 .product(name: "HTML Renderable", package: "swift-html-rendering"),
                 .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
+                .product(name: "CopyOnWrite", package: "swift-copy-on-write"),
                 .product(name: "CSS", package: "swift-css"),
                 .product(name: "HTML Standard", package: "swift-html-standard"),
                 .product(name: "CSS Standard", package: "swift-css-standard"),
