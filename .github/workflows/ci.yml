@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Configure git for private repos
+        run: git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Select Xcode 26.0
         run: sudo xcode-select -s /Applications/Xcode_26.0.app
 
@@ -69,6 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Configure git for private repos
+        run: git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -91,6 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Configure git for private repos
+        run: git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -110,6 +119,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Configure git for private repos
+        run: git config --global url."https://$env:GITHUB_TOKEN@github.com/".insteadOf "https://github.com/"
 
       - name: Install Swift
         uses: SwiftyLab/setup-swift@latest
