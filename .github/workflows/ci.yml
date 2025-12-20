@@ -18,6 +18,8 @@ jobs:
   macos-latest:
     name: macOS (Swift 6.2, debug)
     runs-on: macos-26
+    env:
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
@@ -62,6 +64,8 @@ jobs:
     name: Ubuntu (Swift 6.2, release)
     runs-on: ubuntu-latest
     container: swift:6.2
+    env:
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
@@ -82,6 +86,8 @@ jobs:
     name: Ubuntu (Swift 6.2, compatibility)
     runs-on: ubuntu-latest
     container: swift:6.2
+    env:
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
@@ -100,6 +106,8 @@ jobs:
   windows-latest:
     name: Windows (Swift 6.2)
     runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v6
 
