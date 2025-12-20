@@ -12,17 +12,17 @@ let package = Package(
         .visionOS(.v26),
     ],
     products: [
-        .library(name: "PDF HTML Rendering", targets: ["PDF HTML Rendering"]),
+        .library(name: "PDF HTML Rendering", targets: ["PDF HTML Rendering"])
     ],
     dependencies: [
         .package(url: "https://github.com/coenttb/swift-html-rendering", from: "0.1.12"),
-        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.5.1"),
+        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.6.0"),
         .package(url: "https://github.com/coenttb/swift-copy-on-write", from: "0.3.1"),
         .package(url: "https://github.com/coenttb/swift-css", from: "0.3.1"),
         .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.6"),
         .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.6"),
         .package(url: "https://github.com/swift-standards/swift-w3c-css", from: "0.1.0"),
-        .package(url: "https://github.com/swift-standards/swift-standards", from: "0.16.1"),
+        .package(url: "https://github.com/swift-standards/swift-standards", from: "0.20.0"),
         .package(url: "https://github.com/swift-standards/swift-iso-9899", from: "0.1.0"),
         .package(url: "https://github.com/swift-standards/swift-iec-61966", from: "0.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
