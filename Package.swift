@@ -24,6 +24,7 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-w3c-css", from: "0.3.0"),
         .package(url: "https://github.com/swift-standards/swift-standards", from: "0.21.0"),
         .package(url: "https://github.com/swift-standards/swift-iso-9899", from: "0.2.3"),
+        .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.2.1"),
         .package(url: "https://github.com/swift-standards/swift-iec-61966", from: "0.1.3"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.7"),
     ],
@@ -41,6 +42,7 @@ let package = Package(
                 .product(name: "Standards", package: "swift-standards"),
                 .product(name: "ISO 9899", package: "swift-iso-9899"),
                 .product(name: "IEC 61966", package: "swift-iec-61966"),
+                .product(name: "RFC 4648", package: "swift-rfc-4648"),
             ]
         ),
         .testTarget(
