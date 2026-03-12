@@ -366,18 +366,8 @@ extension PDF.HTML {
 
             // Handle break-inside: avoid
             if breakFlags.avoidInside {
-                let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-                let configuration = context.configuration
-                let pendingBottomMargin = context.pendingBottomMargin
-
-                // Measure the element's total height
-                let measuredHeight = context.pdf.measure { measureContext in
-                    var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                    tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                    snapshot.restore(to: &tempHTMLContext.pdf)
-                    innermostStyled.renderWrappedContent(context: &tempHTMLContext)
-                    tempHTMLContext.pdf.flushInlineRuns()
-                    measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+                let measuredHeight = context.measureContentHeight { ctx in
+                    innermostStyled.renderWrappedContent(context: &ctx)
                 }
 
                 // If it won't fit on current page but would fit on a fresh page, break before
@@ -390,16 +380,8 @@ extension PDF.HTML {
             // Handle break-after: avoid (sticky header behavior)
             if breakFlags.avoidAfter {
                 let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-                let configuration = context.configuration
-                let pendingBottomMargin = context.pendingBottomMargin
-
-                let measuredHeight = context.pdf.measure { measureContext in
-                    var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                    tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                    snapshot.restore(to: &tempHTMLContext.pdf)
-                    innermostStyled.renderWrappedContent(context: &tempHTMLContext)
-                    tempHTMLContext.pdf.flushInlineRuns()
-                    measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+                let measuredHeight = context.measureContentHeight { ctx in
+                    innermostStyled.renderWrappedContent(context: &ctx)
                 }
 
                 if let existingDeferred = context.deferredKeepWithNextRender {
@@ -564,11 +546,11 @@ extension PDF.HTML {
             unwrapped = prop
         }
 
-        if let modifier = unwrapped as? any PDF.HTML.StyleModifier {
+        if let modifier = unwrapped as? any PDF.HTML.Style.Modifier {
             modifier.apply(to: &context.pdf, configuration: context.configuration)
         }
 
-        if let htmlModifier = unwrapped as? any PDF.HTML.ContextStyleModifier {
+        if let htmlModifier = unwrapped as? any PDF.HTML.Style.Context.Modifier {
             htmlModifier.apply(to: &context)
         }
     }

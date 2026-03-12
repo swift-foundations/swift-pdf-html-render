@@ -7,7 +7,7 @@ import W3C_CSS_Shared
 
 /// PDF rendering for HTML.Styled elements.
 ///
-/// When rendering HTML to PDF, inline styles that conform to `PDF.HTML.StyleModifier`
+/// When rendering HTML to PDF, inline styles that conform to `PDF.HTML.Style.Modifier`
 /// are applied to the PDF context. This enables the same `.inlineStyle(FontWeight.bold)`
 /// API used for HTML to also affect PDF output.
 ///
@@ -23,10 +23,10 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
     ) {
         context.withSavedStyleState { context in
             if let property = view.property {
-                if let modifier = property as? any PDF.HTML.StyleModifier {
+                if let modifier = property as? any PDF.HTML.Style.Modifier {
                     modifier.apply(to: &context.pdf, configuration: context.configuration)
                 }
-                if let htmlModifier = property as? any PDF.HTML.ContextStyleModifier {
+                if let htmlModifier = property as? any PDF.HTML.Style.Context.Modifier {
                     htmlModifier.apply(to: &context)
                 }
             }
@@ -34,7 +34,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             let breakFlags = context.captureBreakFlags()
 
             // Apply CSS Box Model
-            if let marginTop = context.pdf.marginTop, marginTop.rawValue > 0 {
+            if let marginTop = context.pdf.marginTop, marginTop > .zero {
                 context.pdf.advance(marginTop)
             }
             if let marginLeft = context.pdf.marginLeft {
@@ -44,7 +44,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - marginRight
             }
 
-            if let paddingTop = context.pdf.paddingTop, paddingTop.rawValue > 0 {
+            if let paddingTop = context.pdf.paddingTop, paddingTop > .zero {
                 context.pdf.advance(paddingTop)
             }
             if let paddingLeft = context.pdf.paddingLeft {
@@ -60,17 +60,8 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
 
             // Handle break-inside: avoid
             if breakFlags.avoidInside {
-                let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-                let configuration = context.configuration
-                let pendingBottomMargin = context.pendingBottomMargin
-
-                let measuredHeight = context.pdf.measure { measureContext in
-                    var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                    tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                    snapshot.restore(to: &tempHTMLContext.pdf)
-                    Content._render(view.content, context: &tempHTMLContext)
-                    tempHTMLContext.pdf.flushInlineRuns()
-                    measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+                let measuredHeight = context.measureContentHeight { ctx in
+                    Content._render(view.content, context: &ctx)
                 }
 
                 let pageContentHeight = context.configuration.content.height
@@ -82,16 +73,8 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             // Handle break-after: avoid (sticky header behavior)
             if breakFlags.avoidAfter {
                 let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
-                let configuration = context.configuration
-                let pendingBottomMargin = context.pendingBottomMargin
-
-                let measuredHeight = context.pdf.measure { measureContext in
-                    var tempHTMLContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
-                    tempHTMLContext.pendingBottomMargin = pendingBottomMargin
-                    snapshot.restore(to: &tempHTMLContext.pdf)
-                    Content._render(view.content, context: &tempHTMLContext)
-                    tempHTMLContext.pdf.flushInlineRuns()
-                    measureContext.layoutBox.lly = tempHTMLContext.pdf.layoutBox.lly
+                let measuredHeight = context.measureContentHeight { ctx in
+                    Content._render(view.content, context: &ctx)
                 }
 
                 if let existingDeferred = context.deferredKeepWithNextRender {
@@ -125,10 +108,10 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
             }
 
             // Apply bottom padding and margin after content renders
-            if let paddingBottom = context.pdf.paddingBottom, paddingBottom.rawValue > 0 {
+            if let paddingBottom = context.pdf.paddingBottom, paddingBottom > .zero {
                 context.pdf.advance(paddingBottom)
             }
-            if let marginBottom = context.pdf.marginBottom, marginBottom.rawValue > 0 {
+            if let marginBottom = context.pdf.marginBottom, marginBottom > .zero {
                 context.pdf.advance(marginBottom)
             }
         }
@@ -148,10 +131,10 @@ extension HTML.Styled: _HTMLStyledContent where Content: HTML.View {
 
     public func applyStyle(to context: inout PDF.HTML.Context) -> PDF.HTML.Context.Break {
         if let property = property {
-            if let modifier = property as? any PDF.HTML.StyleModifier {
+            if let modifier = property as? any PDF.HTML.Style.Modifier {
                 modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
-            if let htmlModifier = property as? any PDF.HTML.ContextStyleModifier {
+            if let htmlModifier = property as? any PDF.HTML.Style.Context.Modifier {
                 htmlModifier.apply(to: &context)
             }
         }

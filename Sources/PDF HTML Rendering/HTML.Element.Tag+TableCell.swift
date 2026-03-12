@@ -97,7 +97,7 @@ extension HTML.Element.Tag {
             height: contentHeight
         )
 
-        // Text alignment comes from CSS via StyleModifier (e.g., .css.textAlign(.right))
+        // Text alignment comes from CSS via Style.Modifier (e.g., .css.textAlign(.right))
         // The context.pdf.style.textAlign is already set by CSS processing
         let textAlignment = context.pdf.style.textAlign
 

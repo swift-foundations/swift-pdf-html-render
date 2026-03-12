@@ -47,7 +47,7 @@ extension PDF.HTML {
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
         public var deferredKeepWithNextRender: Deferred?
 
-        /// Break flags set by `ContextStyleModifier.apply(to:)`.
+        /// Break flags set by `Style.Context.Modifier.apply(to:)`.
         ///
         /// Callers capture and reset via `captureBreakFlags()`.
         public var avoidPageBreakAfter: Bool = false
@@ -109,7 +109,7 @@ extension PDF.HTML.Context {
     /// Capture and reset all break flags set by style modifiers.
     ///
     /// This centralizes the set-check-reset pattern used after applying
-    /// `ContextStyleModifier` properties.
+    /// `Style.Context.Modifier` properties.
     public mutating func captureBreakFlags() -> Break {
         let flags = Break(
             avoidAfter: avoidPageBreakAfter,
@@ -137,6 +137,34 @@ extension PDF.HTML.Context {
         let snapshot = StyleSnapshot(from: self)
         body(&self)
         snapshot.restore(to: &self)
+    }
+}
+
+// MARK: - Content Measurement
+
+extension PDF.HTML.Context {
+    /// Measure the height that content would occupy without rendering it.
+    ///
+    /// Creates a temporary context clone, runs the render closure in measurement
+    /// mode, and returns the resulting height. The current context is not modified.
+    ///
+    /// - Parameter render: Closure that renders content into the temporary context.
+    /// - Returns: The measured content height.
+    public mutating func measureContentHeight(
+        _ render: (inout PDF.HTML.Context) -> Void
+    ) -> PDF.UserSpace.Height {
+        let snapshot = Snapshot(from: pdf)
+        let configuration = configuration
+        let pendingBottomMargin = pendingBottomMargin
+
+        return pdf.measure { measureContext in
+            var tempContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+            tempContext.pendingBottomMargin = pendingBottomMargin
+            snapshot.restore(to: &tempContext.pdf)
+            render(&tempContext)
+            tempContext.pdf.flushInlineRuns()
+            measureContext.layoutBox.lly = tempContext.pdf.layoutBox.lly
+        }
     }
 }
 
