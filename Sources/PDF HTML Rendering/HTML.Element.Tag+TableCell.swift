@@ -163,8 +163,8 @@ extension HTML.Element.Tag {
 
             // Calculate actual content height used
             let contentEndY = context.pdf.layoutBox.lly
-            // Convert Dy (displacement) to Height (extent) - in PDF Y goes up, so content going down gives negative Dy
-            actualContentHeight = PDF.UserSpace.Height(abs(contentEndY.rawValue - contentStartY.rawValue))
+            // Affine subtraction: Y - Y = Dy, then convert to Height and take absolute value
+            actualContentHeight = height(contentEndY - contentStartY).magnitude
 
             // Update max cell height and store pending border
             context.with(\.table) { tc in

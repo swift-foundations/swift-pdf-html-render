@@ -338,7 +338,7 @@ extension PDF.HTML {
 
             // Apply CSS Box Model
             // Margin: Apply vertical margins to Y position, horizontal margins to layout bounds
-            if let marginTop = context.pdf.marginTop, marginTop.rawValue > 0 {
+            if let marginTop = context.pdf.marginTop, marginTop > .zero {
                 context.pdf.advance(marginTop)
             }
             if let marginLeft = context.pdf.marginLeft {
@@ -349,7 +349,7 @@ extension PDF.HTML {
             }
 
             // Padding: Inset the layout box for content
-            if let paddingTop = context.pdf.paddingTop, paddingTop.rawValue > 0 {
+            if let paddingTop = context.pdf.paddingTop, paddingTop > .zero {
                 context.pdf.advance(paddingTop)
             }
             if let paddingLeft = context.pdf.paddingLeft {
@@ -435,10 +435,10 @@ extension PDF.HTML {
             }
 
             // Apply bottom padding and margin after content renders
-            if let paddingBottom = context.pdf.paddingBottom, paddingBottom.rawValue > 0 {
+            if let paddingBottom = context.pdf.paddingBottom, paddingBottom > .zero {
                 context.pdf.advance(paddingBottom)
             }
-            if let marginBottom = context.pdf.marginBottom, marginBottom.rawValue > 0 {
+            if let marginBottom = context.pdf.marginBottom, marginBottom > .zero {
                 context.pdf.advance(marginBottom)
             }
         }
