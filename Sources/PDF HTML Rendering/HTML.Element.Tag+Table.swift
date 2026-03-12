@@ -120,7 +120,7 @@ extension HTML.Element.Tag {
                 for run in runs {
                     context.pdf.append(inline: run)
                 }
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
 
                 // Restore context state
                 context.pdf.style = savedStyle

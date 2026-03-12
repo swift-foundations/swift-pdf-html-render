@@ -96,7 +96,7 @@ extension HTML.Element.Tag {
                 verticalOffset: context.pdf.style.verticalOffset
             )
             context.pdf.append(inline: run)
-            context.pdf.flushInlineRuns()
+            context.pdf.flush.inline()
 
             context.pdf.style = savedStyle
             context.pdf.layoutBox = savedLayoutBox

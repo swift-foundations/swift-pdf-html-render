@@ -79,7 +79,7 @@ extension PDF.HTML.Context {
     ) {
         // Flush pending inline content
         if pdf.hasInlineRuns {
-            pdf.flushInlineRuns()
+            pdf.flush.inline()
         }
 
         // CSS margin collapse: use larger of adjacent margins
@@ -162,7 +162,7 @@ extension PDF.HTML.Context {
             tempContext.pendingBottomMargin = pendingBottomMargin
             snapshot.restore(to: &tempContext.pdf)
             render(&tempContext)
-            tempContext.pdf.flushInlineRuns()
+            tempContext.pdf.flush.inline()
             measureContext.layoutBox.lly = tempContext.pdf.layoutBox.lly
         }
     }

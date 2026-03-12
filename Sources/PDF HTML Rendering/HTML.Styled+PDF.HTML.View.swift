@@ -65,8 +65,8 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 }
 
                 let pageContentHeight = context.configuration.content.height
-                if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
-                    context.pdf.startNewPage()
+                if context.pdf.page.exceeds(adding: measuredHeight) && measuredHeight <= pageContentHeight {
+                    context.pdf.page.new()
                 }
             }
 
@@ -84,7 +84,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                             existingDeferred.render(&ctx)
                             snapshot.restore(to: &ctx.pdf)
                             Content._render(view.content, context: &ctx)
-                            ctx.pdf.flushInlineRuns()
+                            ctx.pdf.flush.inline()
                         },
                         measuredHeight: combinedHeight
                     )
@@ -93,7 +93,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                         render: { ctx in
                             snapshot.restore(to: &ctx.pdf)
                             Content._render(view.content, context: &ctx)
-                            ctx.pdf.flushInlineRuns()
+                            ctx.pdf.flush.inline()
                         },
                         measuredHeight: measuredHeight
                     )
@@ -102,8 +102,8 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 Content._render(view.content, context: &context)
 
                 if breakFlags.forceAfter {
-                    context.pdf.flushInlineRuns()
-                    context.pdf.startNewPage()
+                    context.pdf.flush.inline()
+                    context.pdf.page.new()
                 }
             }
 

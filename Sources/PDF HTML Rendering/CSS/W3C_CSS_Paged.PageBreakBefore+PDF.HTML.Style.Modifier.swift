@@ -10,14 +10,14 @@ extension W3C_CSS_Paged.PageBreakBefore: PDF.HTML.Style.Modifier {
         switch self {
         case .always:
             // Force a page break before this element
-            context.startNewPage()
+            context.page.new()
         case .auto, .avoid:
             // auto: let the layout decide
             // avoid: try to keep with previous content (no action needed here)
             break
         case .left, .right:
             // Left/right page breaks - for now, treat as regular page break
-            context.startNewPage()
+            context.page.new()
         case .global:
             // Global CSS values (inherit, initial, etc.) - use default behavior
             break

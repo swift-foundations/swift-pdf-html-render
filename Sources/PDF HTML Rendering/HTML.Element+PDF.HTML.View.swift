@@ -39,18 +39,18 @@ extension HTML.Element.Tag {
         switch view.tagName {
         case "br":
             // BR is inline, just flush and advance within the current block
-            context.pdf.flushInlineRuns()
-            context.pdf.advanceLine()
+            context.pdf.flush.inline()
+            context.pdf.advance.line()
         case "hr":
             // HR is block-level - flush inline runs first
             if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
             }
             let spacing = (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
             context.pdf.advance(spacing)
 
             let layoutBox = context.pdf.layoutBox
-            context.pdf.emitLine(
+            context.pdf.emit.line(
                 from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
                 to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
                 color: .gray(0.5),
@@ -185,9 +185,9 @@ extension HTML.Element.Tag {
             let totalNeeded = deferred.measuredHeight + minContentHeight
 
             // Check if header + minimum content fits on current page
-            if context.pdf.wouldExceedPage(adding: totalNeeded) {
+            if context.pdf.page.exceeds(adding: totalNeeded) {
                 // Start new page BEFORE rendering the header
-                context.pdf.startNewPage()
+                context.pdf.page.new()
             }
 
             // Now render the deferred header
@@ -216,7 +216,7 @@ extension HTML.Element.Tag {
         if isBlock {
             // Block elements must flush any pending inline content before rendering
             if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
             }
 
             // Only apply margin collapsing if this element has margins.
@@ -234,7 +234,7 @@ extension HTML.Element.Tag {
                 // If we don't check here, we might record page N but the heading renders on page N+1
                 let headingFontSize = context.configuration.headingSize(level: heading.level)
                 let headingLineHeight = (headingFontSize * context.pdf.style.lineHeight).height
-                context.pdf.checkPageBreak(needing: headingLineHeight)
+                context.pdf.page.ensure(height: headingLineHeight)
 
                 // Use completedPages.count + 1 for correct 1-indexed page number
                 // pages.count includes current page if non-empty, which would overcount

@@ -48,8 +48,8 @@ extension HTML.Element.Tag {
 
         // BEFORE page break: if we would exceed the page AND have already rendered rows,
         // draw the fragment's right and bottom borders to close this page's fragment.
-        // We must do this BEFORE checkPageBreak since we can't draw on previous pages after.
-        let willPageBreak = context.pdf.wouldExceedPage(adding: totalNeeded)
+        // We must do this BEFORE page.ensure since we can't draw on previous pages after.
+        let willPageBreak = context.pdf.page.exceeds(adding: totalNeeded)
         if willPageBreak && tableCtx.columnsInitialized && tableCtx.totalRowsRendered > 0 {
             // Draw fragment borders for the portion on this page
             drawFragmentRightAndBottomBorders(
@@ -61,7 +61,7 @@ extension HTML.Element.Tag {
         }
 
         // Check if row (plus header if needed) fits on current page
-        let didPageBreak = context.pdf.checkPageBreak(needing: totalNeeded)
+        let didPageBreak = context.pdf.page.ensure(height: totalNeeded)
 
         // After page break, reset fragment tracking BEFORE repeating headers
         // so the fragment includes the repeated header row
@@ -189,7 +189,7 @@ extension HTML.Element.Tag {
 
         // Flush any pending inline content
         if context.pdf.hasInlineRuns {
-            context.pdf.flushInlineRuns()
+            context.pdf.flush.inline()
         }
 
         // Get actual row height (max of all cells, minimum single line)

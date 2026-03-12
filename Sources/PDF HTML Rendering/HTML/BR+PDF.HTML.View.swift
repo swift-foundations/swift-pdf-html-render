@@ -14,13 +14,13 @@ extension BR: PDF.HTML.View {
         let hadContent = !context.pdf.inlineRuns.isEmpty
 
         // Flush any pending inline runs to render current line
-        // Note: flushInlineRuns calls advanceLine() for each rendered line
-        context.pdf.flushInlineRuns()
+        // Note: flush.inline() calls advance.line() for each rendered line
+        context.pdf.flush.inline()
 
         // Only advance if there was no content to flush (BR at start of line)
         // If content was flushed, it already advanced to a new line
         if !hadContent {
-            context.pdf.advanceLine()
+            context.pdf.advance.line()
         }
     }
 }

@@ -12,7 +12,7 @@ extension ThematicBreak: PDF.HTML.View {
     ) {
         // Flush any pending inline runs (HR is block-level)
         if context.pdf.hasInlineRuns {
-            context.pdf.flushInlineRuns()
+            context.pdf.flush.inline()
         }
 
         // Add spacing before the rule
@@ -24,7 +24,7 @@ extension ThematicBreak: PDF.HTML.View {
         let startX = context.pdf.layoutBox.llx
         let endX = startX + context.pdf.layoutBox.width
 
-        context.pdf.emitLine(
+        context.pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: startX, y: lineY),
             to: PDF.UserSpace.Coordinate(x: endX, y: lineY),
             color: .gray(0.5),

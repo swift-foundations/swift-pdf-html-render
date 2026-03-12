@@ -32,7 +32,7 @@ extension PDF.HTML {
             context.deferredKeepWithNextRender = nil
             deferred.render(&context)
         }
-        context.pdf.flushInlineRuns()
+        context.pdf.flush.inline()
 
         let resolvedPages = PDF.Context.resolveInternalLinks(
             pages: context.pdf.pages,

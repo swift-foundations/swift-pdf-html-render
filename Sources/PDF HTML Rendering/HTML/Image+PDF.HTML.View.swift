@@ -14,7 +14,7 @@ extension Image: PDF.HTML.View {
     ) {
         // Flush any pending inline runs (img is inline-block by default)
         if context.pdf.hasInlineRuns {
-            context.pdf.flushInlineRuns()
+            context.pdf.flush.inline()
         }
 
         // Get src attribute - view.src is a Src type, need to get its rawValue
@@ -58,7 +58,7 @@ extension Image: PDF.HTML.View {
         )
 
         // Check for page break
-        context.pdf.checkPageBreak(needing: displaySize.height)
+        context.pdf.page.ensure(height: displaySize.height)
 
         // Create rectangle for image placement
         let imageRect = PDF.UserSpace.Rectangle(
@@ -69,7 +69,7 @@ extension Image: PDF.HTML.View {
         )
 
         // Emit the image
-        context.pdf.emitImage(pdfImage, in: imageRect)
+        context.pdf.emit.image(pdfImage, in: imageRect)
 
         // Advance Y position
         context.pdf.advance(displaySize.height)
@@ -94,7 +94,7 @@ extension Image: PDF.HTML.View {
                 fontSize: context.pdf.style.fontSize,
                 color: context.pdf.style.color
             ))
-            context.pdf.flushInlineRuns()
+            context.pdf.flush.inline()
 
             context.pdf.style = savedStyle
         }

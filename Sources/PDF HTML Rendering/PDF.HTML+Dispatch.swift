@@ -109,8 +109,8 @@ extension PDF.HTML {
                 context.attributes = saved
 
             case .forcePageBreak:
-                context.pdf.flushInlineRuns()
-                context.pdf.startNewPage()
+                context.pdf.flush.inline()
+                context.pdf.page.new()
 
             case .render(let value):
                 // Phase 0: Tuple — push children (absorbs renderTupleIteratively)
@@ -372,8 +372,8 @@ extension PDF.HTML {
 
                 // If it won't fit on current page but would fit on a fresh page, break before
                 let pageContentHeight = context.configuration.content.height
-                if context.pdf.wouldExceedPage(adding: measuredHeight) && measuredHeight <= pageContentHeight {
-                    context.pdf.startNewPage()
+                if context.pdf.page.exceeds(adding: measuredHeight) && measuredHeight <= pageContentHeight {
+                    context.pdf.page.new()
                 }
             }
 
@@ -391,7 +391,7 @@ extension PDF.HTML {
                             existingDeferred.render(&ctx)
                             snapshot.restore(to: &ctx.pdf)
                             innermostStyled.renderWrappedContent(context: &ctx)
-                            ctx.pdf.flushInlineRuns()
+                            ctx.pdf.flush.inline()
                         },
                         measuredHeight: combinedHeight
                     )
@@ -400,7 +400,7 @@ extension PDF.HTML {
                         render: { ctx in
                             snapshot.restore(to: &ctx.pdf)
                             innermostStyled.renderWrappedContent(context: &ctx)
-                            ctx.pdf.flushInlineRuns()
+                            ctx.pdf.flush.inline()
                         },
                         measuredHeight: measuredHeight
                     )
@@ -411,8 +411,8 @@ extension PDF.HTML {
 
                 // Handle break-after: always/page
                 if breakFlags.forceAfter {
-                    context.pdf.flushInlineRuns()
-                    context.pdf.startNewPage()
+                    context.pdf.flush.inline()
+                    context.pdf.page.new()
                 }
             }
 

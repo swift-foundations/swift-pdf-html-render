@@ -159,7 +159,7 @@ extension HTML.Element.Tag {
 
             // Flush any pending inline content
             if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
             }
 
             // Calculate actual content height used

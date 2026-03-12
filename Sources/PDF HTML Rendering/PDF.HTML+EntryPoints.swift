@@ -91,7 +91,7 @@ extension PDF.HTML {
             pass1Context.deferredKeepWithNextRender = nil
             deferred.render(&pass1Context)
         }
-        pass1Context.pdf.flushInlineRuns()
+        pass1Context.pdf.flush.inline()
 
         let totalPages = pass1Context.pdf.pages.count
         let pageSectionTitles = pass1Context.section.pageTitles
@@ -123,7 +123,7 @@ extension PDF.HTML {
 
             var headerHTMLContext = PDF.HTML.Context(pdf: headerContext, configuration: configuration)
             renderHTMLView(header(pageInfo), context: &headerHTMLContext)
-            headerHTMLContext.pdf.flushInlineRuns()
+            headerHTMLContext.pdf.flush.inline()
 
             // Create a single-page context for footer
             var footerContext = PDF.Context(
@@ -139,7 +139,7 @@ extension PDF.HTML {
 
             var footerHTMLContext = PDF.HTML.Context(pdf: footerContext, configuration: configuration)
             renderHTMLView(footer(pageInfo), context: &footerHTMLContext)
-            footerHTMLContext.pdf.flushInlineRuns()
+            footerHTMLContext.pdf.flush.inline()
 
             // Combine: get content page, header content, footer content
             let contentPage = pass1Context.pdf.pages[pageNumber - 1]

@@ -60,6 +60,9 @@ extension Target.Dependency {
     static var stackPrimitives: Self {
         .product(name: "Stack Primitives", package: "swift-stack-primitives")
     }
+    static var propertyPrimitives: Self {
+        .product(name: "Property Primitives", package: "swift-property-primitives")
+    }
 }
 
 let package = Package(
@@ -89,6 +92,7 @@ let package = Package(
         .package(path: "../../swift-primitives/swift-layout-primitives"),
         .package(path: "../../swift-primitives/swift-dictionary-primitives"),
         .package(path: "../../swift-primitives/swift-stack-primitives"),
+        .package(path: "../../swift-primitives/swift-property-primitives"),
     ],
     targets: [
         .target(
@@ -107,6 +111,7 @@ let package = Package(
                 .layoutPrimitives,
                 .dictionaryPrimitives,
                 .stackPrimitives,
+                .propertyPrimitives,
             ]
         ),
         .target(

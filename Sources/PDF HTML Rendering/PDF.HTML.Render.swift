@@ -16,7 +16,7 @@ extension PDF.HTML {
             afterSpacing: PDF.UserSpace.Height = .init(0)
         ) {
             if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
             }
 
             if beforeSpacing > .init(0) {
@@ -28,7 +28,7 @@ extension PDF.HTML {
             }
 
             if context.pdf.hasInlineRuns {
-                context.pdf.flushInlineRuns()
+                context.pdf.flush.inline()
             }
 
             if afterSpacing > .init(0) {
@@ -60,13 +60,13 @@ extension PDF.HTML {
                 context: inout PDF.HTML.Context
             ) {
                 if context.pdf.hasInlineRuns {
-                    context.pdf.flushInlineRuns()
+                    context.pdf.flush.inline()
                 }
 
                 PDF.HTML.renderHTMLView(content, context: &context)
 
                 if context.pdf.hasInlineRuns {
-                    context.pdf.flushInlineRuns()
+                    context.pdf.flush.inline()
                 }
             }
 

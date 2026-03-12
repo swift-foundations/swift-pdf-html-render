@@ -13,11 +13,11 @@ extension W3C_CSS_Multicolumn.BreakBefore: PDF.HTML.Style.Modifier {
         switch self {
         // Force page break values
         case .always, .all, .page:
-            context.startNewPage()
+            context.page.new()
         case .left, .right, .recto, .verso:
             // Left/right/recto/verso page breaks - for now, treat as regular page break
             // Full implementation would need to track odd/even pages
-            context.startNewPage()
+            context.page.new()
 
         // Avoid values - try to keep with previous content
         // Similar to legacy PageBreakBefore.avoid - no action needed

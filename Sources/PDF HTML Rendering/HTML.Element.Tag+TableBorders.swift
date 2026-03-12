@@ -18,7 +18,7 @@ extension HTML.Element.Tag {
         let width = tableCtx.borderWidth.width
 
         // Draw left edge (from lower-left to upper-left)
-        context.pdf.emitLine(
+        context.pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
             to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
             color: color,
@@ -26,7 +26,7 @@ extension HTML.Element.Tag {
         )
 
         // Draw top edge (from lower-left to lower-right)
-        context.pdf.emitLine(
+        context.pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
             to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
             color: color,
@@ -52,7 +52,7 @@ extension HTML.Element.Tag {
         let tableBounds = tableCtx.bounds
 
         // Draw right edge (from fragment top to fragment bottom)
-        context.pdf.emitLine(
+        context.pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentStartY),
             to: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentEndY),
             color: color,
@@ -60,7 +60,7 @@ extension HTML.Element.Tag {
         )
 
         // Draw bottom edge (from table left to table right)
-        context.pdf.emitLine(
+        context.pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: tableBounds.llx, y: fragmentEndY),
             to: PDF.UserSpace.Coordinate(x: tableBounds.urx, y: fragmentEndY),
             color: color,
@@ -92,7 +92,7 @@ extension HTML.Element.Tag {
         // Inset by half the border width so border covers background edge cleanly
         let insetX = borderWidth.width / 2
         let insetY = borderWidth.height / 2
-        context.pdf.emitRectangle(
+        context.pdf.emit.rectangle(
             bounds.insetBy(dx: insetX, dy: insetY),
             fill: color,
             stroke: nil
