@@ -3,6 +3,7 @@
 
 import Dimension_Primitives
 import Geometry_Primitives
+import Layout_Primitives
 import PDF_Rendering
 import PDF_Standard
 public import W3C_CSS_Text

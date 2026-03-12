@@ -2,6 +2,7 @@
 // Table cell rendering (td and th)
 
 import HTML_Renderable
+import Layout_Primitives
 import PDF_Rendering
 
 extension HTML.Element.Tag {

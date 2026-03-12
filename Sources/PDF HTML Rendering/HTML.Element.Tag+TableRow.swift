@@ -2,6 +2,7 @@
 // Table row rendering with page break handling and header repetition
 
 import HTML_Renderable
+import Layout_Primitives
 import PDF_Rendering
 
 extension HTML.Element.Tag {

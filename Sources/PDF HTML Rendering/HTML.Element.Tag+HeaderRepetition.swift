@@ -2,6 +2,7 @@
 // Table header repetition after page breaks
 
 import HTML_Renderable
+import Layout_Primitives
 import PDF_Rendering
 
 extension HTML.Element.Tag {
