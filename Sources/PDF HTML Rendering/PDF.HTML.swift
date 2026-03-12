@@ -581,6 +581,19 @@ extension PDF.HTML {
         // Save current style state - we'll restore after all nested styles
         let savedStyle = context.pdf.style
 
+        // Save box model state
+        let savedMarginTop = context.pdf.marginTop
+        let savedMarginRight = context.pdf.marginRight
+        let savedMarginBottom = context.pdf.marginBottom
+        let savedMarginLeft = context.pdf.marginLeft
+        let savedPaddingTop = context.pdf.paddingTop
+        let savedPaddingRight = context.pdf.paddingRight
+        let savedPaddingBottom = context.pdf.paddingBottom
+        let savedPaddingLeft = context.pdf.paddingLeft
+        let savedExplicitWidth = context.pdf.explicitWidth
+        let savedExplicitHeight = context.pdf.explicitHeight
+        let savedLayoutBox = context.pdf.layoutBox
+
         // Collect all consecutive HTML.Styled layers (avoid existential boxing by only casting to _HTMLStyledContent)
         var styledLayers: [any _HTMLStyledContent] = [initialStyled]
 
@@ -610,6 +623,49 @@ extension PDF.HTML {
         defer {
             // Restore style state after rendering content
             context.pdf.style = savedStyle
+
+            // Restore box model state
+            context.pdf.marginTop = savedMarginTop
+            context.pdf.marginRight = savedMarginRight
+            context.pdf.marginBottom = savedMarginBottom
+            context.pdf.marginLeft = savedMarginLeft
+            context.pdf.paddingTop = savedPaddingTop
+            context.pdf.paddingRight = savedPaddingRight
+            context.pdf.paddingBottom = savedPaddingBottom
+            context.pdf.paddingLeft = savedPaddingLeft
+            context.pdf.explicitWidth = savedExplicitWidth
+            context.pdf.explicitHeight = savedExplicitHeight
+            // Note: layoutBox is NOT restored - Y position should advance through content
+            context.pdf.layoutBox.llx = savedLayoutBox.llx
+            context.pdf.layoutBox.urx = savedLayoutBox.urx
+        }
+
+        // Apply CSS Box Model
+        // Margin: Apply vertical margins to Y position, horizontal margins to layout bounds
+        if let marginTop = context.pdf.marginTop, marginTop._rawValue > 0 {
+            context.pdf.advance(marginTop)
+        }
+        if let marginLeft = context.pdf.marginLeft {
+            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + marginLeft
+        }
+        if let marginRight = context.pdf.marginRight {
+            context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - marginRight
+        }
+
+        // Padding: Inset the layout box for content
+        if let paddingTop = context.pdf.paddingTop, paddingTop._rawValue > 0 {
+            context.pdf.advance(paddingTop)
+        }
+        if let paddingLeft = context.pdf.paddingLeft {
+            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + paddingLeft
+        }
+        if let paddingRight = context.pdf.paddingRight {
+            context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - paddingRight
+        }
+
+        // Explicit width/height constraints
+        if let explicitWidth = context.pdf.explicitWidth {
+            context.pdf.layoutBox.urx = context.pdf.layoutBox.llx + explicitWidth
         }
 
         // Handle break-inside: avoid
@@ -680,6 +736,14 @@ extension PDF.HTML {
                 context.pdf.flushInlineRuns()
                 context.pdf.startNewPage()
             }
+        }
+
+        // Apply bottom padding and margin after content renders
+        if let paddingBottom = context.pdf.paddingBottom, paddingBottom._rawValue > 0 {
+            context.pdf.advance(paddingBottom)
+        }
+        if let marginBottom = context.pdf.marginBottom, marginBottom._rawValue > 0 {
+            context.pdf.advance(marginBottom)
         }
     }
 }

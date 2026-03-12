@@ -1,7 +1,7 @@
 // TextAlign+PDF.HTML.StyleModifier.swift
 // CSS text-align property to PDF context translation
 
-import Layout
+import Layout_Primitives
 import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Text

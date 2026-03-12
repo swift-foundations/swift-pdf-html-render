@@ -3,7 +3,7 @@
 
 import Foundation
 import Testing
-import StandardsTestSupport
+import Test_Primitives
 import HTML_Rendering
 import PDF_Rendering
 @testable import PDF_HTML_Rendering

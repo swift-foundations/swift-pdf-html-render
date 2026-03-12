@@ -4,7 +4,7 @@
 import CSS_Standard
 import Dimension
 import HTML_Renderable
-import Layout
+import Layout_Primitives
 import PDF_Rendering
 import WHATWG_HTML
 

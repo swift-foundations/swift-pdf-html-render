@@ -6,7 +6,7 @@
 //
 
 import HTML_Renderable
-import Layout
+import Layout_Primitives
 import OrderedCollections
 import PDF_Rendering
 import Rendering
