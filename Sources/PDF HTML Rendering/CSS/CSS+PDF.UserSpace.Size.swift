@@ -1,9 +1,5 @@
-//
-//  CSS+PDF.UserSpace.Size.swift
-//  swift-pdf-html-rendering
-//
-//  Created by Coen ten Thije Boonkkamp on 12/12/2025.
-//
+// CSS+PDF.UserSpace.Size.swift
+// CSS length/percentage to PDF UserSpace size conversion
 
 import CSS_Standard
 import Dimension_Primitives

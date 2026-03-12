@@ -90,7 +90,7 @@ extension PDF.HTML {
     ///
     /// `Tag._render` and `_renderElementDynamically` are **terminal operations** from
     /// the worklist's perspective. They handle their own children with their own `defer`
-    /// blocks. When they call `renderBlockDynamic` → `renderHTMLView`, a new worklist
+    /// blocks. When they call `Render.Dynamic.block` → `renderHTMLView`, a new worklist
     /// instance is created. This re-entry is bounded by HTML Tag element nesting depth,
     /// not by wrapper-chain depth or custom-view body expansion.
     private static func iterativeDispatch(
@@ -160,14 +160,12 @@ extension PDF.HTML {
                         current = c
                     }
 
-                    // Capture and reset break flags set by style modifiers
-                    let shouldForcePageBreakAfter = context.forcePageBreakAfter
-                    context.forcePageBreakAfter = false
+                    let breakFlags = context.captureBreakFlags()
 
                     // Post-visit: push in LIFO order —
                     // restore runs last, page break fires after content, content renders first
                     worklist.push(.restoreStyle(savedStyle))
-                    if shouldForcePageBreakAfter {
+                    if breakFlags.forceAfter {
                         worklist.push(.forcePageBreak)
                     }
                     worklist.push(.render(current))
@@ -269,15 +267,9 @@ extension PDF.HTML {
                     continue
                 }
 
-                if let optional = value as? any _OptionalContent {
-                    optional._renderOptionalDynamically(context: &context)
-                    continue
-                }
-
-                if let conditional = value as? any _ConditionalContent {
-                    conditional._renderConditionalDynamically(context: &context)
-                    continue
-                }
+                // _ConditionalContent and _OptionalContent Phase 2 casts removed:
+                // Phase 1 Mirror detection (isConditionalType, isOptionalType) catches
+                // all conditionals and optionals before Phase 2 is reached.
 
                 if let array = value as? any _ArrayContent {
                     array._renderArrayDynamically(context: &context)
@@ -334,17 +326,14 @@ extension PDF.HTML {
             // The last element in styledLayers has the innermost non-styled content
             let innermostStyled = styledLayers[styledLayers.count - 1]
 
-            // Apply all styles in order (outermost to innermost)
-            var shouldAvoidPageBreakAfter = false
-            var shouldForcePageBreakAfter = false
-            var shouldAvoidPageBreakInside = false
-
+            // Apply all styles in order (outermost to innermost),
+            // accumulating break flags — any layer requesting a flag wins
+            var breakFlags = PDF.HTML.Context.BreakFlags.none
             for styled in styledLayers {
                 let flags = styled.applyStyle(to: &context)
-                // Accumulate break flags - any layer requesting it wins
-                if flags.avoidBreakAfter { shouldAvoidPageBreakAfter = true }
-                if flags.forceBreakAfter { shouldForcePageBreakAfter = true }
-                if flags.avoidBreakInside { shouldAvoidPageBreakInside = true }
+                if flags.avoidAfter { breakFlags.avoidAfter = true }
+                if flags.forceAfter { breakFlags.forceAfter = true }
+                if flags.avoidInside { breakFlags.avoidInside = true }
             }
 
             // Apply CSS Box Model
@@ -376,7 +365,7 @@ extension PDF.HTML {
             }
 
             // Handle break-inside: avoid
-            if shouldAvoidPageBreakInside {
+            if breakFlags.avoidInside {
                 let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
                 let configuration = context.configuration
                 let pendingBottomMargin = context.pendingBottomMargin
@@ -399,7 +388,7 @@ extension PDF.HTML {
             }
 
             // Handle break-after: avoid (sticky header behavior)
-            if shouldAvoidPageBreakAfter {
+            if breakFlags.avoidAfter {
                 let snapshot = PDF.HTML.Context.Snapshot(from: context.pdf)
                 let configuration = context.configuration
                 let pendingBottomMargin = context.pendingBottomMargin
@@ -439,7 +428,7 @@ extension PDF.HTML {
                 innermostStyled.renderWrappedContent(context: &context)
 
                 // Handle break-after: always/page
-                if shouldForcePageBreakAfter {
+                if breakFlags.forceAfter {
                     context.pdf.flushInlineRuns()
                     context.pdf.startNewPage()
                 }

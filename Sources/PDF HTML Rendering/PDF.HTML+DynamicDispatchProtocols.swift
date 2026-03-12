@@ -1,20 +1,26 @@
 // PDF.HTML+DynamicDispatchProtocols.swift
 // Package protocols enabling dynamic dispatch for result builder types
 
-import Dictionary_Primitives
 import HTML_Renderable
 
 // MARK: - Dynamic Dispatch Support Protocols
+//
+// These protocols work around Swift's limitation where `as?` casts fail for
+// conditional conformances on deeply nested generic types (SIGBUS in
+// `swift_conformsToProtocolMaybeInstantiateSuperclasses`).
+//
+// Protocols removed as dead code (2026-03-12):
+// - _TupleContent: replaced by Rendering._TupleMarker (Phase 0)
+// - _ConditionalContent: replaced by Mirror-based isConditionalType (Phase 1)
+// - _OptionalContent: replaced by Mirror-based isOptionalType (Phase 1)
 
-/// Internal protocol to enable dynamic dispatch for _Tuple without variadic constraints.
+/// Marker protocol for HTML.AnyView dynamic dispatch.
 ///
-/// This works around Swift's limitation where runtime existential casts (`as? any Protocol`)
-/// don't work correctly for conditional conformances on variadic generics.
-package protocol _TupleContent {
-    /// Render each element of the tuple using dynamic dispatch.
-    func _renderEachElementDynamically(context: inout PDF.HTML.Context)
-    /// Collect each element of the tuple into a flat collection for iterative rendering.
-    func _collectElements(into collection: inout [Any])
+/// HTML.AnyView does NOT conform to PDF.HTML.View (would cause infinite recursion).
+/// Instead, the worklist interpreter uses this protocol for terminal dispatch.
+package protocol _AnyViewContent {
+    /// Render the wrapped view using dynamic dispatch.
+    func _renderAnyViewDynamically(context: inout PDF.HTML.Context)
 }
 
 /// Marker protocol for HTML.Element.Tag dynamic dispatch.
@@ -34,18 +40,12 @@ package protocol _HTMLRawContent {}
 
 /// Marker protocol for HTML.Styled dynamic dispatch.
 ///
-/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
-/// conditional conformances like `HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View`.
+/// Used by `renderFlattenedStyledContent` to iteratively peel consecutive
+/// Styled layers and apply their properties without stack overflow.
 package protocol _HTMLStyledContent {
-    /// Render this styled content using dynamic dispatch for the wrapped content.
-    func _renderStyledDynamically(context: inout PDF.HTML.Context)
-
-    /// The CSS property to apply (may be nil).
-    var styledProperty: Any? { get }
-
     /// Apply this styled element's property to the context.
-    /// Returns flags for break handling.
-    func applyStyle(to context: inout PDF.HTML.Context) -> (avoidBreakAfter: Bool, forceBreakAfter: Bool, avoidBreakInside: Bool)
+    /// Returns captured break flags.
+    func applyStyle(to context: inout PDF.HTML.Context) -> PDF.HTML.Context.BreakFlags
 
     /// Get the wrapped content as _HTMLStyledContent if it is one (avoids existential boxing).
     var wrappedStyledContent: (any _HTMLStyledContent)? { get }
@@ -54,29 +54,11 @@ package protocol _HTMLStyledContent {
     func renderWrappedContent(context: inout PDF.HTML.Context)
 }
 
-/// Marker protocol for _Conditional dynamic dispatch.
-///
-/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
-/// conditional conformances like `_Conditional: PDF.HTML.View where First: PDF.HTML.View, Second: PDF.HTML.View`.
-package protocol _ConditionalContent {
-    /// Render the active branch of this conditional using dynamic dispatch.
-    func _renderConditionalDynamically(context: inout PDF.HTML.Context)
-}
-
 /// Marker protocol for _Array dynamic dispatch.
 ///
-/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
-/// conditional conformances like `_Array: PDF.HTML.View where Element: PDF.HTML.View`.
+/// Arrays have no Mirror-based detection in Phase 1, so this protocol
+/// is essential for Phase 2 `as?` dispatch.
 package protocol _ArrayContent {
     /// Render all elements in the array using dynamic dispatch.
     func _renderArrayDynamically(context: inout PDF.HTML.Context)
-}
-
-/// Marker protocol for Optional dynamic dispatch.
-///
-/// Works around Swift's limitation where `as? any PDF.HTML.View` fails for
-/// conditional conformances like `Optional: PDF.HTML.View where Wrapped: PDF.HTML.View`.
-package protocol _OptionalContent {
-    /// Render the optional's wrapped value if present, using dynamic dispatch.
-    func _renderOptionalDynamically(context: inout PDF.HTML.Context)
 }

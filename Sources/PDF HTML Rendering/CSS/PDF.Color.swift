@@ -1,9 +1,5 @@
-//
-//  File.swift
-//  swift-pdf-html-rendering
-//
-//  Created by Coen ten Thije Boonkkamp on 04/12/2025.
-//
+// PDF.Color.swift
+// CSS color to PDF color conversion
 
 import CSS_Standard
 public import W3C_CSS_Values

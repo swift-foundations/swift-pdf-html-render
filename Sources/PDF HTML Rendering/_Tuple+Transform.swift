@@ -20,20 +20,6 @@ extension Rendering._Tuple: PDF.HTML.View where repeat each Content: PDF.HTML.Vi
     }
 }
 
-// MARK: - Dynamic Dispatch Support (for runtime type checking fallback)
-
-extension Rendering._Tuple: _TupleContent where repeat each Content: HTML.View {
-    public func _renderEachElementDynamically(context: inout PDF.HTML.Context) {
-        func renderElement<T: HTML.View>(_ element: T) {
-            PDF.HTML.renderHTMLView(element, context: &context)
-        }
-        repeat renderElement(each content)
-    }
-
-    public func _collectElements(into collection: inout [Any]) {
-        func collect<T: HTML.View>(_ element: T) {
-            collection.append(element)
-        }
-        repeat collect(each content)
-    }
-}
+// Dynamic dispatch: Tuple element collection is provided by Rendering._TupleMarker
+// conformance in swift-rendering-primitives. Phase 0 of the worklist interpreter
+// uses `as? any Rendering._TupleMarker` → `_collectElements(into:)` directly.

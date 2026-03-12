@@ -22,15 +22,6 @@ where First: PDF.HTML.View, Second: PDF.HTML.View {
     }
 }
 
-// MARK: - Dynamic Dispatch Support
-
-extension Rendering._Conditional: _ConditionalContent where First: HTML.View, Second: HTML.View {
-    public func _renderConditionalDynamically(context: inout PDF.HTML.Context) {
-        switch self {
-        case .first(let first):
-            PDF.HTML.renderHTMLView(first, context: &context)
-        case .second(let second):
-            PDF.HTML.renderHTMLView(second, context: &context)
-        }
-    }
-}
+// Dynamic dispatch: _Conditional is detected by Phase 1 Mirror-based
+// isConditionalType (enum with "first"/"second" children). The worklist
+// extracts the active case and pushes it as .render(child.value).

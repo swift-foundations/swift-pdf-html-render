@@ -1,9 +1,5 @@
-//
-//  File.swift
-//  swift-pdf-html-rendering
-//
-//  Created by Coen ten Thije Boonkkamp on 10/12/2025.
-//
+// PDF.HTML.Context.swift
+// Combined rendering context for HTML-to-PDF conversion
 
 import Copy_on_Write
 public import Dictionary_Primitives
@@ -38,99 +34,58 @@ extension PDF.HTML {
         /// Used by table cell rendering to extract colspan/rowspan values.
         public var attributes: Dictionary<String, String>.Ordered = .init()
 
-        /// Current link URL for text being rendered inside an anchor element.
-        ///
-        /// Set by `Anchor+PDF.HTML.View` when rendering anchor content.
-        /// Used by `String+PDF.HTML.View` to pass URL to TextRun for PDF annotations.
-        public var currentLinkURL: String?
+        // MARK: - Link Tracking
 
-        /// Current internal link target ID for text being rendered inside an anchor element.
-        ///
-        /// Set when rendering `<a href="#section-id">` links. The ID is stored without the # prefix.
-        /// Used to create pending internal links that are resolved after rendering completes.
-        public var currentInternalLinkId: String?
+        /// Link state: URLs, internal link targets, named destinations.
+        public var link: Link = .init()
+
+        // MARK: - Block Flow
 
         /// Pending bottom margin from previous block element (for margin collapsing).
-        ///
-        /// In CSS, adjacent vertical margins collapse - only the larger margin is used.
-        /// This tracks the bottom margin of the previous block element so it can be
-        /// collapsed with the top margin of the next block element.
         public var pendingBottomMargin: PDF.UserSpace.Height = .init(0)
 
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
-        ///
-        /// When an element with `page-break-after: avoid` is encountered, instead of
-        /// rendering immediately, we store a closure that will render the element.
-        /// When the next block element is rendered, we check if the deferred header
-        /// plus at least one line of content fits on the current page. If not, we
-        /// start a new page before rendering the deferred content.
         public var deferredKeepWithNextRender: DeferredRender?
 
-        /// Flag indicating the current element should avoid page break after it.
-        /// Set by `page-break-after: avoid` or `break-after: avoid` CSS property.
+        /// Break flags set by `HTMLContextStyleModifier.apply(to:)`.
+        ///
+        /// Callers capture and reset via `captureBreakFlags()`.
         public var avoidPageBreakAfter: Bool = false
-
-        /// Flag indicating a page break should be forced after the current element.
-        /// Set by `break-after: always/page` or similar CSS properties.
         public var forcePageBreakAfter: Bool = false
-
-        /// Flag indicating breaks should be avoided inside the current element.
-        /// Set by `page-break-inside: avoid` or `break-inside: avoid` CSS property.
         public var avoidPageBreakInside: Bool = false
 
-        // MARK: - Section Tracking (for headers/footers)
+        // MARK: - Section Tracking
 
-        /// Current section title (from most recent H1-H3 heading)
-        public var currentSectionTitle: String?
-
-        /// Section titles at the start of each page (page number -> section title)
-        /// Populated during rendering when headings are encountered.
-        public var pageSectionTitles: [Int: String] = [:]
-
-        /// Collected heading entries for bookmark generation
-        public var collectedHeadings: [HeadingEntry] = []
-
-        // MARK: - Anchor Tracking (for internal links)
-
-        /// Named destinations for internal links (id -> page/position)
-        public var namedDestinations: [String: DestinationInfo] = [:]
-
-        /// Pending internal links to resolve (href="#id" links)
-        public var pendingInternalLinks: [PendingInternalLink] = []
+        /// Section and heading state for headers/footers and bookmarks.
+        public var section: Section = .init()
     }
 }
 
-// MARK: - Heading Entry for Bookmarks
+// MARK: - Link Sub-Context
 
 extension PDF.HTML.Context {
-    /// Entry for a heading collected during rendering
-    public struct HeadingEntry: Sendable {
-        /// Heading level (1-6)
-        public let level: Int
-        /// Heading text
-        public let text: String
-        /// Page number where heading appears (1-indexed)
-        public let pageNumber: Int
-        /// Y position on the page
-        public let yPosition: PDF.UserSpace.Y
+    /// Grouped link tracking state.
+    public struct Link: Sendable {
+        /// Current link URL for text being rendered inside an anchor element.
+        public var currentURL: String?
 
-        public init(level: Int, text: String, pageNumber: Int, yPosition: PDF.UserSpace.Y) {
-            self.level = level
-            self.text = text
-            self.pageNumber = pageNumber
-            self.yPosition = yPosition
-        }
+        /// Current internal link target ID (without # prefix).
+        public var currentInternalId: String?
+
+        /// Named destinations for internal links (id -> page/position).
+        public var destinations: [String: Destination] = [:]
+
+        /// Pending internal links to resolve after rendering.
+        public var pending: [Pending] = []
+
+        public init() {}
     }
 }
 
-// MARK: - Destination Info for Internal Links
-
-extension PDF.HTML.Context {
-    /// Information about a named destination (anchor target)
-    public struct DestinationInfo: Sendable {
-        /// Page number where the destination is (1-indexed)
+extension PDF.HTML.Context.Link {
+    /// Information about a named destination (anchor target).
+    public struct Destination: Sendable {
         public let pageNumber: Int
-        /// Y position on the page
         public let yPosition: PDF.UserSpace.Y
 
         public init(pageNumber: Int, yPosition: PDF.UserSpace.Y) {
@@ -139,19 +94,51 @@ extension PDF.HTML.Context {
         }
     }
 
-    /// A pending internal link that needs to be resolved
-    public struct PendingInternalLink: Sendable {
-        /// The target anchor id (without #)
+    /// A pending internal link that needs to be resolved.
+    public struct Pending: Sendable {
         public let targetId: String
-        /// Page number where the link is
         public let pageNumber: Int
-        /// Bounds of the link annotation
         public let bounds: PDF.UserSpace.Rectangle
 
         public init(targetId: String, pageNumber: Int, bounds: PDF.UserSpace.Rectangle) {
             self.targetId = targetId
             self.pageNumber = pageNumber
             self.bounds = bounds
+        }
+    }
+}
+
+// MARK: - Section Sub-Context
+
+extension PDF.HTML.Context {
+    /// Grouped section and heading tracking state.
+    public struct Section: Sendable {
+        /// Current section title (from most recent H1-H3 heading).
+        public var currentTitle: String?
+
+        /// Section titles at the start of each page (page number -> title).
+        public var pageTitles: [Int: String] = [:]
+
+        /// Collected heading entries for bookmark generation.
+        public var headings: [HeadingEntry] = []
+
+        public init() {}
+    }
+}
+
+extension PDF.HTML.Context.Section {
+    /// Entry for a heading collected during rendering.
+    public struct HeadingEntry: Sendable {
+        public let level: Int
+        public let text: String
+        public let pageNumber: Int
+        public let yPosition: PDF.UserSpace.Y
+
+        public init(level: Int, text: String, pageNumber: Int, yPosition: PDF.UserSpace.Y) {
+            self.level = level
+            self.text = text
+            self.pageNumber = pageNumber
+            self.yPosition = yPosition
         }
     }
 }
@@ -230,6 +217,38 @@ extension PDF.HTML.Context {
         public let measuredHeight: PDF.UserSpace.Height
     }
 
+}
+
+// MARK: - Break Flag Capture
+
+extension PDF.HTML.Context {
+    /// Captured break flags from style modifier application.
+    ///
+    /// Style modifiers communicate break intent by setting flags on the context.
+    /// `captureBreakFlags()` atomically reads and resets them, returning this value.
+    public struct BreakFlags: Sendable {
+        public var avoidAfter: Bool
+        public var forceAfter: Bool
+        public var avoidInside: Bool
+
+        public static let none = BreakFlags(avoidAfter: false, forceAfter: false, avoidInside: false)
+    }
+
+    /// Capture and reset all break flags set by style modifiers.
+    ///
+    /// This centralizes the set-check-reset pattern used after applying
+    /// `HTMLContextStyleModifier` properties.
+    public mutating func captureBreakFlags() -> BreakFlags {
+        let flags = BreakFlags(
+            avoidAfter: avoidPageBreakAfter,
+            forceAfter: forcePageBreakAfter,
+            avoidInside: avoidPageBreakInside
+        )
+        avoidPageBreakAfter = false
+        forcePageBreakAfter = false
+        avoidPageBreakInside = false
+        return flags
+    }
 }
 
 // MARK: - Scoped Style State

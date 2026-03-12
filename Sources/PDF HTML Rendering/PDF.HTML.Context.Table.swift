@@ -1,9 +1,5 @@
-//
-//  File.swift
-//  swift-pdf-html-rendering
-//
-//  Created by Coen ten Thije Boonkkamp on 10/12/2025.
-//
+// PDF.HTML.Context.Table.swift
+// Table layout context and state management
 
 import HTML_Renderable
 import Layout_Primitives

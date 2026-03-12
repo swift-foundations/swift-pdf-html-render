@@ -7,12 +7,6 @@ import PDF_Rendering
 // Note: HTML.AnyView does NOT conform to PDF.HTML.View to avoid infinite recursion.
 // Instead, it's handled specially in renderHTMLView via _AnyViewContent protocol.
 
-/// Marker protocol for HTML.AnyView dynamic dispatch.
-package protocol _AnyViewContent {
-    /// Render the wrapped view using dynamic dispatch.
-    func _renderAnyViewDynamically(context: inout PDF.HTML.Context)
-}
-
 extension HTML.AnyView: _AnyViewContent {
     public func _renderAnyViewDynamically(context: inout PDF.HTML.Context) {
         // Use dynamic dispatch to handle the wrapped type

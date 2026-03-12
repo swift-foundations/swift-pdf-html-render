@@ -94,8 +94,8 @@ extension PDF.HTML {
         pass1Context.pdf.flushInlineRuns()
 
         let totalPages = pass1Context.pdf.pages.count
-        let pageSectionTitles = pass1Context.pageSectionTitles
-        let collectedHeadings = pass1Context.collectedHeadings
+        let pageSectionTitles = pass1Context.section.pageTitles
+        let collectedHeadings = pass1Context.section.headings
 
         // PASS 2: Render again with headers and footers
         // For each page, we render: header area, content area, footer area

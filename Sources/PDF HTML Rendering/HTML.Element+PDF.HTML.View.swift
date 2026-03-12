@@ -19,8 +19,8 @@ extension HTML.Element.Tag: PDF.HTML.View where Content: PDF.HTML.View {
         renderTag(
             view,
             context: &context,
-            renderBlock: { content, ctx in PDF.HTML.renderBlock(content, context: &ctx) },
-            renderInline: { content, ctx in PDF.HTML.renderInline(content, context: &ctx) }
+            renderBlock: { content, ctx in PDF.HTML.Render.block(content, context: &ctx) },
+            renderInline: { content, ctx in PDF.HTML.Render.inline(content, context: &ctx) }
         )
     }
 }
@@ -93,16 +93,16 @@ extension HTML.Element.Tag {
         let savedLLX = context.pdf.layoutBox.llx
         let savedURX = context.pdf.layoutBox.urx
         let savedPreserveWhitespace = context.pdf.preserveWhitespace
-        let savedLinkURL = context.currentLinkURL
-        let savedInternalLinkId = context.currentInternalLinkId
+        let savedLinkURL = context.link.currentURL
+        let savedInternalLinkId = context.link.currentInternalId
 
         defer {
             context.pdf.style = savedStyle
             context.pdf.layoutBox.llx = savedLLX
             context.pdf.layoutBox.urx = savedURX
             context.pdf.preserveWhitespace = savedPreserveWhitespace
-            context.currentLinkURL = savedLinkURL
-            context.currentInternalLinkId = savedInternalLinkId
+            context.link.currentURL = savedLinkURL
+            context.link.currentInternalId = savedInternalLinkId
         }
 
         // Apply tag-specific style BEFORE calculating margins
@@ -123,10 +123,10 @@ extension HTML.Element.Tag {
             if let href = context.attributes["href"] {
                 if href.hasPrefix("#") {
                     // Internal link - store the target ID (without #)
-                    context.currentInternalLinkId = String(href.dropFirst())
+                    context.link.currentInternalId = String(href.dropFirst())
                 } else {
                     // External link - store the full URL
-                    context.currentLinkURL = href
+                    context.link.currentURL = href
                 }
             }
         }
@@ -137,7 +137,7 @@ extension HTML.Element.Tag {
             // pages.count includes current page if non-empty, which would overcount
             let pageNumber = context.pdf.completedPages.count + 1
             let yPosition = context.pdf.layoutBox.lly
-            context.namedDestinations[elementId] = PDF.HTML.Context.DestinationInfo(
+            context.link.destinations[elementId] = PDF.HTML.Context.Link.Destination(
                 pageNumber: pageNumber,
                 yPosition: yPosition
             )
@@ -241,7 +241,7 @@ extension HTML.Element.Tag {
                 let pageNumber = context.pdf.completedPages.count + 1
                 let yPosition = context.pdf.layoutBox.lly
 
-                context.collectedHeadings.append(PDF.HTML.Context.HeadingEntry(
+                context.section.headings.append(PDF.HTML.Context.Section.HeadingEntry(
                     level: heading.level,
                     text: heading.text,
                     pageNumber: pageNumber,
@@ -250,9 +250,9 @@ extension HTML.Element.Tag {
 
                 // For H1-H3, update section tracking for headers/footers
                 if heading.level <= 3 {
-                    context.currentSectionTitle = heading.text
-                    if context.pageSectionTitles[pageNumber] == nil {
-                        context.pageSectionTitles[pageNumber] = heading.text
+                    context.section.currentTitle = heading.text
+                    if context.section.pageTitles[pageNumber] == nil {
+                        context.section.pageTitles[pageNumber] = heading.text
                     }
                 }
             }
@@ -389,14 +389,14 @@ extension HTML.Element.Tag {
 /// when `Content` doesn't statically conform to `PDF.HTML.View` but is an `HTML.View`.
 ///
 /// This mirrors the static dispatch `_render` method but uses dynamic dispatch helpers
-/// (`renderBlockDynamic`, `renderInlineDynamic`) for content rendering.
+/// (`Render.Dynamic.block`, `Render.Dynamic.inline`) for content rendering.
 extension HTML.Element.Tag: _HTMLElementContent where Content: HTML.View {
     public func _renderElementDynamically(context: inout PDF.HTML.Context) {
         Self.renderTag(
             self,
             context: &context,
-            renderBlock: { content, ctx in PDF.HTML.renderBlockDynamic(content, context: &ctx) },
-            renderInline: { content, ctx in PDF.HTML.renderInlineDynamic(content, context: &ctx) }
+            renderBlock: { content, ctx in PDF.HTML.Render.Dynamic.block(content, context: &ctx) },
+            renderInline: { content, ctx in PDF.HTML.Render.Dynamic.inline(content, context: &ctx) }
         )
     }
 }

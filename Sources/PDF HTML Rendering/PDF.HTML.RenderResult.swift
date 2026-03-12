@@ -29,9 +29,9 @@ extension PDF.HTML {
         /// The rendered PDF pages
         public let pages: [PDF.Page]
         /// Collected headings for outline/bookmark generation
-        public let headings: [Context.HeadingEntry]
+        public let headings: [Context.Section.HeadingEntry]
         /// Named destinations for internal links
-        public let namedDestinations: [String: Context.DestinationInfo]
+        public let namedDestinations: [String: Context.Link.Destination]
     }
 
     /// Finalize rendering: flush deferred content, resolve internal links, return result.
@@ -47,14 +47,14 @@ extension PDF.HTML {
         let resolvedPages = PDF.Context.resolveInternalLinks(
             pages: context.pdf.pages,
             pendingLinks: context.pdf.pendingInternalLinks,
-            namedDestinations: context.namedDestinations.mapValues { dest in
+            namedDestinations: context.link.destinations.mapValues { dest in
                 (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
             }
         )
         return RenderResult(
             pages: resolvedPages,
-            headings: context.collectedHeadings,
-            namedDestinations: context.namedDestinations
+            headings: context.section.headings,
+            namedDestinations: context.link.destinations
         )
     }
 }

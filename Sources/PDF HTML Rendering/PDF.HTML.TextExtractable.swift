@@ -3,14 +3,16 @@
 
 // MARK: - Text Extraction Protocol (Performance Optimization)
 
-/// Protocol for types that can efficiently extract text for PDF table headers.
-/// Conforming to this protocol avoids expensive Mirror reflection.
-public protocol PDFTextExtractable {
-    /// The extracted text content for PDF rendering
-    var pdfExtractedText: String { get }
+extension PDF.HTML {
+    /// Protocol for types that can efficiently extract text for PDF table headers.
+    /// Conforming to this protocol avoids expensive Mirror reflection.
+    public protocol TextExtractable {
+        /// The extracted text content for PDF rendering
+        var pdfExtractedText: String { get }
+    }
 }
 
-extension String: PDFTextExtractable {
+extension String: PDF.HTML.TextExtractable {
     @inlinable
     public var pdfExtractedText: String { self }
 }
@@ -20,8 +22,8 @@ extension String: PDFTextExtractable {
 extension HTML.Element.Tag {
     /// Extract plain text content from cell for header repetition
     static func extractCellText<CellContent>(from content: CellContent) -> String {
-        // Fast path: Check PDFTextExtractable protocol (avoids Mirror reflection)
-        if let extractable = content as? PDFTextExtractable {
+        // Fast path: Check TextExtractable protocol (avoids Mirror reflection)
+        if let extractable = content as? PDF.HTML.TextExtractable {
             return extractable.pdfExtractedText
         }
 
@@ -31,7 +33,7 @@ extension HTML.Element.Tag {
         // Check for HTML.Element or other containers with text
         for child in mirror.children {
             // Check protocol first for child values
-            if let extractable = child.value as? PDFTextExtractable {
+            if let extractable = child.value as? PDF.HTML.TextExtractable {
                 return extractable.pdfExtractedText
             }
             // Recursively check nested content (using Any to avoid generic issues)
@@ -52,15 +54,15 @@ extension HTML.Element.Tag {
 
     /// Helper to extract text from Any type
     static func extractCellTextFromAny(_ value: Any) -> String {
-        // Fast path: Check PDFTextExtractable protocol (avoids Mirror reflection)
-        if let extractable = value as? PDFTextExtractable {
+        // Fast path: Check TextExtractable protocol (avoids Mirror reflection)
+        if let extractable = value as? PDF.HTML.TextExtractable {
             return extractable.pdfExtractedText
         }
 
         // Fallback to Mirror
         let mirror = Mirror(reflecting: value)
         for child in mirror.children {
-            if let extractable = child.value as? PDFTextExtractable {
+            if let extractable = child.value as? PDF.HTML.TextExtractable {
                 return extractable.pdfExtractedText
             }
             let nested = extractCellTextFromAny(child.value)

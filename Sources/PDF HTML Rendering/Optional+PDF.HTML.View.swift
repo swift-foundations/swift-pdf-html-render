@@ -18,12 +18,6 @@ extension Optional: PDF.HTML.View where Wrapped: PDF.HTML.View {
     }
 }
 
-// MARK: - Dynamic Dispatch Support
-
-extension Optional: _OptionalContent where Wrapped: HTML.View {
-    public func _renderOptionalDynamically(context: inout PDF.HTML.Context) {
-        if let wrapped = self {
-            PDF.HTML.renderHTMLView(wrapped, context: &context)
-        }
-    }
-}
+// Dynamic dispatch: Optional is detected by Phase 1 Mirror-based
+// isOptionalType (.optional display style). The worklist extracts
+// the .some value and pushes it as .render(child.value).
