@@ -8,7 +8,7 @@
 import PDF_Rendering
 public import W3C_CSS_Multicolumn
 
-extension W3C_CSS_Multicolumn.BreakInside: PDF.HTML.HTMLContextStyleModifier {
+extension W3C_CSS_Multicolumn.BreakInside: PDF.HTML.ContextStyleModifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         // Avoid values → prevent element from splitting across pages

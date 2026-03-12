@@ -45,9 +45,9 @@ extension PDF.HTML {
         public var pendingBottomMargin: PDF.UserSpace.Height = .init(0)
 
         /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
-        public var deferredKeepWithNextRender: DeferredRender?
+        public var deferredKeepWithNextRender: Deferred?
 
-        /// Break flags set by `HTMLContextStyleModifier.apply(to:)`.
+        /// Break flags set by `ContextStyleModifier.apply(to:)`.
         ///
         /// Callers capture and reset via `captureBreakFlags()`.
         public var avoidPageBreakAfter: Bool = false
@@ -61,87 +61,7 @@ extension PDF.HTML {
     }
 }
 
-// MARK: - Link Sub-Context
-
-extension PDF.HTML.Context {
-    /// Grouped link tracking state.
-    public struct Link: Sendable {
-        /// Current link URL for text being rendered inside an anchor element.
-        public var currentURL: String?
-
-        /// Current internal link target ID (without # prefix).
-        public var currentInternalId: String?
-
-        /// Named destinations for internal links (id -> page/position).
-        public var destinations: [String: Destination] = [:]
-
-        /// Pending internal links to resolve after rendering.
-        public var pending: [Pending] = []
-
-        public init() {}
-    }
-}
-
-extension PDF.HTML.Context.Link {
-    /// Information about a named destination (anchor target).
-    public struct Destination: Sendable {
-        public let pageNumber: Int
-        public let yPosition: PDF.UserSpace.Y
-
-        public init(pageNumber: Int, yPosition: PDF.UserSpace.Y) {
-            self.pageNumber = pageNumber
-            self.yPosition = yPosition
-        }
-    }
-
-    /// A pending internal link that needs to be resolved.
-    public struct Pending: Sendable {
-        public let targetId: String
-        public let pageNumber: Int
-        public let bounds: PDF.UserSpace.Rectangle
-
-        public init(targetId: String, pageNumber: Int, bounds: PDF.UserSpace.Rectangle) {
-            self.targetId = targetId
-            self.pageNumber = pageNumber
-            self.bounds = bounds
-        }
-    }
-}
-
-// MARK: - Section Sub-Context
-
-extension PDF.HTML.Context {
-    /// Grouped section and heading tracking state.
-    public struct Section: Sendable {
-        /// Current section title (from most recent H1-H3 heading).
-        public var currentTitle: String?
-
-        /// Section titles at the start of each page (page number -> title).
-        public var pageTitles: [Int: String] = [:]
-
-        /// Collected heading entries for bookmark generation.
-        public var headings: [HeadingEntry] = []
-
-        public init() {}
-    }
-}
-
-extension PDF.HTML.Context.Section {
-    /// Entry for a heading collected during rendering.
-    public struct HeadingEntry: Sendable {
-        public let level: Int
-        public let text: String
-        public let pageNumber: Int
-        public let yPosition: PDF.UserSpace.Y
-
-        public init(level: Int, text: String, pageNumber: Int, yPosition: PDF.UserSpace.Y) {
-            self.level = level
-            self.text = text
-            self.pageNumber = pageNumber
-            self.yPosition = yPosition
-        }
-    }
-}
+// MARK: - Margin Collapsing
 
 extension PDF.HTML.Context {
     /// Apply collapsed margin between blocks.
@@ -183,63 +103,15 @@ extension PDF.HTML.Context {
     }
 }
 
-extension PDF.HTML.Context {
-    /// Snapshot of PDF context state for restoration during deferred rendering
-    ///
-    /// **Important**: Only captures and restores **style** (font, color, etc.),
-    /// NOT the layout position. The deferred content should render at the
-    /// current Y position when the closure executes, not where the header
-    /// was originally encountered.
-    public struct Snapshot: Sendable {
-        public let style: PDF.Context.Style.Resolved
-
-        public init(from context: PDF.Context) {
-            self.style = context.style
-        }
-
-        public func restore(to context: inout PDF.Context) {
-            context.style = style
-            // NOTE: Do NOT restore layoutBox - the deferred content should
-            // render at the current position, not the original position
-        }
-    }
-
-}
-extension PDF.HTML.Context {
-    /// Deferred render operation for sticky headers
-    public struct DeferredRender: @unchecked Sendable {
-        /// Closure that renders the deferred content
-        ///
-        /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
-        /// The closure captures generic view types that aren't Sendable.
-        public let render: (inout PDF.HTML.Context) -> Void
-        /// Measured height of the deferred content
-        public let measuredHeight: PDF.UserSpace.Height
-    }
-
-}
-
 // MARK: - Break Flag Capture
 
 extension PDF.HTML.Context {
-    /// Captured break flags from style modifier application.
-    ///
-    /// Style modifiers communicate break intent by setting flags on the context.
-    /// `captureBreakFlags()` atomically reads and resets them, returning this value.
-    public struct BreakFlags: Sendable {
-        public var avoidAfter: Bool
-        public var forceAfter: Bool
-        public var avoidInside: Bool
-
-        public static let none = BreakFlags(avoidAfter: false, forceAfter: false, avoidInside: false)
-    }
-
     /// Capture and reset all break flags set by style modifiers.
     ///
     /// This centralizes the set-check-reset pattern used after applying
-    /// `HTMLContextStyleModifier` properties.
-    public mutating func captureBreakFlags() -> BreakFlags {
-        let flags = BreakFlags(
+    /// `ContextStyleModifier` properties.
+    public mutating func captureBreakFlags() -> Break {
+        let flags = Break(
             avoidAfter: avoidPageBreakAfter,
             forceAfter: forcePageBreakAfter,
             avoidInside: avoidPageBreakInside
@@ -262,35 +134,9 @@ extension PDF.HTML.Context {
     public mutating func withSavedStyleState(
         _ body: (inout PDF.HTML.Context) -> Void
     ) {
-        let savedStyle = pdf.style
-        let savedMarginTop = pdf.marginTop
-        let savedMarginRight = pdf.marginRight
-        let savedMarginBottom = pdf.marginBottom
-        let savedMarginLeft = pdf.marginLeft
-        let savedPaddingTop = pdf.paddingTop
-        let savedPaddingRight = pdf.paddingRight
-        let savedPaddingBottom = pdf.paddingBottom
-        let savedPaddingLeft = pdf.paddingLeft
-        let savedExplicitWidth = pdf.explicitWidth
-        let savedExplicitHeight = pdf.explicitHeight
-        let savedLayoutBox = pdf.layoutBox
-
+        let snapshot = StyleSnapshot(from: self)
         body(&self)
-
-        pdf.style = savedStyle
-        pdf.marginTop = savedMarginTop
-        pdf.marginRight = savedMarginRight
-        pdf.marginBottom = savedMarginBottom
-        pdf.marginLeft = savedMarginLeft
-        pdf.paddingTop = savedPaddingTop
-        pdf.paddingRight = savedPaddingRight
-        pdf.paddingBottom = savedPaddingBottom
-        pdf.paddingLeft = savedPaddingLeft
-        pdf.explicitWidth = savedExplicitWidth
-        pdf.explicitHeight = savedExplicitHeight
-        // Y position advances through content — only restore X bounds
-        pdf.layoutBox.llx = savedLayoutBox.llx
-        pdf.layoutBox.urx = savedLayoutBox.urx
+        snapshot.restore(to: &self)
     }
 }
 

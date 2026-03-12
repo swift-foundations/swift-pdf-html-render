@@ -8,7 +8,7 @@
 import PDF_Rendering
 public import W3C_CSS_Paged
 
-extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.HTMLContextStyleModifier {
+extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.ContextStyleModifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         case .avoid:

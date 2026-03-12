@@ -5,7 +5,7 @@ import PDF_Rendering
 import PDF_Standard
 public import W3C_CSS_Paged
 
-extension W3C_CSS_Paged.PageBreakAfter: PDF.HTML.HTMLContextStyleModifier {
+extension W3C_CSS_Paged.PageBreakAfter: PDF.HTML.ContextStyleModifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         case .avoid:

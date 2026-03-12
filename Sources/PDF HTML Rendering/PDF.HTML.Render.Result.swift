@@ -1,4 +1,4 @@
-// PDF.HTML.RenderResult.swift
+// PDF.HTML.Render.Result.swift
 // Shared rendering infrastructure and result type
 
 import PDF_Rendering
@@ -24,20 +24,10 @@ extension PDF.HTML {
         return PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
     }
 
-    /// Result of rendering HTML to PDF, including collected metadata for outlines.
-    public struct RenderResult: Sendable {
-        /// The rendered PDF pages
-        public let pages: [PDF.Page]
-        /// Collected headings for outline/bookmark generation
-        public let headings: [Context.Section.HeadingEntry]
-        /// Named destinations for internal links
-        public let namedDestinations: [String: Context.Link.Destination]
-    }
-
     /// Finalize rendering: flush deferred content, resolve internal links, return result.
     static func finalizeRendering(
         context: inout PDF.HTML.Context
-    ) -> RenderResult {
+    ) -> Render.Result {
         if let deferred = context.deferredKeepWithNextRender {
             context.deferredKeepWithNextRender = nil
             deferred.render(&context)
@@ -51,10 +41,24 @@ extension PDF.HTML {
                 (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
             }
         )
-        return RenderResult(
+        return Render.Result(
             pages: resolvedPages,
             headings: context.section.headings,
             namedDestinations: context.link.destinations
         )
+    }
+}
+
+// MARK: - Render Result
+
+extension PDF.HTML.Render {
+    /// Result of rendering HTML to PDF, including collected metadata for outlines.
+    public struct Result: Sendable {
+        /// The rendered PDF pages
+        public let pages: [PDF.Page]
+        /// Collected headings for outline/bookmark generation
+        public let headings: [PDF.HTML.Context.Section.HeadingEntry]
+        /// Named destinations for internal links
+        public let namedDestinations: [String: PDF.HTML.Context.Link.Destination]
     }
 }

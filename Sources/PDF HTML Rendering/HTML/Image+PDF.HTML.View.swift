@@ -88,7 +88,7 @@ extension Image: PDF.HTML.View {
 
             // Create a text run for the alt text
             let altBytes = [UInt8](winAnsi: "[\(altValue)]", withFallback: true)
-            context.pdf.append(inline: PDF.Context.TextRun(
+            context.pdf.append(inline: PDF.Context.Text.Run(
                 bytes: altBytes,
                 font: context.pdf.style.font,
                 fontSize: context.pdf.style.fontSize,

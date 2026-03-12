@@ -85,8 +85,8 @@ extension HTML.Element.Tag {
                 height: cellContentHeight
             )
 
-            // Render header text using TextRun
-            let run = PDF.Context.TextRun(
+            // Render header text using Text.Run
+            let run = PDF.Context.Text.Run(
                 text: headerCell.text,
                 font: context.pdf.style.font,
                 fontSize: context.pdf.style.fontSize,

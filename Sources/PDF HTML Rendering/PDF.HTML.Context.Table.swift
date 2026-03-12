@@ -75,88 +75,7 @@ extension PDF.HTML.Context {
         // MARK: - Span Tracking
 
         /// Grid tracking cells occupied by rowspan/colspan
-        public var spans: SpanGrid = .init()
-
-        /// Tracks which cells are occupied by rowspan/colspan from other cells
-        public struct SpanGrid: Sendable {
-            /// `grid[row][column]` is non-nil if that cell is occupied by a spanning cell
-            private var grid: [[CellSpan?]] = []
-
-            /// Pre-allocate the grid for known dimensions
-            /// Call this when table dimensions are known to avoid dynamic growth during rendering
-            public mutating func preallocate(rows: Int, columns: Int) {
-                guard rows > 0 && columns > 0 else { return }
-                grid = Array(repeating: Array(repeating: nil, count: columns), count: rows)
-            }
-
-            /// Information about a cell span occupying grid positions
-            public struct CellSpan: Sendable {
-                /// Row where the spanning cell originates
-                public let originRow: Int
-                /// Column where the spanning cell originates
-                public let originColumn: Int
-                /// Number of rows the cell spans
-                public let rowSpan: Int
-                /// Number of columns the cell spans
-                public let colSpan: Int
-
-                public init(originRow: Int, originColumn: Int, rowSpan: Int, colSpan: Int) {
-                    self.originRow = originRow
-                    self.originColumn = originColumn
-                    self.rowSpan = rowSpan
-                    self.colSpan = colSpan
-                }
-            }
-
-            /// Check if a cell position is occupied by a span from another cell
-            public func isOccupied(row: Int, column: Int) -> Bool {
-                guard row < grid.count, column < grid[row].count else { return false }
-                return grid[row][column] != nil
-            }
-
-            /// Mark cells as occupied by a rowspan/colspan cell
-            public mutating func mark(
-                fromRow originRow: Int,
-                column originColumn: Int,
-                rowspan: Int,
-                colspan: Int,
-                columnCount: Int
-            ) {
-                let span = CellSpan(
-                    originRow: originRow,
-                    originColumn: originColumn,
-                    rowSpan: rowspan,
-                    colSpan: colspan
-                )
-
-                let requiredRows = originRow + rowspan
-
-                // Batch allocate missing rows (avoid repeated append)
-                if grid.count < requiredRows {
-                    grid.reserveCapacity(requiredRows)
-                    let missingRows = requiredRows - grid.count
-                    for _ in 0..<missingRows {
-                        grid.append(Array(repeating: nil, count: columnCount))
-                    }
-                }
-
-                // Mark all cells covered by this span (except the origin cell itself)
-                for r in originRow..<requiredRows {
-                    // Extend row to required column count if needed (single allocation)
-                    if grid[r].count < columnCount {
-                        grid[r].append(contentsOf: Array(repeating: nil, count: columnCount - grid[r].count))
-                    }
-
-                    for c in originColumn..<(originColumn + colspan) {
-                        // Skip the origin cell
-                        if r == originRow && c == originColumn { continue }
-                        if c < grid[r].count {
-                            grid[r][c] = span
-                        }
-                    }
-                }
-            }
-        }
+        public var spans: Grid = .init()
 
         // MARK: - Current Position
 
@@ -196,116 +115,15 @@ extension PDF.HTML.Context {
         public var maxCellHeightInCurrentRow: PDF.UserSpace.Height = PDF.UserSpace.Height(0)
 
         /// Pending cell borders to draw after content (so we know actual row height)
-        public struct PendingCellBorder {
-            let column: Int
-            let colspan: Int
-            let rowspan: Int
-            let isHeader: Bool
-            let textAlignment: Horizontal.Alignment
-        }
         public var pendingCellBorders: [PendingCellBorder] = []
 
         /// Deferred spanning cells (rowspan > 1) that need content + borders drawn after all rows
-        public struct DeferredSpanningCell {
-            /// Origin position in the table grid
-            public struct Origin {
-                let row: Int
-            }
-            let origin: Origin
-
-            let column: Int
-
-            /// Span configuration
-            public struct Span {
-                public struct Col {
-                    let span: Int
-                }
-                public struct Row {
-                    let span: Int
-                }
-                let col: Col
-                let row: Row
-            }
-            let span: Span
-
-            let isHeader: Bool
-
-            /// Cell bounds for border drawing (captured at cell creation time)
-            public struct Cell {
-                let x: PDF.UserSpace.X
-                let y: PDF.UserSpace.Y
-                let width: PDF.UserSpace.Width
-            }
-            let cell: Cell
-
-            /// Content bounds for text rendering
-            public struct Content {
-                let x: PDF.UserSpace.X
-                let width: PDF.UserSpace.Width
-            }
-            let content: Content
-
-            let savedStyle: PDF.Context.Style.Resolved
-            let text: String
-            let textAlignment: Horizontal.Alignment
-        }
-        public var deferredSpanningCells: [DeferredSpanningCell] = []
+        public var deferredSpanningCells: [Deferred] = []
 
         // MARK: - Repeating Headers on Page Break
 
         /// State for capturing and repeating table headers on page breaks
-        public var header: HeaderState = .init()
-
-        /// Manages header capture and repetition for multi-page tables
-        public struct HeaderState: Sendable {
-            /// A captured header cell for repetition
-            public struct Cell: Sendable {
-                public let text: String
-                public let colspan: Int
-
-                public init(text: String, colspan: Int = 1) {
-                    self.text = text
-                    self.colspan = colspan
-                }
-            }
-
-            /// Captured header cells (nil if no header in table)
-            public var cells: [Cell]?
-
-            /// Whether we're currently inside a thead section (capturing content)
-            public var isCapturing: Bool = false
-
-            /// Temporary storage for cells being captured during thead rendering
-            public var pendingCells: [Cell] = []
-
-            /// Height of the header row (for page break calculations)
-            public var rowHeight: PDF.UserSpace.Height = .zero
-
-            /// Returns true if there are captured header cells to repeat
-            public var hasHeader: Bool { cells != nil && !(cells?.isEmpty ?? true) }
-
-            /// Finalize capturing - move pending cells to captured cells
-            public mutating func finalizeCapture() {
-                if !pendingCells.isEmpty {
-                    cells = pendingCells
-                    pendingCells = []
-                }
-                isCapturing = false
-            }
-
-            /// Start capturing header cells
-            public mutating func startCapturing() {
-                isCapturing = true
-                pendingCells = []
-            }
-
-            /// Add a cell during capture
-            public mutating func addCell(_ cell: Cell) {
-                if isCapturing {
-                    pendingCells.append(cell)
-                }
-            }
-        }
+        public var header: Header = .init()
 
         /// Starting Y position of the table (for grid border drawing)
         public var tableStartY: PDF.UserSpace.Y = PDF.UserSpace.Y(0)
@@ -423,55 +241,6 @@ extension PDF.HTML.Context {
         /// ```
         public var cell: Cell {
             Cell(table: self, row: nil, column: nil, colspan: 1, rowspan: 1)
-        }
-
-        /// Cell accessor providing padding and positioned bounds/content
-        public struct Cell {
-            private let table: Table
-            private let row: Int?
-            private let column: Int?
-            private let colspan: Int
-            private let rowspan: Int
-
-            internal init(table: Table, row: Int?, column: Int?, colspan: Int, rowspan: Int) {
-                self.table = table
-                self.row = row
-                self.column = column
-                self.colspan = colspan
-                self.rowspan = rowspan
-            }
-
-            /// Cell padding
-            public var padding: PDF.UserSpace.Size<1> {
-                table._cellPadding
-            }
-
-            /// Get a positioned cell accessor
-            public func callAsFunction(
-                row: Int,
-                column: Int,
-                colspan: Int = 1,
-                rowspan: Int = 1
-            ) -> Cell {
-                Cell(table: table, row: row, column: column, colspan: colspan, rowspan: rowspan)
-            }
-
-            /// Cell bounds (full cell rectangle) - requires positioned cell
-            public var bounds: PDF.UserSpace.Rectangle {
-                guard let row, let column else {
-                    preconditionFailure("Cell must be positioned with cell(row:column:) to access bounds")
-                }
-                let x = table.xForColumn(column)
-                let y = table.yForRow(row)
-                let width = table.widthForColumns(column, count: colspan)
-                let height = table.heightForRows(row, count: rowspan)
-                return PDF.UserSpace.Rectangle(x: x, y: y, width: width, height: height)
-            }
-
-            /// Content bounds (cell bounds minus padding) - requires positioned cell
-            public var content: PDF.UserSpace.Rectangle {
-                bounds.insetBy(dx: table._cellPadding.width, dy: table._cellPadding.height)
-            }
         }
 
         /// Find the next available column in the current row (skipping spanned cells)

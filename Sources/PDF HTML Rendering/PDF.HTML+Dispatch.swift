@@ -328,7 +328,7 @@ extension PDF.HTML {
 
             // Apply all styles in order (outermost to innermost),
             // accumulating break flags — any layer requesting a flag wins
-            var breakFlags = PDF.HTML.Context.BreakFlags.none
+            var breakFlags = PDF.HTML.Context.Break.none
             for styled in styledLayers {
                 let flags = styled.applyStyle(to: &context)
                 if flags.avoidAfter { breakFlags.avoidAfter = true }
@@ -404,7 +404,7 @@ extension PDF.HTML {
 
                 if let existingDeferred = context.deferredKeepWithNextRender {
                     let combinedHeight = existingDeferred.measuredHeight + measuredHeight
-                    context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    context.deferredKeepWithNextRender = PDF.HTML.Context.Deferred(
                         render: { ctx in
                             existingDeferred.render(&ctx)
                             snapshot.restore(to: &ctx.pdf)
@@ -414,7 +414,7 @@ extension PDF.HTML {
                         measuredHeight: combinedHeight
                     )
                 } else {
-                    context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    context.deferredKeepWithNextRender = PDF.HTML.Context.Deferred(
                         render: { ctx in
                             snapshot.restore(to: &ctx.pdf)
                             innermostStyled.renderWrappedContent(context: &ctx)
@@ -454,8 +454,9 @@ extension PDF.HTML {
 // Used by the worklist interpreter's Phase 1 to detect wrappers BEFORE
 // Phase 2's `as?` casts.
 //
-// FRAGILITY WARNING: Depends on internal field names of types in
-// swift-html-rendering. If those field names change, this code will break.
+// WORKAROUND: Mirror-based type detection using internal field names
+// WHY: as? casts on deeply nested generic types crash with SIGBUS (Swift type metadata instantiation)
+// WHEN TO REMOVE: When Swift fixes type metadata instantiation for deeply nested generics
 
 extension PDF.HTML {
 
@@ -567,7 +568,7 @@ extension PDF.HTML {
             modifier.apply(to: &context.pdf, configuration: context.configuration)
         }
 
-        if let htmlModifier = unwrapped as? any PDF.HTML.HTMLContextStyleModifier {
+        if let htmlModifier = unwrapped as? any PDF.HTML.ContextStyleModifier {
             htmlModifier.apply(to: &context)
         }
     }

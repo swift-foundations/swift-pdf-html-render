@@ -21,7 +21,7 @@ extension PDF.HTML {
     public static func render<H: PDF.HTML.View>(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
-    ) -> RenderResult {
+    ) -> Render.Result {
         var context = prepareContext(configuration: configuration)
         H._render(html(), context: &context)
         return finalizeRendering(context: &context)
@@ -32,7 +32,7 @@ extension PDF.HTML {
     public static func render<H: HTML.View>(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
-    ) -> RenderResult {
+    ) -> Render.Result {
         var context = prepareContext(configuration: configuration)
         renderHTMLView(html(), context: &context)
         return finalizeRendering(context: &context)
@@ -67,8 +67,8 @@ extension PDF.HTML {
     /// - Returns: Array of PDF pages with headers and footers
     public static func pages<Content: PDF.HTML.View, Header: HTML.View, Footer: HTML.View>(
         configuration: PDF.HTML.Configuration,
-        @HTML.Builder header: @escaping (PageInfo) -> Header,
-        @HTML.Builder footer: @escaping (PageInfo) -> Footer,
+        @HTML.Builder header: @escaping (Page.Info) -> Header,
+        @HTML.Builder footer: @escaping (Page.Info) -> Footer,
         @HTML.Builder content: () -> Content
     ) -> [PDF.Page] {
         // Adjust margins to account for header/footer space
@@ -95,14 +95,13 @@ extension PDF.HTML {
 
         let totalPages = pass1Context.pdf.pages.count
         let pageSectionTitles = pass1Context.section.pageTitles
-        let collectedHeadings = pass1Context.section.headings
 
         // PASS 2: Render again with headers and footers
         // For each page, we render: header area, content area, footer area
         var finalPages: [PDF.Page] = []
 
         for pageNumber in 1...totalPages {
-            let pageInfo = PageInfo(
+            let pageInfo = Page.Info(
                 pageNumber: pageNumber,
                 totalPages: totalPages,
                 sectionTitle: pageSectionTitles[pageNumber],

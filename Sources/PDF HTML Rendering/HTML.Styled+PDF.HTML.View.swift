@@ -26,7 +26,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                 if let modifier = property as? any PDF.HTML.StyleModifier {
                     modifier.apply(to: &context.pdf, configuration: context.configuration)
                 }
-                if let htmlModifier = property as? any PDF.HTML.HTMLContextStyleModifier {
+                if let htmlModifier = property as? any PDF.HTML.ContextStyleModifier {
                     htmlModifier.apply(to: &context)
                 }
             }
@@ -96,7 +96,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
 
                 if let existingDeferred = context.deferredKeepWithNextRender {
                     let combinedHeight = existingDeferred.measuredHeight + measuredHeight
-                    context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    context.deferredKeepWithNextRender = PDF.HTML.Context.Deferred(
                         render: { ctx in
                             existingDeferred.render(&ctx)
                             snapshot.restore(to: &ctx.pdf)
@@ -106,7 +106,7 @@ extension HTML.Styled: PDF.HTML.View where Content: PDF.HTML.View {
                         measuredHeight: combinedHeight
                     )
                 } else {
-                    context.deferredKeepWithNextRender = PDF.HTML.Context.DeferredRender(
+                    context.deferredKeepWithNextRender = PDF.HTML.Context.Deferred(
                         render: { ctx in
                             snapshot.restore(to: &ctx.pdf)
                             Content._render(view.content, context: &ctx)
@@ -146,12 +146,12 @@ extension HTML.Styled: _HTMLStyledContent where Content: HTML.View {
         PDF.HTML.renderHTMLView(content, context: &context)
     }
 
-    public func applyStyle(to context: inout PDF.HTML.Context) -> PDF.HTML.Context.BreakFlags {
+    public func applyStyle(to context: inout PDF.HTML.Context) -> PDF.HTML.Context.Break {
         if let property = property {
             if let modifier = property as? any PDF.HTML.StyleModifier {
                 modifier.apply(to: &context.pdf, configuration: context.configuration)
             }
-            if let htmlModifier = property as? any PDF.HTML.HTMLContextStyleModifier {
+            if let htmlModifier = property as? any PDF.HTML.ContextStyleModifier {
                 htmlModifier.apply(to: &context)
             }
         }

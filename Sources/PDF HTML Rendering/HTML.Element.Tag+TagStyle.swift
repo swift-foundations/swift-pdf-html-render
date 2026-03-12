@@ -146,7 +146,7 @@ extension HTML.Element.Tag {
     }
 
     /// Get list type for a list container tag
-    static func listType(for tagName: String) -> PDF.Context.ListType? {
+    static func listType(for tagName: String) -> PDF.Context.List.Kind? {
         switch tagName {
         case "ol": return .ordered(startNumber: 1)
         case "ul": return .unordered

@@ -10,7 +10,7 @@ extension String: PDF.HTML.View {
     ) {
         // Create text runs with automatic symbol font support
         // This handles characters like ✓ by switching to ZapfDingbats
-        let runs = PDF.Context.TextRun.runsWithSymbolSupport(
+        let runs = PDF.Context.Text.Run.runsWithSymbolSupport(
             text: view,
             font: context.pdf.style.font,
             fontSize: context.pdf.style.fontSize,

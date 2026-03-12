@@ -354,7 +354,7 @@ extension HTML.Element.Tag {
             // Handle inline quotation (q) with curly quotes
             if view.tagName == "q" {
                 // Insert opening curly quote
-                let openQuote = PDF.Context.TextRun(
+                let openQuote = PDF.Context.Text.Run(
                     bytes: [0x93],  // LEFT DOUBLE QUOTATION MARK in WinAnsi
                     font: context.pdf.style.font,
                     fontSize: context.pdf.style.fontSize,
@@ -367,7 +367,7 @@ extension HTML.Element.Tag {
                 renderInline(view.content, &context)
 
                 // Insert closing curly quote
-                let closeQuote = PDF.Context.TextRun(
+                let closeQuote = PDF.Context.Text.Run(
                     bytes: [0x94],  // RIGHT DOUBLE QUOTATION MARK in WinAnsi
                     font: context.pdf.style.font,
                     fontSize: context.pdf.style.fontSize,

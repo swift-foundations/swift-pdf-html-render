@@ -108,7 +108,7 @@ extension HTML.Element.Tag {
                 )
 
                 // Render the deferred text content
-                let runs = PDF.Context.TextRun.runsWithSymbolSupport(
+                let runs = PDF.Context.Text.Run.runsWithSymbolSupport(
                     text: deferred.text,
                     font: deferred.savedStyle.font,
                     fontSize: deferred.savedStyle.fontSize,
