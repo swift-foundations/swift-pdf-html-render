@@ -44,7 +44,7 @@ extension HTML.Element.Tag {
         case "pre":
             context.pdf.style.font = .courier
             context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
-            context.pdf.preserveWhitespace = true
+            context.pdf.mode.preserveWhitespace = true
 
         // Text decoration
         case "s", "strike", "del":
@@ -80,11 +80,11 @@ extension HTML.Element.Tag {
         // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
             let indent = context.configuration.indent.blockquote
-            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + indent
+            context.pdf.layout.box.llx = context.pdf.layout.box.llx + indent
         case "figure":
             let margin = context.configuration.indent.figure
-            context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + margin
-            context.pdf.layoutBox.urx = context.pdf.layoutBox.urx - margin
+            context.pdf.layout.box.llx = context.pdf.layout.box.llx + margin
+            context.pdf.layout.box.urx = context.pdf.layout.box.urx - margin
 
         // Citation, definition, and variable (all italic in WebKit)
         case "cite", "dfn", "var":

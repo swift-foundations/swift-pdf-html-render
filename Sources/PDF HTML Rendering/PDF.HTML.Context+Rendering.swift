@@ -69,7 +69,7 @@ extension PDF.HTML.Context: Rendering.Context {
         pdf.flush.inline()
         let spacing = (configuration.defaultFontSize * configuration.horizontalGapEm).height
         pdf.advance(spacing)
-        let layoutBox = pdf.layoutBox
+        let layoutBox = pdf.layout.box
         pdf.emit.line(
             from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
             to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
@@ -212,7 +212,7 @@ extension PDF.HTML.Context: Rendering.Context {
         style: Rendering.Style
     ) {
         if record(.pushBlock(role: role, style: style), context: &context) { return }
-        if context.pdf.hasInlineRuns {
+        if context.pdf.inline.hasRuns {
             context.pdf.flush.inline()
         }
         PDF.Context._pushBlock(&context.pdf, role: role, style: style)
@@ -220,7 +220,7 @@ extension PDF.HTML.Context: Rendering.Context {
 
     public static func _popBlock(_ context: inout Self) {
         if record(.popBlock, context: &context) { return }
-        if context.pdf.hasInlineRuns {
+        if context.pdf.inline.hasRuns {
             context.pdf.flush.inline()
         }
         PDF.Context._popBlock(&context.pdf)
@@ -294,9 +294,9 @@ extension PDF.HTML.Context: Rendering.Context {
             tagName: "_attributes",
             isBlock: false,
             style: context.pdf.style,
-            llx: context.pdf.layoutBox.llx,
-            urx: context.pdf.layoutBox.urx,
-            preserveWhitespace: context.pdf.preserveWhitespace,
+            llx: context.pdf.layout.box.llx,
+            urx: context.pdf.layout.box.urx,
+            preserveWhitespace: context.pdf.mode.preserveWhitespace,
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: nil,
@@ -348,9 +348,9 @@ extension PDF.HTML.Context: Rendering.Context {
             tagName: tagName,
             isBlock: isBlock,
             style: context.pdf.style,
-            llx: context.pdf.layoutBox.llx,
-            urx: context.pdf.layoutBox.urx,
-            preserveWhitespace: context.pdf.preserveWhitespace,
+            llx: context.pdf.layout.box.llx,
+            urx: context.pdf.layout.box.urx,
+            preserveWhitespace: context.pdf.mode.preserveWhitespace,
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: tagName == "table" ? context.table : nil,
@@ -375,7 +375,7 @@ extension PDF.HTML.Context: Rendering.Context {
         // Handle named destinations (id attribute)
         if let elementId = context.attributes["id"], !elementId.isEmpty {
             let pageNumber = context.pdf.completedPages.count + 1
-            let yPosition = context.pdf.layoutBox.lly
+            let yPosition = context.pdf.layout.box.lly
             context.link.destinations[elementId] = PDF.HTML.Context.Link.Destination(
                 pageNumber: pageNumber,
                 yPosition: yPosition
@@ -383,12 +383,12 @@ extension PDF.HTML.Context: Rendering.Context {
         }
 
         if isBlock {
-            if context.pdf.hasInlineRuns {
+            if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
 
             // Block margins (CSS margin collapsing)
-            let isNestedList = (tagName == "ul" || tagName == "ol") && context.pdf.listDepth > 0
+            let isNestedList = (tagName == "ul" || tagName == "ol") && context.pdf.list.depth > 0
             if !isNestedList,
                let margins = HTML.Element.Tag<Never>.blockMargins(
                    for: tagName,
@@ -470,7 +470,7 @@ extension PDF.HTML.Context: Rendering.Context {
         if isBlock {
             popBlockElement(scope, context: &context)
 
-            if context.pdf.hasInlineRuns {
+            if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
         } else {
@@ -479,9 +479,9 @@ extension PDF.HTML.Context: Rendering.Context {
 
         // Restore element-scoped state
         context.pdf.style = scope.style
-        context.pdf.layoutBox.llx = scope.llx
-        context.pdf.layoutBox.urx = scope.urx
-        context.pdf.preserveWhitespace = scope.preserveWhitespace
+        context.pdf.layout.box.llx = scope.llx
+        context.pdf.layout.box.urx = scope.urx
+        context.pdf.mode.preserveWhitespace = scope.preserveWhitespace
         context.link.currentURL = scope.linkURL
         context.link.currentInternalId = scope.internalLinkId
     }
@@ -497,10 +497,10 @@ extension PDF.HTML.Context: Rendering.Context {
         if record(.popStyle, context: &context) { return }
 
         // Apply bottom padding and margin before restoring
-        if let paddingBottom = context.pdf.paddingBottom, paddingBottom > .zero {
+        if let paddingBottom = context.pdf.padding.bottom, paddingBottom > .zero {
             context.pdf.advance(paddingBottom)
         }
-        if let marginBottom = context.pdf.marginBottom, marginBottom > .zero {
+        if let marginBottom = context.pdf.margin.bottom, marginBottom > .zero {
             context.pdf.advance(marginBottom)
         }
 
@@ -525,26 +525,26 @@ extension PDF.HTML.Context {
     ///
     /// Called after style modifiers set margin/padding properties.
     mutating func applyBoxModel() {
-        if let marginTop = pdf.marginTop, marginTop > .zero {
+        if let marginTop = pdf.margin.top, marginTop > .zero {
             pdf.advance(marginTop)
         }
-        if let marginLeft = pdf.marginLeft {
-            pdf.layoutBox.llx = pdf.layoutBox.llx + marginLeft
+        if let marginLeft = pdf.margin.left {
+            pdf.layout.box.llx = pdf.layout.box.llx + marginLeft
         }
-        if let marginRight = pdf.marginRight {
-            pdf.layoutBox.urx = pdf.layoutBox.urx - marginRight
+        if let marginRight = pdf.margin.right {
+            pdf.layout.box.urx = pdf.layout.box.urx - marginRight
         }
-        if let paddingTop = pdf.paddingTop, paddingTop > .zero {
+        if let paddingTop = pdf.padding.top, paddingTop > .zero {
             pdf.advance(paddingTop)
         }
-        if let paddingLeft = pdf.paddingLeft {
-            pdf.layoutBox.llx = pdf.layoutBox.llx + paddingLeft
+        if let paddingLeft = pdf.padding.left {
+            pdf.layout.box.llx = pdf.layout.box.llx + paddingLeft
         }
-        if let paddingRight = pdf.paddingRight {
-            pdf.layoutBox.urx = pdf.layoutBox.urx - paddingRight
+        if let paddingRight = pdf.padding.right {
+            pdf.layout.box.urx = pdf.layout.box.urx - paddingRight
         }
-        if let explicitWidth = pdf.explicitWidth {
-            pdf.layoutBox.urx = pdf.layoutBox.llx + explicitWidth
+        if let explicitWidth = pdf.constraint.width {
+            pdf.layout.box.urx = pdf.layout.box.llx + explicitWidth
         }
     }
 }
@@ -561,12 +561,12 @@ extension PDF.HTML.Context {
             context.pdf.flush.inline()
             context.pdf.advance.line()
         case "hr":
-            if context.pdf.hasInlineRuns {
+            if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
             let spacing = (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
             context.pdf.advance(spacing)
-            let layoutBox = context.pdf.layoutBox
+            let layoutBox = context.pdf.layout.box
             context.pdf.emit.line(
                 from: PDF.UserSpace.Coordinate(x: layoutBox.llx, y: layoutBox.lly),
                 to: PDF.UserSpace.Coordinate(x: layoutBox.urx, y: layoutBox.lly),
@@ -591,11 +591,11 @@ extension PDF.HTML.Context {
         switch tagName {
         // Table elements — basic block fallback (proper table handling is TODO)
         case "table":
-            let tableStartY = context.pdf.layoutBox.lly
-            let availableWidth = context.pdf.layoutBox.width
+            let tableStartY = context.pdf.layout.box.lly
+            let availableWidth = context.pdf.layout.box.width
             let cellPadding = context.configuration.table.cell.padding
             let defaultRowHeight = context.pdf.style.line.height + cellPadding.height * 2
-            let tableX = context.pdf.layoutBox.llx
+            let tableX = context.pdf.layout.box.llx
             let tableBounds = PDF.UserSpace.Rectangle(
                 x: tableX,
                 y: tableStartY,
@@ -646,7 +646,7 @@ extension PDF.HTML.Context {
                     context.pdf.page.new()
 
                     // Update fragment tracking for new page
-                    let newY = context.pdf.layoutBox.lly
+                    let newY = context.pdf.layout.box.lly
                     tableCtx.currentFragmentStartY = newY
                     tableCtx.currentFragmentEndY = newY
                 }
@@ -656,14 +656,14 @@ extension PDF.HTML.Context {
                 tableCtx.pendingCellBorders = []
                 tableCtx.bounds = PDF.UserSpace.Rectangle(
                     x: tableCtx.bounds.llx,
-                    y: context.pdf.layoutBox.lly,
+                    y: context.pdf.layout.box.lly,
                     width: tableCtx.bounds.width,
                     height: rowHeight
                 )
 
                 if !tableCtx.columnsInitialized {
                     // Start recording first-row commands for column measurement
-                    tableCtx.recording = .init(savedY: context.pdf.layoutBox.lly)
+                    tableCtx.recording = .init(savedY: context.pdf.layout.box.lly)
                 }
 
                 context.table = tableCtx
@@ -682,7 +682,7 @@ extension PDF.HTML.Context {
                     let contentY = tableCtx.bounds.lly + cellPadding.height
                     let contentHeight = tableCtx.bounds.height - cellPadding.height * 2
                     // Save layout box (restored in popElement)
-                    context.pdf.layoutBox = PDF.UserSpace.Rectangle(
+                    context.pdf.layout.box = PDF.UserSpace.Rectangle(
                         x: contentX, y: contentY,
                         width: contentWidth, height: contentHeight
                     )
@@ -697,7 +697,7 @@ extension PDF.HTML.Context {
             if let listType = HTML.Element.Tag<Never>.listType(for: tagName) {
                 context.pdf.push(list: listType)
                 let indent = context.configuration.indent.list
-                context.pdf.layoutBox.llx = context.pdf.layoutBox.llx + indent
+                context.pdf.layout.box.llx = context.pdf.layout.box.llx + indent
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = .init(0)
                 // Store the saved margin in the element stack's last entry
@@ -732,8 +732,8 @@ extension PDF.HTML.Context {
                 markerWidth = rect.width
             }
             let markerGap = (context.pdf.style.fontSize * context.configuration.horizontalGapEm).width
-            let markerX = context.pdf.layoutBox.llx - markerWidth - markerGap
-            context.pdf.pendingListMarker = (marker: marker, x: markerX)
+            let markerX = context.pdf.layout.box.llx - markerWidth - markerGap
+            context.pdf.list.marker = (marker: marker, x: markerX)
 
         default:
             break
@@ -778,20 +778,20 @@ extension PDF.HTML.Context {
             popTableCell(isHeader: scope.tagName == "th", context: &context)
 
         case "ol", "ul":
-            if context.pdf.hasInlineRuns {
+            if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
-            _ = context.pdf.listStack.popLast()
+            _ = context.pdf.list.stack.popLast()
             // Restore the pending margin saved during push
             context.pendingBottomMargin = scope.savedPendingMargin
 
         case "li":
             // Flush inline runs BEFORE clearing marker — otherwise the marker
             // is consumed by emitLine during flush, but already nil.
-            if context.pdf.hasInlineRuns {
+            if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
-            context.pdf.pendingListMarker = nil
+            context.pdf.list.marker = nil
 
         default:
             // Finalize heading if popping a heading element
@@ -869,7 +869,7 @@ extension PDF.HTML.Context {
         context.pdf.page.ensure(height: headingLineHeight)
 
         let pageNumber = context.pdf.completedPages.count + 1
-        let yPosition = context.pdf.layoutBox.lly
+        let yPosition = context.pdf.layout.box.lly
 
         // Start capturing text for this heading (finalized in popBlockElement)
         context.section.activeHeading = .init(
@@ -903,7 +903,7 @@ extension PDF.HTML.Context {
         context.table = tableCtx
 
         // Restore Y position (content will re-render at correct position)
-        context.pdf.layoutBox.lly = recording.savedY
+        context.pdf.layout.box.lly = recording.savedY
 
         // Replay all recorded commands — cells now position correctly
         replay(recording.commands, context: &context)
@@ -978,7 +978,7 @@ extension PDF.HTML.Context {
     private static func popTableRow(context: inout PDF.HTML.Context) {
         guard var tableCtx = context.table else { return }
 
-        if context.pdf.hasInlineRuns {
+        if context.pdf.inline.hasRuns {
             context.pdf.flush.inline()
         }
 
@@ -1010,7 +1010,7 @@ extension PDF.HTML.Context {
 
         // Advance past this row
         let newY = rowStartY + actualRowHeight
-        context.pdf.layoutBox.lly = newY
+        context.pdf.layout.box.lly = newY
         tableCtx.tableEndY = newY
         tableCtx.currentFragmentEndY = newY
         tableCtx.totalRowsRendered += 1
@@ -1024,7 +1024,7 @@ extension PDF.HTML.Context {
         isHeader: Bool,
         context: inout PDF.HTML.Context
     ) {
-        if context.pdf.hasInlineRuns {
+        if context.pdf.inline.hasRuns {
             context.pdf.flush.inline()
         }
 

@@ -16,13 +16,13 @@ extension W3C_CSS_BoxModel.Height: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.explicitHeight = size.height
+            context.constraint.height = size.height
         case .auto:
             // Auto height computed during layout
-            context.explicitHeight = nil
+            context.constraint.height = nil
         case .maxContent, .minContent, .fitContent, .fitContentLength, .stretch:
             // Intrinsic sizing keywords - layout engine handles these
-            context.explicitHeight = nil
+            context.constraint.height = nil
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

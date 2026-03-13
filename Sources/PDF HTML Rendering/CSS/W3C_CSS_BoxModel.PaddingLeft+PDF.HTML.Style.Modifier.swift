@@ -16,7 +16,7 @@ extension W3C_CSS_BoxModel.PaddingLeft: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.paddingLeft = size.width
+            context.padding.left = size.width
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

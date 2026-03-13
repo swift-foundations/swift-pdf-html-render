@@ -17,7 +17,7 @@ extension PDF.HTML.Context {
 
         public func restore(to context: inout PDF.Context) {
             context.style = style
-            // NOTE: Do NOT restore layoutBox - the deferred content should
+            // NOTE: Do NOT restore layout.box - the deferred content should
             // render at the current position, not the original position
         }
     }

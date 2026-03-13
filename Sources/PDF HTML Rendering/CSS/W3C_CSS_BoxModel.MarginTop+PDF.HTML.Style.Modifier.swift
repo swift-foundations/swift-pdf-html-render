@@ -16,10 +16,10 @@ extension W3C_CSS_BoxModel.MarginTop: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.marginTop = size.height
+            context.margin.top = size.height
         case .auto:
             // Auto margins handled during layout
-            context.marginTop = nil
+            context.margin.top = nil
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

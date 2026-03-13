@@ -16,13 +16,13 @@ extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.explicitWidth = size.width
+            context.constraint.width = size.width
         case .auto:
             // Auto width computed during layout
-            context.explicitWidth = nil
+            context.constraint.width = nil
         case .maxContent, .minContent, .fitContent, .fitContentLength, .stretch:
             // Intrinsic sizing keywords - layout engine handles these
-            context.explicitWidth = nil
+            context.constraint.width = nil
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

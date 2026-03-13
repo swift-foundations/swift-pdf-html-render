@@ -10,50 +10,29 @@ extension PDF.HTML.Context.Style {
     /// — it must advance through content rendering.
     public struct Snapshot {
         let style: PDF.Context.Style.Resolved
-        let marginTop: PDF.UserSpace.Height?
-        let marginRight: PDF.UserSpace.Width?
-        let marginBottom: PDF.UserSpace.Height?
-        let marginLeft: PDF.UserSpace.Width?
-        let paddingTop: PDF.UserSpace.Height?
-        let paddingRight: PDF.UserSpace.Width?
-        let paddingBottom: PDF.UserSpace.Height?
-        let paddingLeft: PDF.UserSpace.Width?
-        let explicitWidth: PDF.UserSpace.Width?
-        let explicitHeight: PDF.UserSpace.Height?
+        let margin: PDF.Context.Margin
+        let padding: PDF.Context.Padding
+        let constraint: PDF.Context.Constraint
         let layoutBoxLLX: PDF.UserSpace.X
         let layoutBoxURX: PDF.UserSpace.X
 
         init(from context: PDF.HTML.Context) {
             self.style = context.pdf.style
-            self.marginTop = context.pdf.marginTop
-            self.marginRight = context.pdf.marginRight
-            self.marginBottom = context.pdf.marginBottom
-            self.marginLeft = context.pdf.marginLeft
-            self.paddingTop = context.pdf.paddingTop
-            self.paddingRight = context.pdf.paddingRight
-            self.paddingBottom = context.pdf.paddingBottom
-            self.paddingLeft = context.pdf.paddingLeft
-            self.explicitWidth = context.pdf.explicitWidth
-            self.explicitHeight = context.pdf.explicitHeight
-            self.layoutBoxLLX = context.pdf.layoutBox.llx
-            self.layoutBoxURX = context.pdf.layoutBox.urx
+            self.margin = context.pdf.margin
+            self.padding = context.pdf.padding
+            self.constraint = context.pdf.constraint
+            self.layoutBoxLLX = context.pdf.layout.box.llx
+            self.layoutBoxURX = context.pdf.layout.box.urx
         }
 
         func restore(to context: inout PDF.HTML.Context) {
             context.pdf.style = style
-            context.pdf.marginTop = marginTop
-            context.pdf.marginRight = marginRight
-            context.pdf.marginBottom = marginBottom
-            context.pdf.marginLeft = marginLeft
-            context.pdf.paddingTop = paddingTop
-            context.pdf.paddingRight = paddingRight
-            context.pdf.paddingBottom = paddingBottom
-            context.pdf.paddingLeft = paddingLeft
-            context.pdf.explicitWidth = explicitWidth
-            context.pdf.explicitHeight = explicitHeight
+            context.pdf.margin = margin
+            context.pdf.padding = padding
+            context.pdf.constraint = constraint
             // Y position advances through content — only restore X bounds
-            context.pdf.layoutBox.llx = layoutBoxLLX
-            context.pdf.layoutBox.urx = layoutBoxURX
+            context.pdf.layout.box.llx = layoutBoxLLX
+            context.pdf.layout.box.urx = layoutBoxURX
         }
     }
 }

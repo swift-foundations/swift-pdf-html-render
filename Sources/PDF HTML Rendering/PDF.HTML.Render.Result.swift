@@ -43,7 +43,7 @@ extension PDF.HTML {
 
         let resolvedPages = PDF.Context.resolveInternalLinks(
             pages: context.pdf.pages,
-            pendingLinks: context.pdf.pendingInternalLinks,
+            pendingLinks: context.pdf.link.pending,
             namedDestinations: context.link.destinations.mapValues { dest in
                 (pageNumber: dest.pageNumber, yPosition: dest.yPosition)
             }

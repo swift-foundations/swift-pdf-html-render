@@ -86,7 +86,7 @@ extension PDF.HTML.Context {
         bottom bottomMargin: PDF.UserSpace.Height
     ) {
         // Flush pending inline content
-        if pdf.hasInlineRuns {
+        if pdf.inline.hasRuns {
             pdf.flush.inline()
         }
 
@@ -171,7 +171,7 @@ extension PDF.HTML.Context {
             snapshot.restore(to: &tempContext.pdf)
             render(&tempContext)
             tempContext.pdf.flush.inline()
-            measureContext.layoutBox.lly = tempContext.pdf.layoutBox.lly
+            measureContext.layout.box.lly = tempContext.pdf.layout.box.lly
         }
     }
 }

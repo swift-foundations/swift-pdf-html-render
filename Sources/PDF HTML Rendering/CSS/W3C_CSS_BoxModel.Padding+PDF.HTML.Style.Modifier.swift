@@ -17,10 +17,10 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.paddingTop = size.height
-            context.paddingRight = size.width
-            context.paddingBottom = size.height
-            context.paddingLeft = size.width
+            context.padding.top = size.height
+            context.padding.right = size.width
+            context.padding.bottom = size.height
+            context.padding.left = size.width
 
         case .verticalHorizontal(let vertical, let horizontal):
             let vSize = PDF.UserSpace.Size<1>(
@@ -33,10 +33,10 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.paddingTop = vSize.height
-            context.paddingRight = hSize.width
-            context.paddingBottom = vSize.height
-            context.paddingLeft = hSize.width
+            context.padding.top = vSize.height
+            context.padding.right = hSize.width
+            context.padding.bottom = vSize.height
+            context.padding.left = hSize.width
 
         case .topHorizontalBottom(let top, let horizontal, let bottom):
             let topSize = PDF.UserSpace.Size<1>(
@@ -54,10 +54,10 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.paddingTop = topSize.height
-            context.paddingRight = hSize.width
-            context.paddingBottom = bottomSize.height
-            context.paddingLeft = hSize.width
+            context.padding.top = topSize.height
+            context.padding.right = hSize.width
+            context.padding.bottom = bottomSize.height
+            context.padding.left = hSize.width
 
         case .sides(let top, let right, let bottom, let left):
             let topSize = PDF.UserSpace.Size<1>(
@@ -80,10 +80,10 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.paddingTop = topSize.height
-            context.paddingRight = rightSize.width
-            context.paddingBottom = bottomSize.height
-            context.paddingLeft = leftSize.width
+            context.padding.top = topSize.height
+            context.padding.right = rightSize.width
+            context.padding.bottom = bottomSize.height
+            context.padding.left = leftSize.width
 
         case .named(let namedSides):
             if let top = namedSides.top {
@@ -92,7 +92,7 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                     currentSize: currentSize,
                     baseFontSize: configuration.defaultFontSize
                 )
-                context.paddingTop = size.height
+                context.padding.top = size.height
             }
             if let right = namedSides.right {
                 let size = PDF.UserSpace.Size<1>(
@@ -100,7 +100,7 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                     currentSize: currentSize,
                     baseFontSize: configuration.defaultFontSize
                 )
-                context.paddingRight = size.width
+                context.padding.right = size.width
             }
             if let bottom = namedSides.bottom {
                 let size = PDF.UserSpace.Size<1>(
@@ -108,7 +108,7 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                     currentSize: currentSize,
                     baseFontSize: configuration.defaultFontSize
                 )
-                context.paddingBottom = size.height
+                context.padding.bottom = size.height
             }
             if let left = namedSides.left {
                 let size = PDF.UserSpace.Size<1>(
@@ -116,7 +116,7 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
                     currentSize: currentSize,
                     baseFontSize: configuration.defaultFontSize
                 )
-                context.paddingLeft = size.width
+                context.padding.left = size.width
             }
 
         case .global:

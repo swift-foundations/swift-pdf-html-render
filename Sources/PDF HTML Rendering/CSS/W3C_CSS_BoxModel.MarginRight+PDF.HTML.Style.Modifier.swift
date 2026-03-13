@@ -16,10 +16,10 @@ extension W3C_CSS_BoxModel.MarginRight: PDF.HTML.Style.Modifier {
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
-            context.marginRight = size.width
+            context.margin.right = size.width
         case .auto:
             // Auto margins handled during layout
-            context.marginRight = nil
+            context.margin.right = nil
         case .global:
             // Inherit/initial/unset - no change for PDF
             break
