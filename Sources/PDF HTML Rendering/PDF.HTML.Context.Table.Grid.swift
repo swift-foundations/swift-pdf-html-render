@@ -20,6 +20,12 @@ extension PDF.HTML.Context.Table {
             return grid[row][column] != nil
         }
 
+        /// Get the span occupying a cell position (nil if not occupied)
+        public func span(atRow row: Int, column: Int) -> Span? {
+            guard row < grid.count, column < grid[row].count else { return nil }
+            return grid[row][column]
+        }
+
         /// Mark cells as occupied by a rowspan/colspan cell
         public mutating func mark(
             fromRow originRow: Int,

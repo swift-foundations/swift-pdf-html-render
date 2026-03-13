@@ -671,8 +671,26 @@ extension PDF.HTML.Context {
 
         case "td", "th":
             if var tableCtx = context.table, tableCtx.columnsInitialized {
+                // Skip columns occupied by rowspan from previous rows
+                tableCtx.advanceToNextAvailableColumn()
+
                 let column = tableCtx.currentColumn
                 let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
+                let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
+
+                // Mark grid for multi-row spanning
+                if rowspan > 1 {
+                    tableCtx.spans.mark(
+                        fromRow: tableCtx.totalRowsRendered,
+                        column: column,
+                        rowspan: rowspan,
+                        colspan: colspan,
+                        columnCount: tableCtx.columnCount
+                    )
+                }
+
+                context.table = tableCtx
+
                 if column < tableCtx.columnCount {
                     let cellX = tableCtx.xForColumn(column)
                     let cellWidth = tableCtx.widthForColumns(column, count: colspan)
@@ -989,6 +1007,7 @@ extension PDF.HTML.Context {
 
         // Draw cell borders with correct row height
         let rowStartY = tableCtx.bounds.lly
+        let rowEndY = rowStartY + actualRowHeight
         for pending in tableCtx.pendingCellBorders {
             let cellX = tableCtx.xForColumn(pending.column)
             let cellWidth = tableCtx.widthForColumns(pending.column, count: pending.colspan)
@@ -1005,14 +1024,31 @@ extension PDF.HTML.Context {
             )
         }
 
+        // Draw left border extensions for columns occupied by rowspan from previous rows
+        let currentRow = tableCtx.totalRowsRendered
+        let borderColor = tableCtx.borderColor
+        let borderWidth = tableCtx.borderWidth.width
+        for col in 0..<tableCtx.columnCount {
+            if let span = tableCtx.spans.span(atRow: currentRow, column: col),
+               col == span.originColumn {
+                // Draw left border for the spanning cell's column at this row's height
+                let cellX = tableCtx.xForColumn(col)
+                context.pdf.emit.line(
+                    from: PDF.UserSpace.Coordinate(x: cellX, y: rowStartY),
+                    to: PDF.UserSpace.Coordinate(x: cellX, y: rowEndY),
+                    color: borderColor,
+                    width: borderWidth
+                )
+            }
+        }
+
         // Update row heights
         tableCtx.rowHeights.append(actualRowHeight)
 
         // Advance past this row
-        let newY = rowStartY + actualRowHeight
-        context.pdf.layout.box.lly = newY
-        tableCtx.tableEndY = newY
-        tableCtx.currentFragmentEndY = newY
+        context.pdf.layout.box.lly = rowEndY
+        tableCtx.tableEndY = rowEndY
+        tableCtx.currentFragmentEndY = rowEndY
         tableCtx.totalRowsRendered += 1
         tableCtx.currentColumn = 0
         tableCtx.pendingCellBorders = []
@@ -1029,13 +1065,28 @@ extension PDF.HTML.Context {
         }
 
         let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
+        let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
         let textAlignment = context.pdf.style.textAlign
 
+        // Compute actual cell content height (content Y advance + bottom padding)
+        let cellContentHeight: PDF.UserSpace.Height
+        if let tableCtx = context.table {
+            cellContentHeight = (context.pdf.layout.box.lly - tableCtx.bounds.lly)
+                .retag(Extent.Y<UserSpace>.self) + tableCtx.cell.padding.height
+        } else {
+            cellContentHeight = .init(0)
+        }
+
         context.with(\.table) { tc in
+            // Track max cell height for row height computation
+            if rowspan == 1 && cellContentHeight > tc.maxCellHeightInCurrentRow {
+                tc.maxCellHeightInCurrentRow = cellContentHeight
+            }
+
             tc.pendingCellBorders.append(.init(
                 column: tc.currentColumn,
                 colspan: colspan,
-                rowspan: 1,
+                rowspan: rowspan,
                 isHeader: isHeader,
                 textAlignment: textAlignment
             ))
