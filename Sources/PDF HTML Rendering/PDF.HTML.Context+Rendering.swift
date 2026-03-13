@@ -22,6 +22,11 @@ extension PDF.HTML.Context: Rendering.Context {
     public mutating func text(_ content: borrowing String) {
         let copy = copy content
 
+        if table?.recording != nil {
+            table!.recording!.commands.append(.text(copy))
+            return
+        }
+
         // Capture heading text for bookmarks
         if section.activeHeading != nil {
             if !section.activeHeading!.text.isEmpty {
@@ -48,11 +53,19 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Breaks
 
     public mutating func lineBreak() {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.lineBreak)
+            return
+        }
         pdf.flush.inline()
         pdf.advance.line()
     }
 
     public mutating func thematicBreak() {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.thematicBreak)
+            return
+        }
         pdf.flush.inline()
         let spacing = (configuration.defaultFontSize * configuration.horizontalGapEm).height
         pdf.advance(spacing)
@@ -69,6 +82,10 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Media
 
     public mutating func image(source: String, alt: String) {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.image(source: source, alt: alt))
+            return
+        }
         pdf.flush.inline()
         let run = PDF.Context.Text.Run(
             text: alt.isEmpty ? "[image]" : "[\(alt)]",
@@ -83,6 +100,10 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Page
 
     public mutating func pageBreak() {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.pageBreak)
+            return
+        }
         pdf.flush.inline()
         pdf.flush.text()
         pdf.page.new()
@@ -91,6 +112,13 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Attributes
 
     public mutating func set(attribute name: String, _ value: String?) {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.setAttribute(name: name, value: value))
+            if name == "colspan" {
+                table!.recording!.pendingColspan = Int(value ?? "1") ?? 1
+            }
+            return
+        }
         if let value {
             attributes[name] = value
         } else {
@@ -99,10 +127,18 @@ extension PDF.HTML.Context: Rendering.Context {
     }
 
     public mutating func add(class name: String) {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.addClass(name))
+            return
+        }
         // No-op: PDF doesn't use CSS class names.
     }
 
     public mutating func write(raw bytes: [UInt8]) {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.writeRaw(bytes))
+            return
+        }
         // No-op: raw HTML bytes have no PDF representation.
     }
 
@@ -119,6 +155,11 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Inline Style Application
 
     public mutating func apply(inlineStyle property: Any) -> Bool {
+        if table?.recording != nil {
+            table!.recording!.commands.append(.inlineStyle(property))
+            return true
+        }
+
         // Unwrap Optional if needed
         let unwrapped: Any
         let mirror = Mirror(reflecting: property)
@@ -149,6 +190,20 @@ extension PDF.HTML.Context: Rendering.Context {
         return handled
     }
 
+    // MARK: - Recording Helper
+
+    /// Record a command if in table first-row recording mode.
+    /// Returns `true` if the command was recorded (caller should return early).
+    @inline(__always)
+    private static func record(
+        _ command: Table.Recording.Command,
+        context: inout Self
+    ) -> Bool {
+        guard context.table?.recording != nil else { return false }
+        context.table!.recording!.commands.append(command)
+        return true
+    }
+
     // MARK: - Block Structure
 
     public static func _pushBlock(
@@ -156,6 +211,7 @@ extension PDF.HTML.Context: Rendering.Context {
         role: Rendering.Semantic.Block?,
         style: Rendering.Style
     ) {
+        if record(.pushBlock(role: role, style: style), context: &context) { return }
         if context.pdf.hasInlineRuns {
             context.pdf.flush.inline()
         }
@@ -163,6 +219,7 @@ extension PDF.HTML.Context: Rendering.Context {
     }
 
     public static func _popBlock(_ context: inout Self) {
+        if record(.popBlock, context: &context) { return }
         if context.pdf.hasInlineRuns {
             context.pdf.flush.inline()
         }
@@ -176,10 +233,12 @@ extension PDF.HTML.Context: Rendering.Context {
         role: Rendering.Semantic.Inline?,
         style: Rendering.Style
     ) {
+        if record(.pushInline(role: role, style: style), context: &context) { return }
         PDF.Context._pushInline(&context.pdf, role: role, style: style)
     }
 
     public static func _popInline(_ context: inout Self) {
+        if record(.popInline, context: &context) { return }
         PDF.Context._popInline(&context.pdf)
     }
 
@@ -190,18 +249,22 @@ extension PDF.HTML.Context: Rendering.Context {
         kind: Rendering.Semantic.List,
         start: Int?
     ) {
+        if record(.pushList(kind: kind, start: start), context: &context) { return }
         PDF.Context._pushList(&context.pdf, kind: kind, start: start)
     }
 
     public static func _popList(_ context: inout Self) {
+        if record(.popList, context: &context) { return }
         PDF.Context._popList(&context.pdf)
     }
 
     public static func _pushItem(_ context: inout Self) {
+        if record(.pushItem, context: &context) { return }
         PDF.Context._pushItem(&context.pdf)
     }
 
     public static func _popItem(_ context: inout Self) {
+        if record(.popItem, context: &context) { return }
         PDF.Context._popItem(&context.pdf)
     }
 
@@ -211,16 +274,22 @@ extension PDF.HTML.Context: Rendering.Context {
         _ context: inout Self,
         destination: borrowing String
     ) {
+        if context.table?.recording != nil {
+            context.table!.recording!.commands.append(.pushLink(destination: copy destination))
+            return
+        }
         PDF.Context._pushLink(&context.pdf, destination: destination)
     }
 
     public static func _popLink(_ context: inout Self) {
+        if record(.popLink, context: &context) { return }
         PDF.Context._popLink(&context.pdf)
     }
 
     // MARK: - Attributes
 
     public static func _pushAttributes(_ context: inout Self) {
+        if record(.pushAttributes, context: &context) { return }
         context.elementStack.append(Element.Scope(
             tagName: "_attributes",
             isBlock: false,
@@ -236,6 +305,7 @@ extension PDF.HTML.Context: Rendering.Context {
     }
 
     public static func _popAttributes(_ context: inout Self) {
+        if record(.popAttributes, context: &context) { return }
         if let scope = context.elementStack.popLast(), scope.tagName == "_attributes" {
             context.attributes = .init()
         }
@@ -250,6 +320,23 @@ extension PDF.HTML.Context: Rendering.Context {
         isVoid: Bool,
         isPreElement: Bool
     ) {
+        // Recording mode: capture commands for first-row column measurement
+        if context.table?.recording != nil {
+            context.table!.recording!.commands.append(
+                .pushElement(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+            )
+            if !isVoid {
+                // Track grid columns at depth 0 (direct cell children of the row)
+                if context.table!.recording!.elementDepth == 0
+                    && (tagName == "td" || tagName == "th") {
+                    context.table!.recording!.columnCount += context.table!.recording!.pendingColspan
+                    context.table!.recording!.pendingColspan = 1
+                }
+                context.table!.recording!.elementDepth += 1
+            }
+            return
+        }
+
         // Handle void elements
         if isVoid {
             handleVoidElement(tagName, context: &context)
@@ -363,6 +450,21 @@ extension PDF.HTML.Context: Rendering.Context {
     }
 
     public static func _popElement(_ context: inout Self, isBlock: Bool) {
+        // Recording mode: track element depth
+        if context.table?.recording != nil {
+            context.table!.recording!.elementDepth -= 1
+            if context.table!.recording!.elementDepth < 0 {
+                // Row pop reached — finalize column widths and replay
+                let recording = context.table!.recording!
+                context.table!.recording = nil
+                finalizeFirstRow(recording, context: &context)
+                // Fall through to normal pop logic for the TR
+            } else {
+                context.table!.recording!.commands.append(.popElement(isBlock: isBlock))
+                return
+            }
+        }
+
         guard let scope = context.elementStack.popLast() else { return }
 
         if isBlock {
@@ -387,10 +489,13 @@ extension PDF.HTML.Context: Rendering.Context {
     // MARK: - Style Scope
 
     public static func _pushStyle(_ context: inout Self) {
+        if record(.pushStyle, context: &context) { return }
         context.styleScopeStack.append(Style.Snapshot(from: context))
     }
 
     public static func _popStyle(_ context: inout Self) {
+        if record(.popStyle, context: &context) { return }
+
         // Apply bottom padding and margin before restoring
         if let paddingBottom = context.pdf.paddingBottom, paddingBottom > .zero {
             context.pdf.advance(paddingBottom)
@@ -486,7 +591,6 @@ extension PDF.HTML.Context {
         switch tagName {
         // Table elements — basic block fallback (proper table handling is TODO)
         case "table":
-            let savedTableContext = context.table
             let tableStartY = context.pdf.layoutBox.lly
             let availableWidth = context.pdf.layoutBox.width
             let cellPadding = context.configuration.table.cell.padding
@@ -509,6 +613,9 @@ extension PDF.HTML.Context {
                 alternatingRowColor: context.configuration.table.alternatingRowColor
             )
             context.table?.totalRowsRendered = 0
+            context.table?.tableStartY = tableStartY
+            context.table?.currentFragmentStartY = tableStartY
+            context.table?.currentFragmentEndY = tableStartY
             context.resetMarginCollapsing()
 
         case "thead":
@@ -520,7 +627,6 @@ extension PDF.HTML.Context {
             break // Pass-through
 
         case "tr":
-            // TODO: Full table row push (page breaks, header repetition, column measurement)
             if var tableCtx = context.table {
                 tableCtx.currentColumn = 0
                 tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
@@ -531,11 +637,16 @@ extension PDF.HTML.Context {
                     width: tableCtx.bounds.width,
                     height: context.pdf.style.line.height + tableCtx.cell.padding.height * 2
                 )
+
+                if !tableCtx.columnsInitialized {
+                    // Start recording first-row commands for column measurement
+                    tableCtx.recording = .init(savedY: context.pdf.layoutBox.lly)
+                }
+
                 context.table = tableCtx
             }
 
         case "td", "th":
-            // TODO: Full table cell push (column positioning, measurement mode)
             if var tableCtx = context.table, tableCtx.columnsInitialized {
                 let column = tableCtx.currentColumn
                 let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
@@ -743,6 +854,97 @@ extension PDF.HTML.Context {
             pageNumber: pageNumber,
             yPosition: yPosition
         )
+    }
+}
+
+// MARK: - Table First-Row Measurement
+
+extension PDF.HTML.Context {
+    /// Finalize first-row measurement: compute column widths and replay recorded commands.
+    private static func finalizeFirstRow(
+        _ recording: Table.Recording,
+        context: inout PDF.HTML.Context
+    ) {
+        guard var tableCtx = context.table, recording.columnCount > 0 else { return }
+
+        // Equal-width column distribution
+        let equalWidth = tableCtx.bounds.width / Scale(Double(recording.columnCount))
+        tableCtx.columnWidths = Array(repeating: equalWidth, count: recording.columnCount)
+        tableCtx.columnsInitialized = true
+        tableCtx.spans.preallocate(rows: 64, columns: recording.columnCount)
+
+        // Reset row state for replay
+        tableCtx.currentColumn = 0
+        tableCtx.maxCellHeightInCurrentRow = .init(0)
+        tableCtx.pendingCellBorders = []
+        context.table = tableCtx
+
+        // Restore Y position (content will re-render at correct position)
+        context.pdf.layoutBox.lly = recording.savedY
+
+        // Replay all recorded commands — cells now position correctly
+        replay(recording.commands, context: &context)
+    }
+
+    /// Replay recorded rendering commands.
+    private static func replay(
+        _ commands: [Table.Recording.Command],
+        context: inout PDF.HTML.Context
+    ) {
+        for command in commands {
+            switch command {
+            case .text(let content):
+                context.text(content)
+            case .lineBreak:
+                context.lineBreak()
+            case .thematicBreak:
+                context.thematicBreak()
+            case .image(let source, let alt):
+                context.image(source: source, alt: alt)
+            case .pageBreak:
+                context.pageBreak()
+            case .setAttribute(let name, let value):
+                context.set(attribute: name, value)
+            case .addClass(let name):
+                context.add(class: name)
+            case .writeRaw(let bytes):
+                context.write(raw: bytes)
+            case .inlineStyle(let property):
+                _ = context.apply(inlineStyle: property)
+            case .pushBlock(let role, let style):
+                _pushBlock(&context, role: role, style: style)
+            case .popBlock:
+                _popBlock(&context)
+            case .pushInline(let role, let style):
+                _pushInline(&context, role: role, style: style)
+            case .popInline:
+                _popInline(&context)
+            case .pushList(let kind, let start):
+                _pushList(&context, kind: kind, start: start)
+            case .popList:
+                _popList(&context)
+            case .pushItem:
+                _pushItem(&context)
+            case .popItem:
+                _popItem(&context)
+            case .pushLink(let destination):
+                _pushLink(&context, destination: destination)
+            case .popLink:
+                _popLink(&context)
+            case .pushAttributes:
+                _pushAttributes(&context)
+            case .popAttributes:
+                _popAttributes(&context)
+            case .pushElement(let tagName, let isBlock, let isVoid, let isPreElement):
+                _pushElement(&context, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+            case .popElement(let isBlock):
+                _popElement(&context, isBlock: isBlock)
+            case .pushStyle:
+                _pushStyle(&context)
+            case .popStyle:
+                _popStyle(&context)
+            }
+        }
     }
 }
 

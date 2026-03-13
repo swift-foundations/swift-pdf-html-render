@@ -108,8 +108,8 @@ extension PDF.HTML.Context {
         /// Whether columns have been initialized (from first row)
         public var columnsInitialized: Bool = false
 
-        /// Measurement mode - count columns without drawing
-        public var measureOnly: Bool = false
+        /// Active recording state during first-row column measurement (nil when not recording).
+        var recording: Recording?
 
         /// Track the maximum cell height in the current row (for multi-line content)
         public var maxCellHeightInCurrentRow: PDF.UserSpace.Height = PDF.UserSpace.Height(0)
