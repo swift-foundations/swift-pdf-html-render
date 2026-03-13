@@ -652,6 +652,11 @@ extension PDF.HTML.Context {
             context.pendingBottomMargin = scope.savedPendingMargin
 
         case "li":
+            // Flush inline runs BEFORE clearing marker — otherwise the marker
+            // is consumed by emitLine during flush, but already nil.
+            if context.pdf.hasInlineRuns {
+                context.pdf.flush.inline()
+            }
             context.pdf.pendingListMarker = nil
 
         default:
