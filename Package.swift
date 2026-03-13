@@ -36,18 +36,6 @@ extension Target.Dependency {
     static var htmlStandard: Self {
         .product(name: "HTML Standard", package: "swift-html-standard")
     }
-    static var cssStandard: Self {
-        .product(name: "CSS Standard", package: "swift-css-standard")
-    }
-    static var w3cCSS: Self {
-        .product(name: "W3C CSS", package: "swift-w3c-css")
-    }
-    static var iso9899: Self {
-        .product(name: "ISO 9899", package: "swift-iso-9899")
-    }
-    static var iec61966: Self {
-        .product(name: "IEC 61966", package: "swift-iec-61966")
-    }
     static var rfc4648: Self {
         .product(name: "RFC 4648", package: "swift-rfc-4648")
     }
@@ -84,11 +72,7 @@ let package = Package(
         .package(path: "../swift-copy-on-write"),
         .package(path: "../swift-css"),
         .package(path: "../../swift-standards/swift-html-standard"),
-        .package(path: "../../swift-standards/swift-css-standard"),
-        .package(path: "../../swift-w3c/swift-w3c-css"),
-        .package(path: "../../swift-iso/swift-iso-9899"),
         .package(path: "../../swift-ietf/swift-rfc-4648"),
-        .package(path: "../../swift-iec/swift-iec-61966"),
         .package(path: "../../swift-primitives/swift-layout-primitives"),
         .package(path: "../../swift-primitives/swift-dictionary-primitives"),
         .package(path: "../../swift-primitives/swift-stack-primitives"),
@@ -103,10 +87,6 @@ let package = Package(
                 .copyOnWrite,
                 .css,
                 .htmlStandard,
-                .cssStandard,
-                .w3cCSS,
-                .iso9899,
-                .iec61966,
                 .rfc4648,
                 .layoutPrimitives,
                 .dictionaryPrimitives,

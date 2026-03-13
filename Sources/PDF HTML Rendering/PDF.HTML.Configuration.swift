@@ -6,8 +6,6 @@ import Geometry_Primitives
 import Layout_Primitives
 import PDF_Rendering
 import PDF_Standard
-public import W3C_CSS_Text
-public import W3C_CSS_Values
 
 /// Configuration for HTML to PDF transformation.
 ///
@@ -59,10 +57,10 @@ extension PDF.HTML {
         // MARK: - Spacing
 
         /// Paragraph spacing (multiplier of font size)
-        public var paragraphSpacing: Scale<1, Double>
+        public var paragraphSpacing: Dimension_Primitives.Scale<1, Double>
 
         /// Heading spacing (multiplier of heading size)
-        public var headingSpacing: Scale<1, Double>
+        public var headingSpacing: Dimension_Primitives.Scale<1, Double>
 
         // MARK: - Typography Scales
 
@@ -77,10 +75,10 @@ extension PDF.HTML {
         // MARK: - Spacing
 
         /// Horizontal gap multiplier in em (default: 0.5, used for list markers)
-        public var horizontalGapEm: Scale<1, Double>
+        public var horizontalGapEm: Dimension_Primitives.Scale<1, Double>
 
         /// Threshold for deferring large headers (default: 0.9, i.e., 90% of page height)
-        public var deferredHeaderThreshold: Scale<1, Double>
+        public var deferredHeaderThreshold: Dimension_Primitives.Scale<1, Double>
 
         // MARK: - Table Configuration
 
@@ -139,12 +137,12 @@ extension PDF.HTML {
             defaultFontSize: PDF.UserSpace.Size<1> = 12,
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
-            paragraphSpacing: Scale<1, Double> = 0.5,
-            headingSpacing: Scale<1, Double> = 0.8,
+            paragraphSpacing: Dimension_Primitives.Scale<1, Double> = 0.5,
+            headingSpacing: Dimension_Primitives.Scale<1, Double> = 0.8,
             typography: Typography = .init(),
             indent: Indent = .init(),
-            horizontalGapEm: Scale<1, Double> = 0.5,
-            deferredHeaderThreshold: Scale<1, Double> = 0.9,
+            horizontalGapEm: Dimension_Primitives.Scale<1, Double> = 0.5,
+            deferredHeaderThreshold: Dimension_Primitives.Scale<1, Double> = 0.9,
             table: Table = .init(),
             outline: Outline = .init(),
             link: Link = .init(),
@@ -239,7 +237,7 @@ extension PDF.HTML {
 
         /// Margin multiplier (em-based) for heading level (1-6)
         /// Based on WebKit user-agent stylesheet defaults
-        public func headingMarginEm(for tag: String) -> Scale<1, Double> {
+        public func headingMarginEm(for tag: String) -> Dimension_Primitives.Scale<1, Double> {
             switch tag {
             case "h1": return 0.67
             case "h2": return 0.83

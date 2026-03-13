@@ -6,7 +6,6 @@
 // across pages.
 
 import PDF_Rendering
-public import W3C_CSS_Paged
 
 extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {

@@ -6,12 +6,10 @@
 // (for byte output) and PDF.HTML.Context (for PDF pages) via pure
 // static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
 
-import CSS_Standard
 import HTML_Renderable
 import Layout_Primitives
 import PDF_Rendering
 import Rendering_Primitives
-import W3C_CSS_Shared
 
 // MARK: - Rendering.Context Conformance
 
@@ -909,7 +907,7 @@ extension PDF.HTML.Context {
         guard var tableCtx = context.table, recording.columnCount > 0 else { return }
 
         // Equal-width column distribution
-        let equalWidth = tableCtx.bounds.width / Scale(Double(recording.columnCount))
+        let equalWidth = tableCtx.bounds.width / Dimension_Primitives.Scale(Double(recording.columnCount))
         tableCtx.columnWidths = Array(repeating: equalWidth, count: recording.columnCount)
         tableCtx.columnsInitialized = true
         tableCtx.spans.preallocate(rows: 64, columns: recording.columnCount)

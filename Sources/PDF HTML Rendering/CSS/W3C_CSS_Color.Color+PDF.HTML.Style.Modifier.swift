@@ -3,10 +3,7 @@
 //
 // Uses CSS Standard's IEC 61966-2-1 sRGB conversions.
 
-import CSS_Standard
 import PDF_Rendering
-public import W3C_CSS_Color
-import W3C_CSS_Values
 
 extension W3C_CSS_Color.Color: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {

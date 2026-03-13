@@ -6,7 +6,6 @@
 // values to PDF page break behavior.
 
 import PDF_Rendering
-public import W3C_CSS_Multicolumn
 
 extension W3C_CSS_Multicolumn.BreakAfter: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
