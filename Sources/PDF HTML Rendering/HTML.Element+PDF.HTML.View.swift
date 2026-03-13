@@ -311,7 +311,7 @@ extension HTML.Element.Tag {
                 context.pendingBottomMargin = savedPendingMargin
 
                 context.pdf.layoutBox.llx = savedLLX
-                context.pdf.popList()
+                context.pdf.pop.list()
             }
             // Handle list items (li)
             else if view.tagName == "li" {
