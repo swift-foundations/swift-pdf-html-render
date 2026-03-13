@@ -628,6 +628,29 @@ extension PDF.HTML.Context {
 
         case "tr":
             if var tableCtx = context.table {
+                let rowHeight = context.pdf.style.line.height + tableCtx.cell.padding.height * 2
+
+                // Ensure room for this row; page-break if needed
+                if context.pdf.page.exceeds(adding: rowHeight) {
+                    // Draw fragment borders for rows already on this page
+                    if tableCtx.totalRowsRendered > 0 {
+                        HTML.Element.Tag<Never>.drawFragmentRightAndBottomBorders(
+                            tableCtx: tableCtx,
+                            fragmentStartY: tableCtx.currentFragmentStartY,
+                            fragmentEndY: tableCtx.currentFragmentEndY,
+                            context: &context
+                        )
+                    }
+
+                    context.pdf.flush.text()
+                    context.pdf.page.new()
+
+                    // Update fragment tracking for new page
+                    let newY = context.pdf.layoutBox.lly
+                    tableCtx.currentFragmentStartY = newY
+                    tableCtx.currentFragmentEndY = newY
+                }
+
                 tableCtx.currentColumn = 0
                 tableCtx.maxCellHeightInCurrentRow = PDF.UserSpace.Height(0)
                 tableCtx.pendingCellBorders = []
@@ -635,7 +658,7 @@ extension PDF.HTML.Context {
                     x: tableCtx.bounds.llx,
                     y: context.pdf.layoutBox.lly,
                     width: tableCtx.bounds.width,
-                    height: context.pdf.style.line.height + tableCtx.cell.padding.height * 2
+                    height: rowHeight
                 )
 
                 if !tableCtx.columnsInitialized {

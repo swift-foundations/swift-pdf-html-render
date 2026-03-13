@@ -9,17 +9,15 @@ extension W3C_CSS_Paged.PageBreakBefore: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .always:
-            // Force a page break before this element
+            // Skip if current page has no content (matches browser behavior)
+            guard !context.page.isEmpty else { break }
             context.page.new()
         case .auto, .avoid:
-            // auto: let the layout decide
-            // avoid: try to keep with previous content (no action needed here)
             break
         case .left, .right:
-            // Left/right page breaks - for now, treat as regular page break
+            guard !context.page.isEmpty else { break }
             context.page.new()
         case .global:
-            // Global CSS values (inherit, initial, etc.) - use default behavior
             break
         }
     }

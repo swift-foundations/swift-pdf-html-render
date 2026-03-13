@@ -11,12 +11,12 @@ public import W3C_CSS_Multicolumn
 extension W3C_CSS_Multicolumn.BreakBefore: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
-        // Force page break values
+        // Force page break values — skip if current page has no content
         case .always, .all, .page:
+            guard !context.page.isEmpty else { break }
             context.page.new()
         case .left, .right, .recto, .verso:
-            // Left/right/recto/verso page breaks - for now, treat as regular page break
-            // Full implementation would need to track odd/even pages
+            guard !context.page.isEmpty else { break }
             context.page.new()
 
         // Avoid values - try to keep with previous content
