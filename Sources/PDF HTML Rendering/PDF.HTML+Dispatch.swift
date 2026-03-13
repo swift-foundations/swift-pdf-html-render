@@ -113,17 +113,6 @@ extension PDF.HTML {
                 context.pdf.page.new()
 
             case .render(let value):
-                // Phase 0: Tuple — push children (absorbs renderTupleIteratively)
-                if let tuple = value as? any Rendering._TupleMarker {
-                    var elements: [Any] = []
-                    tuple._collectElements(into: &elements)
-                    // Push reversed for left-to-right processing (LIFO)
-                    for element in elements.reversed() {
-                        worklist.push(.render(element))
-                    }
-                    continue
-                }
-
                 // Phase 1: Mirror-based wrapper detection
                 //
                 // Mirror is allocated in this scope and freed at the end of

@@ -35,7 +35,7 @@ extension PDF.HTML {
 
 // MARK: - Default Implementation for HTML.View types
 
-extension PDF.HTML.View where Self: HTML.View, Self.Content: PDF.HTML.View {
+extension PDF.HTML.View where Self: HTML.View, Self.Body: PDF.HTML.View {
     /// Default implementation delegates to the body's render method.
     @inlinable
     @_disfavoredOverload
@@ -43,6 +43,6 @@ extension PDF.HTML.View where Self: HTML.View, Self.Content: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
-        Self.Content._render(view.body, context: &context)
+        Self.Body._render(view.body, context: &context)
     }
 }

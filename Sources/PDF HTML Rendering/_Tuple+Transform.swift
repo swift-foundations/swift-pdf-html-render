@@ -20,6 +20,6 @@ extension Rendering._Tuple: PDF.HTML.View where repeat each Content: PDF.HTML.Vi
     }
 }
 
-// Dynamic dispatch: Tuple element collection is provided by Rendering._TupleMarker
-// conformance in swift-rendering-primitives. Phase 0 of the worklist interpreter
-// uses `as? any Rendering._TupleMarker` → `_collectElements(into:)` directly.
+// Dynamic dispatch: _Tuple conforms to PDF.HTML.View above, so Phase 2's
+// `as? any PDF.HTML.View` cast in the worklist interpreter catches tuples
+// via the static dispatch path — no marker protocol needed.

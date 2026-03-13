@@ -2,7 +2,6 @@
 // Raw HTML is ignored in PDF rendering
 
 import HTML_Renderable
-import Rendering_Primitives
 
 // MARK: - HTML.Raw Dynamic Dispatch Support
 
@@ -10,4 +9,4 @@ import Rendering_Primitives
 ///
 /// Raw HTML content (like `<script>...</script>` or inline HTML in markdown)
 /// doesn't have a meaningful PDF representation and is safely ignored.
-extension Rendering.Raw: _HTMLRawContent {}
+extension HTML.Raw: _HTMLRawContent {}

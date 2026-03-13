@@ -12,6 +12,6 @@ extension Rendering.ForEach: PDF.HTML.View where Content: PDF.HTML.View {
         _ view: Self,
         context: inout PDF.HTML.Context
     ) {
-        Rendering._Array._render(view.content, context: &context)
+        [Content]._render(view.content, context: &context)
     }
 }
