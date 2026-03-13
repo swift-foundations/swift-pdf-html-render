@@ -21,6 +21,15 @@ extension PDF.HTML.Context: Rendering.Context {
 
     public mutating func text(_ content: borrowing String) {
         let copy = copy content
+
+        // Capture heading text for bookmarks
+        if section.activeHeading != nil {
+            if !section.activeHeading!.text.isEmpty {
+                section.activeHeading!.text += " "
+            }
+            section.activeHeading!.text += copy
+        }
+
         let linkURL = link.currentURL ?? link.currentInternalId.map { "#\($0)" }
         let runs = PDF.Context.Text.Run.runsWithSymbolSupport(
             text: copy,
@@ -646,7 +655,24 @@ extension PDF.HTML.Context {
             context.pdf.pendingListMarker = nil
 
         default:
-            break
+            // Finalize heading if popping a heading element
+            if let heading = context.section.activeHeading,
+               HTML.Element.Tag<Never>.headingLevel(for: scope.tagName) != nil {
+                let text = String(heading.text.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " }).reversed())
+                if !text.isEmpty {
+                    context.section.headings.append(.init(
+                        level: heading.level,
+                        text: text,
+                        pageNumber: heading.pageNumber,
+                        yPosition: heading.yPosition
+                    ))
+                    if heading.level <= 3 {
+                        context.section.currentTitle = text
+                        context.section.pageTitles[heading.pageNumber] = text
+                    }
+                }
+                context.section.activeHeading = nil
+            }
         }
     }
 }
@@ -706,12 +732,12 @@ extension PDF.HTML.Context {
         let pageNumber = context.pdf.completedPages.count + 1
         let yPosition = context.pdf.layoutBox.lly
 
-        // Text will be captured when content renders — store placeholder
-        // The heading text extraction happens through text() calls during content rendering.
-        // For bookmark support, we track headings via section state.
-        if level <= 3 {
-            context.section.currentTitle = nil // Will be set by text content
-        }
+        // Start capturing text for this heading (finalized in popBlockElement)
+        context.section.activeHeading = .init(
+            level: level,
+            pageNumber: pageNumber,
+            yPosition: yPosition
+        )
     }
 }
 

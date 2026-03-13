@@ -13,6 +13,17 @@ extension PDF.HTML.Context {
         /// Collected heading entries for bookmark generation.
         public var headings: [HeadingEntry] = []
 
+        /// Active heading capture state (non-nil when inside a heading element).
+        public var activeHeading: ActiveHeading?
+
+        /// Text buffer for heading content being rendered.
+        public struct ActiveHeading: Sendable {
+            public let level: Int
+            public let pageNumber: Int
+            public let yPosition: PDF.UserSpace.Y
+            public var text: String = ""
+        }
+
         public init() {}
     }
 }

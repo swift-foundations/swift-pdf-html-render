@@ -249,7 +249,7 @@ struct OutlineTests {
             printOutlineItems(outline.items, indent: 0)
 
             // Check for expected items
-            let hasArticlesTitle = containsTitle(outline.items, "ARTICLES OF INCORPORATION")
+            let hasArticlesTitle = containsTitle(outline.items, "ARTICLES OF INCORPORATION OF TEST CORPORATION, INC.")
             let hasArticleI = containsTitle(outline.items, "ARTICLE I")
             let hasArticleII = containsTitle(outline.items, "ARTICLE II")
             let hasArticleIII = containsTitle(outline.items, "ARTICLE III")
