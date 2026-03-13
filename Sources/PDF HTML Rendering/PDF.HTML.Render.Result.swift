@@ -3,6 +3,13 @@
 
 import PDF_Rendering
 
+// MARK: - Render Namespace
+
+extension PDF.HTML {
+    /// Namespace for rendering result types.
+    public enum Render {}
+}
+
 // MARK: - Shared Rendering Infrastructure
 
 extension PDF.HTML {

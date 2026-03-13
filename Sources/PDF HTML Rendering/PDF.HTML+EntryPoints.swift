@@ -3,12 +3,13 @@
 
 import HTML_Renderable
 import PDF_Rendering
+import Rendering_Primitives
 
 // MARK: - Entry Points
 
 extension PDF.HTML {
-    /// Render HTML content to PDF pages using static dispatch.
-    public static func pages<H: PDF.HTML.View>(
+    /// Render HTML content to PDF pages.
+    public static func pages<H: Rendering.View>(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
     ) -> [PDF.Page] {
@@ -17,36 +18,14 @@ extension PDF.HTML {
         return finalizeRendering(context: &context).pages
     }
 
-    /// Render HTML content to PDF pages with collected metadata using static dispatch.
-    public static func render<H: PDF.HTML.View>(
+    /// Render HTML content to PDF pages with collected metadata.
+    public static func render<H: Rendering.View>(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
     ) -> Render.Result {
         var context = prepareContext(configuration: configuration)
         H._render(html(), context: &context)
         return finalizeRendering(context: &context)
-    }
-
-    /// Render any HTML.View to PDF with collected metadata using dynamic dispatch.
-    @_disfavoredOverload
-    public static func render<H: HTML.View>(
-        configuration: PDF.HTML.Configuration = .init(),
-        @HTML.Builder html: () -> H
-    ) -> Render.Result {
-        var context = prepareContext(configuration: configuration)
-        renderHTMLView(html(), context: &context)
-        return finalizeRendering(context: &context)
-    }
-
-    /// Render any HTML.View to PDF pages using dynamic dispatch.
-    @_disfavoredOverload
-    public static func pages<H: HTML.View>(
-        configuration: PDF.HTML.Configuration = .init(),
-        @HTML.Builder html: () -> H
-    ) -> [PDF.Page] {
-        var context = prepareContext(configuration: configuration)
-        renderHTMLView(html(), context: &context)
-        return finalizeRendering(context: &context).pages
     }
 }
 
@@ -65,7 +44,7 @@ extension PDF.HTML {
     ///   - footer: Builder that creates footer content for each page
     ///   - content: The main HTML content to render
     /// - Returns: Array of PDF pages with headers and footers
-    public static func pages<Content: PDF.HTML.View, Header: HTML.View, Footer: HTML.View>(
+    public static func pages<Content: Rendering.View, Header: Rendering.View, Footer: Rendering.View>(
         configuration: PDF.HTML.Configuration,
         @HTML.Builder header: @escaping (Page.Info) -> Header,
         @HTML.Builder footer: @escaping (Page.Info) -> Footer,
@@ -122,7 +101,7 @@ extension PDF.HTML {
             headerContext.style = pass1Context.pdf.style
 
             var headerHTMLContext = PDF.HTML.Context(pdf: headerContext, configuration: configuration)
-            renderHTMLView(header(pageInfo), context: &headerHTMLContext)
+            Header._render(header(pageInfo), context: &headerHTMLContext)
             headerHTMLContext.pdf.flush.inline()
 
             // Create a single-page context for footer
@@ -138,7 +117,7 @@ extension PDF.HTML {
             footerContext.style = pass1Context.pdf.style
 
             var footerHTMLContext = PDF.HTML.Context(pdf: footerContext, configuration: configuration)
-            renderHTMLView(footer(pageInfo), context: &footerHTMLContext)
+            Footer._render(footer(pageInfo), context: &footerHTMLContext)
             footerHTMLContext.pdf.flush.inline()
 
             // Combine: get content page, header content, footer content

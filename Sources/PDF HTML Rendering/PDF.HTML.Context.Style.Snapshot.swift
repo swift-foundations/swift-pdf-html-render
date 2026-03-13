@@ -1,14 +1,14 @@
-// PDF.HTML.Context.StyleSnapshot.swift
+// PDF.HTML.Context.Style.Snapshot.swift
 // Scoped style and box model state for save/restore
 
-extension PDF.HTML.Context {
+extension PDF.HTML.Context.Style {
     /// Snapshot of style, box model, and layout X bounds for scoped restoration.
     ///
     /// Captures everything that `withSavedStyleState` needs to restore after
     /// running a closure: resolved style, margins, padding, explicit dimensions,
     /// and the horizontal bounds of the layout box. Y position is NOT captured
     /// — it must advance through content rendering.
-    struct StyleSnapshot {
+    public struct Snapshot {
         let style: PDF.Context.Style.Resolved
         let marginTop: PDF.UserSpace.Height?
         let marginRight: PDF.UserSpace.Width?
