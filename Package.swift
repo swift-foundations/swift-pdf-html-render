@@ -109,7 +109,8 @@ let package = Package(
                 .pdfHTMLRendering,
                 .htmlRendering,
                 "PDF HTML Rendering Test Support",
-            ]
+            ],
+            path: "Tests/PDF HTML Rendering Tests"
         ),
     ],
     swiftLanguageModes: [.v6]
