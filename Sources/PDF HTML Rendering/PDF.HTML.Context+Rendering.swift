@@ -13,7 +13,7 @@ import Rendering_Primitives
 
 // MARK: - Rendering.Context Conformance
 
-extension PDF.HTML.Context: Rendering.Context {
+extension PDF.HTML.Context {
 
     // MARK: - Text
 

@@ -13,9 +13,10 @@ extension PDF.HTML {
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
     ) -> [PDF.Page] {
-        var context = prepareContext(configuration: configuration)
-        H._render(html(), context: &context)
-        return finalizeRendering(context: &context).pages
+        let state = Ownership.Mutable(prepareContext(configuration: configuration))
+        var renderCtx = Rendering.Context.pdfHTML(state: state)
+        H._render(html(), context: &renderCtx)
+        return finalizeRendering(context: &state.value).pages
     }
 
     /// Render HTML content to PDF pages with collected metadata.
@@ -23,9 +24,10 @@ extension PDF.HTML {
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
     ) -> Render.Result {
-        var context = prepareContext(configuration: configuration)
-        H._render(html(), context: &context)
-        return finalizeRendering(context: &context)
+        let state = Ownership.Mutable(prepareContext(configuration: configuration))
+        var renderCtx = Rendering.Context.pdfHTML(state: state)
+        H._render(html(), context: &renderCtx)
+        return finalizeRendering(context: &state.value)
     }
 }
 
@@ -62,18 +64,19 @@ extension PDF.HTML {
         var pass1Config = configuration
         pass1Config.margins = adjustedMargins
 
-        var pass1Context = prepareContext(configuration: pass1Config)
+        let pass1State = Ownership.Mutable(prepareContext(configuration: pass1Config))
         let contentView = content()
-        Content._render(contentView, context: &pass1Context)
+        var pass1RenderCtx = Rendering.Context.pdfHTML(state: pass1State)
+        Content._render(contentView, context: &pass1RenderCtx)
 
-        if let deferred = pass1Context.deferredKeepWithNextRender {
-            pass1Context.deferredKeepWithNextRender = nil
-            deferred.render(&pass1Context)
+        if let deferred = pass1State.value.deferredKeepWithNextRender {
+            pass1State.value.deferredKeepWithNextRender = nil
+            deferred.render(&pass1State.value)
         }
-        pass1Context.pdf.flush.inline()
+        pass1State.value.pdf.flush.inline()
 
-        let totalPages = pass1Context.pdf.pages.count
-        let pageSectionTitles = pass1Context.section.pageTitles
+        let totalPages = pass1State.value.pdf.pages.count
+        let pageSectionTitles = pass1State.value.section.pageTitles
 
         // PASS 2: Render again with headers and footers
         // For each page, we render: header area, content area, footer area
@@ -98,11 +101,12 @@ extension PDF.HTML {
                     trailing: configuration.margins.trailing
                 )
             )
-            headerContext.style = pass1Context.pdf.style
+            headerContext.style = pass1State.value.pdf.style
 
-            var headerHTMLContext = PDF.HTML.Context(pdf: headerContext, configuration: configuration)
-            Header._render(header(pageInfo), context: &headerHTMLContext)
-            headerHTMLContext.pdf.flush.inline()
+            let headerState = Ownership.Mutable(PDF.HTML.Context(pdf: headerContext, configuration: configuration))
+            var headerRenderCtx = Rendering.Context.pdfHTML(state: headerState)
+            Header._render(header(pageInfo), context: &headerRenderCtx)
+            headerState.value.pdf.flush.inline()
 
             // Create a single-page context for footer
             var footerContext = PDF.Context(
@@ -114,33 +118,34 @@ extension PDF.HTML {
                     trailing: configuration.margins.trailing
                 )
             )
-            footerContext.style = pass1Context.pdf.style
+            footerContext.style = pass1State.value.pdf.style
 
-            var footerHTMLContext = PDF.HTML.Context(pdf: footerContext, configuration: configuration)
-            Footer._render(footer(pageInfo), context: &footerHTMLContext)
-            footerHTMLContext.pdf.flush.inline()
+            let footerState = Ownership.Mutable(PDF.HTML.Context(pdf: footerContext, configuration: configuration))
+            var footerRenderCtx = Rendering.Context.pdfHTML(state: footerState)
+            Footer._render(footer(pageInfo), context: &footerRenderCtx)
+            footerState.value.pdf.flush.inline()
 
             // Combine: get content page, header content, footer content
-            let contentPage = pass1Context.pdf.pages[pageNumber - 1]
+            let contentPage = pass1State.value.pdf.pages[pageNumber - 1]
 
             // Merge content streams: header + content + footer
             var mergedContents: [PDF.ContentStream] = []
-            if let headerPage = headerHTMLContext.pdf.pages.first {
+            if let headerPage = headerState.value.pdf.pages.first {
                 mergedContents.append(contentsOf: headerPage.contents)
             }
             mergedContents.append(contentsOf: contentPage.contents)
-            if let footerPage = footerHTMLContext.pdf.pages.first {
+            if let footerPage = footerState.value.pdf.pages.first {
                 mergedContents.append(contentsOf: footerPage.contents)
             }
 
             // Merge resources
             var mergedResources = contentPage.resources
-            if let headerPage = headerHTMLContext.pdf.pages.first {
+            if let headerPage = headerState.value.pdf.pages.first {
                 for (name, font) in headerPage.resources.fonts {
                     mergedResources.fonts[name] = font
                 }
             }
-            if let footerPage = footerHTMLContext.pdf.pages.first {
+            if let footerPage = footerState.value.pdf.pages.first {
                 for (name, font) in footerPage.resources.fonts {
                     mergedResources.fonts[name] = font
                 }
