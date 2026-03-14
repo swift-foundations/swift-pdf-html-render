@@ -14,11 +14,11 @@ import Testing
 
 // MARK: - PageBreakAfter Tests
 
-@Suite("PageBreakAfter Tests")
-struct PageBreakAfterTests {
+@Suite
+struct `PageBreakAfter Tests` {
 
-    @Test("pageBreakAfter: avoid keeps header with following content")
-    func avoidKeepsHeaderWithContent() {
+    @Test
+    func `pageBreakAfter avoid keeps header with following content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 // Fill most of page with content
@@ -43,8 +43,8 @@ struct PageBreakAfterTests {
         #expect(contentString.contains("FOLLOWING_CONTENT"))
     }
 
-    @Test("pageBreakAfter: always forces page break")
-    func alwaysForcesPageBreak() {
+    @Test
+    func `pageBreakAfter always forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "PAGE_ONE_CONTENT" }
@@ -60,8 +60,8 @@ struct PageBreakAfterTests {
         #expect(pages.count >= 2, "Should have at least 2 pages after forced break")
     }
 
-    @Test("pageBreakAfter: auto allows natural flow")
-    func autoAllowsNaturalFlow() {
+    @Test
+    func `pageBreakAfter auto allows natural flow`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "SHORT_CONTENT" }
@@ -80,11 +80,11 @@ struct PageBreakAfterTests {
 
 // MARK: - PageBreakBefore Tests
 
-@Suite("PageBreakBefore Tests")
-struct PageBreakBeforeTests {
+@Suite
+struct `PageBreakBefore Tests` {
 
-    @Test("pageBreakBefore: always forces page break")
-    func alwaysForcesPageBreak() {
+    @Test
+    func `pageBreakBefore always forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "PAGE_ONE_CONTENT" }
@@ -100,8 +100,8 @@ struct PageBreakBeforeTests {
         #expect(pages.count >= 2, "Should have at least 2 pages after forced break")
     }
 
-    @Test("pageBreakBefore: auto allows natural flow")
-    func autoAllowsNaturalFlow() {
+    @Test
+    func `pageBreakBefore auto allows natural flow`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "FIRST" }
@@ -118,11 +118,11 @@ struct PageBreakBeforeTests {
 
 // MARK: - PageBreakInside Tests
 
-@Suite("PageBreakInside Tests")
-struct PageBreakInsideTests {
+@Suite
+struct `PageBreakInside Tests` {
 
-    @Test("pageBreakInside: avoid keeps element together")
-    func avoidKeepsElementTogether() {
+    @Test
+    func `pageBreakInside avoid keeps element together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 // Fill most of page
@@ -151,11 +151,11 @@ struct PageBreakInsideTests {
 
 // MARK: - BreakAfter Tests (Modern CSS)
 
-@Suite("BreakAfter Tests")
-struct BreakAfterTests {
+@Suite
+struct `BreakAfter Tests` {
 
-    @Test("breakAfter: avoid keeps header with following content")
-    func avoidKeepsHeaderWithContent() {
+    @Test
+    func `breakAfter avoid keeps header with following content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 // Fill most of page
@@ -178,8 +178,8 @@ struct BreakAfterTests {
         #expect(contentString.contains("MODERN_FOLLOWING_CONTENT"))
     }
 
-    @Test("breakAfter: avoidPage keeps header with following content")
-    func avoidPageKeepsHeaderWithContent() {
+    @Test
+    func `breakAfter avoidPage keeps header with following content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...40 {
@@ -201,8 +201,8 @@ struct BreakAfterTests {
         #expect(contentString.contains("AVOID_PAGE_CONTENT"))
     }
 
-    @Test("breakAfter: always forces page break")
-    func alwaysForcesPageBreak() {
+    @Test
+    func `breakAfter always forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "BEFORE_BREAK" }
@@ -217,8 +217,8 @@ struct BreakAfterTests {
         #expect(pages.count >= 2, "breakAfter: always should create page break")
     }
 
-    @Test("breakAfter: page forces page break")
-    func pageForcesPageBreak() {
+    @Test
+    func `breakAfter page forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "BEFORE_PAGE_BREAK" }
@@ -236,11 +236,11 @@ struct BreakAfterTests {
 
 // MARK: - BreakBefore Tests (Modern CSS)
 
-@Suite("BreakBefore Tests")
-struct BreakBeforeTests {
+@Suite
+struct `BreakBefore Tests` {
 
-    @Test("breakBefore: always forces page break")
-    func alwaysForcesPageBreak() {
+    @Test
+    func `breakBefore always forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "BEFORE_CONTENT" }
@@ -255,8 +255,8 @@ struct BreakBeforeTests {
         #expect(pages.count >= 2, "breakBefore: always should create page break")
     }
 
-    @Test("breakBefore: page forces page break")
-    func pageForcesPageBreak() {
+    @Test
+    func `breakBefore page forces page break`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "FIRST_PAGE" }
@@ -271,8 +271,8 @@ struct BreakBeforeTests {
         #expect(pages.count >= 2, "breakBefore: page should create page break")
     }
 
-    @Test("breakBefore: auto allows natural flow")
-    func autoAllowsNaturalFlow() {
+    @Test
+    func `breakBefore auto allows natural flow`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "A" }
@@ -289,11 +289,11 @@ struct BreakBeforeTests {
 
 // MARK: - BreakInside Tests (Modern CSS)
 
-@Suite("BreakInside Tests")
-struct BreakInsideTests {
+@Suite
+struct `BreakInside Tests` {
 
-    @Test("breakInside: avoid keeps element together")
-    func avoidKeepsElementTogether() {
+    @Test
+    func `breakInside avoid keeps element together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...35 {
@@ -316,8 +316,8 @@ struct BreakInsideTests {
         #expect(contentString.contains("MODERN_KEEP_END"))
     }
 
-    @Test("breakInside: avoidPage keeps element together")
-    func avoidPageKeepsElementTogether() {
+    @Test
+    func `breakInside avoidPage keeps element together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...35 {
@@ -343,11 +343,11 @@ struct BreakInsideTests {
 
 // MARK: - Consecutive Sticky Headers Tests
 
-@Suite("Consecutive Sticky Headers Tests")
-struct ConsecutiveStickyHeadersTests {
+@Suite
+struct `Consecutive Sticky Headers Tests` {
 
-    @Test("Consecutive sticky headers chain together")
-    func consecutiveHeadersChain() {
+    @Test
+    func `Consecutive sticky headers chain together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...40 {
@@ -374,8 +374,8 @@ struct ConsecutiveStickyHeadersTests {
         #expect(contentString.contains("SECTION_CONTENT"))
     }
 
-    @Test("Modern consecutive sticky headers chain together")
-    func modernConsecutiveHeadersChain() {
+    @Test
+    func `Modern consecutive sticky headers chain together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...40 {
@@ -404,11 +404,11 @@ struct ConsecutiveStickyHeadersTests {
 
 // MARK: - Section Wrapper Tests
 
-@Suite("Section Wrapper Tests")
-struct SectionWrapperTests {
+@Suite
+struct `Section Wrapper Tests` {
 
-    @Test("Sticky header inside Section wrapper works")
-    func stickyHeaderInSection() {
+    @Test
+    func `Sticky header inside Section wrapper works`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...40 {
@@ -432,8 +432,8 @@ struct SectionWrapperTests {
         #expect(contentString.contains("SECTION_WRAPPED_CONTENT"))
     }
 
-    @Test("Modern sticky header inside Section wrapper works")
-    func modernStickyHeaderInSection() {
+    @Test
+    func `Modern sticky header inside Section wrapper works`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...40 {
@@ -460,11 +460,11 @@ struct SectionWrapperTests {
 
 // MARK: - Sticky Header with Table Tests
 
-@Suite("Sticky Header with Table Tests")
-struct StickyHeaderWithTableTests {
+@Suite
+struct `Sticky Header with Table Tests` {
 
-    @Test("Sticky header with following table")
-    func stickyHeaderWithTable() {
+    @Test
+    func `Sticky header with following table`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 for i in 1...38 {

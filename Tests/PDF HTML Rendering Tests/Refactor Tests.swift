@@ -205,11 +205,11 @@ struct `PDF.HTML.View Tests` {
 
 // MARK: - Sticky Header Tests
 
-@Suite("Sticky Header Tests")
-struct StickyHeaderTests {
+@Suite
+struct `Sticky Header Tests` {
     
-    @Test("Basic sticky header document renders")
-    func basicStickyHeader() {
+    @Test
+    func `Basic sticky header document renders`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 // Fill most of page 1
@@ -273,8 +273,8 @@ struct StickyHeaderTests {
         #expect(contentString.contains("FOLLOWING_CONTENT"))
     }
     
-    @Test("Sticky header at document end renders")
-    func stickyHeaderAtDocumentEnd() {
+    @Test
+    func `Sticky header at document end renders`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 Paragraph { "Some content" }

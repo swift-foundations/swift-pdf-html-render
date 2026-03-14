@@ -34,11 +34,11 @@ public struct H<let N: Int> {
 
 // MARK: - Outline Tests
 
-@Suite("Outline Generation Tests")
-struct OutlineTests {
+@Suite
+struct `Outline Generation Tests` {
 
-    @Test("Raw H1 headings appear in outline")
-    func rawH1InOutline() throws {
+    @Test
+    func `Raw H1 headings appear in outline`() throws {
         let result = PDF.HTML.render {
             H1 { "Main Title" }
             Paragraph { "Some content after the title." }
@@ -53,8 +53,8 @@ struct OutlineTests {
         #expect(result.headings.contains { $0.text == "Main Title" }, "Should contain 'Main Title'")
     }
 
-    @Test("H<N> wrapper headings appear in outline")
-    func hWrapperInOutline() throws {
+    @Test
+    func `H wrapper headings appear in outline`() throws {
         let result = PDF.HTML.render {
             H<1>() { "Wrapped Title" }
             Paragraph { "Some content after the wrapped title." }
@@ -69,8 +69,8 @@ struct OutlineTests {
         #expect(result.headings.contains { $0.text == "Wrapped Title" }, "Should contain 'Wrapped Title'")
     }
 
-    @Test("Raw H1 inside Header container appears in outline")
-    func rawH1InsideHeaderInOutline() throws {
+    @Test
+    func `Raw H1 inside Header container appears in outline`() throws {
         let result = PDF.HTML.render {
             Header {
                 H1 { "Header Title" }
@@ -88,8 +88,8 @@ struct OutlineTests {
         #expect(result.headings.contains { $0.text == "Header Title" }, "Should contain 'Header Title'")
     }
 
-    @Test("Mixed raw and wrapped headings all appear in outline")
-    func mixedHeadingsInOutline() throws {
+    @Test
+    func `Mixed raw and wrapped headings all appear in outline`() throws {
         let result = PDF.HTML.render {
             // Raw H1 in Header (like documentHeader)
             Header {
@@ -126,8 +126,8 @@ struct OutlineTests {
         #expect(result.headings.contains { $0.text == "PURPOSE" }, "Should contain 'PURPOSE'")
     }
 
-    @Test("Document with outline generates correct PDF")
-    func documentWithOutline() throws {
+    @Test
+    func `Document with outline generates correct PDF`() throws {
         let doc = PDF.Document(
             info: .init(title: "Outline Test"),
             generateOutline: true
@@ -168,8 +168,8 @@ struct OutlineTests {
         }
     }
 
-    @Test("H1 with BR elements inside")
-    func h1WithBRElements() throws {
+    @Test
+    func `H1 with BR elements inside`() throws {
         let result = PDF.HTML.render {
             Header {
                 H1 {
@@ -196,8 +196,8 @@ struct OutlineTests {
         #expect(hasH1, "Should have an H1 heading with non-empty text")
     }
 
-    @Test("Articles of Incorporation style document")
-    func articlesOfIncorporationStyle() throws {
+    @Test
+    func `Articles of Incorporation style document`() throws {
         let doc = PDF.Document(
             info: .init(title: "Articles of Incorporation"),
             generateOutline: true
@@ -288,11 +288,11 @@ private func containsTitle(_ items: [ISO_32000.Outline.Item], _ title: String) -
 
 // MARK: - Diagnostic Tests for Single vs Multiple H1
 
-@Suite("Single vs Multiple H1 Diagnostic Tests")
-struct SingleVsMultipleH1Tests {
+@Suite
+struct `Single vs Multiple H1 Diagnostic Tests` {
 
-    @Test("Single H1 with H3 children - check if parent shows")
-    func singleH1Parent() throws {
+    @Test
+    func `Single H1 with H3 children - check if parent shows`() throws {
         let doc = PDF.Document(
             info: .init(title: "Single H1 Parent Test"),
             generateOutline: true
@@ -327,8 +327,8 @@ struct SingleVsMultipleH1Tests {
         }
     }
 
-    @Test("Multiple H1s - check if all parents show")
-    func multipleH1Parents() throws {
+    @Test
+    func `Multiple H1s - check if all parents show`() throws {
         let doc = PDF.Document(
             info: .init(title: "Multiple H1 Parents Test"),
             generateOutline: true

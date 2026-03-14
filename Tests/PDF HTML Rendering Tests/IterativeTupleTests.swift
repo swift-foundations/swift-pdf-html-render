@@ -7,8 +7,8 @@ import HTML_Rendering
 import PDF_Rendering
 @testable import PDF_HTML_Rendering_Test_Support
 
-@Suite("Iterative Tuple Rendering")
-struct IterativeTupleTests {
+@Suite
+struct `Iterative Tuple Tests` {
 
     private func render<V: HTML.View>(_ view: V) -> [UInt8] {
         let document = PDF.Document {
@@ -19,34 +19,34 @@ struct IterativeTupleTests {
 
     // MARK: - Tables (primary crash scenario)
 
-    @Test("10x10 table renders without stack overflow")
-    func table10x10() {
+    @Test
+    func `10x10 table renders without stack overflow`() {
         let bytes = render(Table10x10())
         #expect(!bytes.isEmpty)
     }
 
-    @Test("10x30 table renders without stack overflow")
-    func table10x30() {
+    @Test
+    func `10x30 table renders without stack overflow`() {
         let bytes = render(Table10x30())
         #expect(!bytes.isEmpty)
     }
 
-    @Test("5-column styled table renders without stack overflow")
-    func styledTable5x10() {
+    @Test
+    func `5-column styled table renders without stack overflow`() {
         let bytes = render(StyledTable5x10())
         #expect(!bytes.isEmpty)
     }
 
     // MARK: - Deep flat view hierarchies
 
-    @Test("30-element flat view body renders without stack overflow")
-    func flatView30() {
+    @Test
+    func `30-element flat view body renders without stack overflow`() {
         let bytes = render(FlatView30())
         #expect(!bytes.isEmpty)
     }
 
-    @Test("50-element flat view body renders without stack overflow")
-    func flatView50() {
+    @Test
+    func `50-element flat view body renders without stack overflow`() {
         let bytes = render(FlatView50())
         #expect(!bytes.isEmpty)
     }

@@ -11,11 +11,11 @@ import Testing
 
 // MARK: - Margin Tests
 
-@Suite("Margin Tests")
-struct MarginTests {
+@Suite
+struct `Margin Tests` {
 
-    @Test("marginTop advances Y position")
-    func marginTopAdvancesY() {
+    @Test
+    func `marginTop advances Y position`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -36,8 +36,8 @@ struct MarginTests {
         #expect(contentString.contains("SECOND_PARAGRAPH"))
     }
 
-    @Test("marginBottom advances Y position after content")
-    func marginBottomAdvancesY() {
+    @Test
+    func `marginBottom advances Y position after content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -57,8 +57,8 @@ struct MarginTests {
         #expect(contentString.contains("FOLLOWING_CONTENT"))
     }
 
-    @Test("marginLeft insets content")
-    func marginLeftInsetsContent() {
+    @Test
+    func `marginLeft insets content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -75,8 +75,8 @@ struct MarginTests {
         #expect(contentString.contains("INDENTED_CONTENT"))
     }
 
-    @Test("marginRight restricts content width")
-    func marginRightRestrictsWidth() {
+    @Test
+    func `marginRight restricts content width`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -93,8 +93,8 @@ struct MarginTests {
         #expect(contentString.contains("CONTENT_WITH_RIGHT_MARGIN"))
     }
 
-    @Test("margin shorthand applies all sides")
-    func marginShorthandAppliesAllSides() {
+    @Test
+    func `margin shorthand applies all sides`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -111,8 +111,8 @@ struct MarginTests {
         #expect(contentString.contains("FULLY_MARGINED_CONTENT"))
     }
 
-    @Test("margin with em units scales with font size")
-    func marginEmScalesWithFontSize() {
+    @Test
+    func `margin with em units scales with font size`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -132,11 +132,11 @@ struct MarginTests {
 
 // MARK: - Padding Tests
 
-@Suite("Padding Tests")
-struct PaddingTests {
+@Suite
+struct `Padding Tests` {
 
-    @Test("paddingTop advances Y position inside element")
-    func paddingTopAdvancesY() {
+    @Test
+    func `paddingTop advances Y position inside element`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -153,8 +153,8 @@ struct PaddingTests {
         #expect(contentString.contains("PADDED_TOP_CONTENT"))
     }
 
-    @Test("paddingBottom advances Y position after content")
-    func paddingBottomAdvancesY() {
+    @Test
+    func `paddingBottom advances Y position after content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -174,8 +174,8 @@ struct PaddingTests {
         #expect(contentString.contains("FOLLOWING_ELEMENT"))
     }
 
-    @Test("paddingLeft insets content from left edge")
-    func paddingLeftInsetsContent() {
+    @Test
+    func `paddingLeft insets content from left edge`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -192,8 +192,8 @@ struct PaddingTests {
         #expect(contentString.contains("LEFT_PADDED_CONTENT"))
     }
 
-    @Test("paddingRight insets content from right edge")
-    func paddingRightInsetsContent() {
+    @Test
+    func `paddingRight insets content from right edge`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -210,8 +210,8 @@ struct PaddingTests {
         #expect(contentString.contains("RIGHT_PADDED_CONTENT"))
     }
 
-    @Test("padding shorthand applies all sides")
-    func paddingShorthandAppliesAllSides() {
+    @Test
+    func `padding shorthand applies all sides`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -228,8 +228,8 @@ struct PaddingTests {
         #expect(contentString.contains("FULLY_PADDED_CONTENT"))
     }
 
-    @Test("padding with percentage uses parent width")
-    func paddingPercentageUsesParentWidth() {
+    @Test
+    func `padding with percentage uses parent width`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -249,11 +249,11 @@ struct PaddingTests {
 
 // MARK: - Width Tests
 
-@Suite("Width Tests")
-struct WidthTests {
+@Suite
+struct `Width Tests` {
 
-    @Test("explicit width constrains content area")
-    func explicitWidthConstrainsContent() {
+    @Test
+    func `explicit width constrains content area`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -270,8 +270,8 @@ struct WidthTests {
         #expect(contentString.contains("WIDTH_CONSTRAINED_CONTENT"))
     }
 
-    @Test("width auto uses available space")
-    func widthAutoUsesAvailableSpace() {
+    @Test
+    func `width auto uses available space`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -288,8 +288,8 @@ struct WidthTests {
         #expect(contentString.contains("AUTO_WIDTH_CONTENT"))
     }
 
-    @Test("width percentage uses parent width")
-    func widthPercentageUsesParentWidth() {
+    @Test
+    func `width percentage uses parent width`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -309,11 +309,11 @@ struct WidthTests {
 
 // MARK: - Height Tests
 
-@Suite("Height Tests")
-struct HeightTests {
+@Suite
+struct `Height Tests` {
 
-    @Test("explicit height does not break content")
-    func explicitHeightRendersContent() {
+    @Test
+    func `explicit height does not break content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -330,8 +330,8 @@ struct HeightTests {
         #expect(contentString.contains("HEIGHT_CONSTRAINED_CONTENT"))
     }
 
-    @Test("height auto computes from content")
-    func heightAutoComputesFromContent() {
+    @Test
+    func `height auto computes from content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -351,11 +351,11 @@ struct HeightTests {
 
 // MARK: - Combined Box Model Tests
 
-@Suite("Combined Box Model Tests")
-struct CombinedBoxModelTests {
+@Suite
+struct `Combined Box Model Tests` {
 
-    @Test("margin and padding combine correctly")
-    func marginAndPaddingCombine() {
+    @Test
+    func `margin and padding combine correctly`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -373,8 +373,8 @@ struct CombinedBoxModelTests {
         #expect(contentString.contains("MARGIN_AND_PADDING_CONTENT"))
     }
 
-    @Test("nested elements with box model")
-    func nestedElementsWithBoxModel() {
+    @Test
+    func `nested elements with box model`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -394,8 +394,8 @@ struct CombinedBoxModelTests {
         #expect(contentString.contains("DEEPLY_NESTED_CONTENT"))
     }
 
-    @Test("width with padding computes content area correctly")
-    func widthWithPaddingComputesContentArea() {
+    @Test
+    func `width with padding computes content area correctly`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -413,8 +413,8 @@ struct CombinedBoxModelTests {
         #expect(contentString.contains("WIDTH_WITH_PADDING_CONTENT"))
     }
 
-    @Test("margin with width centers element")
-    func marginWithWidthCentersElement() {
+    @Test
+    func `margin with width centers element`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -436,11 +436,11 @@ struct CombinedBoxModelTests {
 
 // MARK: - Box Model with Text Flow Tests
 
-@Suite("Box Model with Text Flow Tests")
-struct BoxModelTextFlowTests {
+@Suite
+struct `Box Model with Text Flow Tests` {
 
-    @Test("padding affects text wrapping")
-    func paddingAffectsTextWrapping() {
+    @Test
+    func `padding affects text wrapping`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -458,8 +458,8 @@ struct BoxModelTextFlowTests {
         #expect(contentString.contains("longer paragraph"))
     }
 
-    @Test("width constraint affects text wrapping")
-    func widthConstraintAffectsTextWrapping() {
+    @Test
+    func `width constraint affects text wrapping`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
