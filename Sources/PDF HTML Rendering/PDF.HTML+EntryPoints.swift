@@ -69,10 +69,6 @@ extension PDF.HTML {
         var pass1RenderCtx = Rendering.Context.pdfHTML(state: pass1State)
         pass1RenderCtx.render(contentView)
 
-        if let deferred = pass1State.value.deferredKeepWithNextRender {
-            pass1State.value.deferredKeepWithNextRender = nil
-            deferred.render(&pass1State.value)
-        }
         pass1State.value.pdf.flush.inline()
 
         let totalPages = pass1State.value.pdf.pages.count

@@ -45,12 +45,10 @@ extension PDF.HTML {
         /// Pending bottom margin from previous block element (for margin collapsing).
         public var pendingBottomMargin: PDF.UserSpace.Height = .init(0)
 
-        /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
-        public var deferredKeepWithNextRender: Deferred?
-
         /// Break flags set by `Style.Context.Modifier.apply(to:)`.
         ///
-        /// Callers capture and reset via `captureBreakFlags()`.
+        /// Scoped per style level: `_pushStyle` saves and clears these flags,
+        /// `_popStyle` processes flags set in that scope, then restores the parent's.
         public var avoidPageBreakAfter: Bool = false
         public var forcePageBreakAfter: Bool = false
         public var avoidPageBreakInside: Bool = false
@@ -121,26 +119,6 @@ extension PDF.HTML.Context {
     /// entering a block formatting context like a table cell).
     public mutating func resetMarginCollapsing() {
         pendingBottomMargin = .init(0)
-    }
-}
-
-// MARK: - Break Flag Capture
-
-extension PDF.HTML.Context {
-    /// Capture and reset all break flags set by style modifiers.
-    ///
-    /// This centralizes the set-check-reset pattern used after applying
-    /// `Style.Context.Modifier` properties.
-    public mutating func captureBreakFlags() -> Break {
-        let flags = Break(
-            avoidAfter: avoidPageBreakAfter,
-            forceAfter: forcePageBreakAfter,
-            avoidInside: avoidPageBreakInside
-        )
-        avoidPageBreakAfter = false
-        forcePageBreakAfter = false
-        avoidPageBreakInside = false
-        return flags
     }
 }
 

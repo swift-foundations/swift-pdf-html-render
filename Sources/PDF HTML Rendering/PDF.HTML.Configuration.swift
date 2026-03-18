@@ -77,9 +77,6 @@ extension PDF.HTML {
         /// Horizontal gap multiplier in em (default: 0.5, used for list markers)
         public var horizontalGapEm: Dimension_Primitives.Scale<1, Double>
 
-        /// Threshold for deferring large headers (default: 0.9, i.e., 90% of page height)
-        public var deferredHeaderThreshold: Dimension_Primitives.Scale<1, Double>
-
         // MARK: - Table Configuration
 
         /// Table styling configuration
@@ -142,7 +139,6 @@ extension PDF.HTML {
             typography: Typography = .init(),
             indent: Indent = .init(),
             horizontalGapEm: Dimension_Primitives.Scale<1, Double> = 0.5,
-            deferredHeaderThreshold: Dimension_Primitives.Scale<1, Double> = 0.9,
             table: Table = .init(),
             outline: Outline = .init(),
             link: Link = .init(),
@@ -164,7 +160,6 @@ extension PDF.HTML {
             self.typography = typography
             self.indent = indent
             self.horizontalGapEm = horizontalGapEm
-            self.deferredHeaderThreshold = deferredHeaderThreshold
             self.table = table
             self.outline = outline
             self.link = link

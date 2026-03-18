@@ -35,10 +35,6 @@ extension PDF.HTML {
     static func finalizeRendering(
         context: inout PDF.HTML.Context
     ) -> Render.Result {
-        if let deferred = context.deferredKeepWithNextRender {
-            context.deferredKeepWithNextRender = nil
-            deferred.render(&context)
-        }
         context.pdf.flush.inline()
 
         let resolvedPages = PDF.Context.resolveInternalLinks(

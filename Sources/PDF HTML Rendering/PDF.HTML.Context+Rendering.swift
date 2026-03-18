@@ -414,31 +414,6 @@ extension PDF.HTML.Context {
                 pushHeading(level: headingLevel, tagName: tagName, context: &context)
             }
 
-            // Handle deferred keep-with-next content
-            if let deferred = context.deferredKeepWithNextRender {
-                context.deferredKeepWithNextRender = nil
-                let fullPageHeight = context.configuration.content.height
-                if deferred.measuredHeight > fullPageHeight * context.configuration.deferredHeaderThreshold {
-                    deferred.render(&context)
-                } else {
-                    let oneLineHeight = context.pdf.style.line.height
-                    let marginTop = PDF.UserSpace.Size<1>(
-                        HTML.Element.Tag<Never>.blockMargins(
-                            for: tagName,
-                            configuration: context.configuration
-                        )?.top ?? .length(.em(0)),
-                        currentSize: context.pdf.style.fontSize,
-                        baseFontSize: context.configuration.defaultFontSize
-                    ).height
-                    let minContentHeight = marginTop + oneLineHeight
-                    let totalNeeded = deferred.measuredHeight + minContentHeight
-                    if context.pdf.page.exceeds(adding: totalNeeded) {
-                        context.pdf.page.new()
-                    }
-                    deferred.render(&context)
-                }
-            }
-
             // Tag-specific block setup
             pushBlockElement(tagName, context: &context)
         } else {
@@ -489,8 +464,10 @@ extension PDF.HTML.Context {
     public static func _pushStyle(_ context: inout Self) {
         if record(.pushStyle, context: &context) { return }
         context.styleScopeStack.append(Style.Snapshot(from: context))
-        // Clear so inner scopes don't consume the parent's break flag.
+        // Clear so inner scopes don't consume the parent's break flags.
         context.forcePageBreakAfter = false
+        context.avoidPageBreakAfter = false
+        context.avoidPageBreakInside = false
     }
 
     public static func _popStyle(_ context: inout Self) {
@@ -511,10 +488,12 @@ extension PDF.HTML.Context {
             context.forcePageBreakAfter = false
         }
 
-        // Restore saved state, then restore parent's break flag.
+        // Restore saved state, then restore parent's break flags.
         if let snapshot = context.styleScopeStack.popLast() {
             snapshot.restore(to: &context)
             context.forcePageBreakAfter = snapshot.forcePageBreakAfter
+            context.avoidPageBreakAfter = snapshot.avoidPageBreakAfter
+            context.avoidPageBreakInside = snapshot.avoidPageBreakInside
         }
     }
 }
