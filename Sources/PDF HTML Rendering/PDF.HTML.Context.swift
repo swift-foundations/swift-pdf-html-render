@@ -3,6 +3,7 @@
 
 import Copy_on_Write
 public import Dictionary_Primitives
+import Rendering_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
 
@@ -53,6 +54,18 @@ extension PDF.HTML {
         public var avoidPageBreakAfter: Bool = false
         public var forcePageBreakAfter: Bool = false
         public var avoidPageBreakInside: Bool = false
+
+        // MARK: - Speculative Rendering (Keep-With-Next)
+
+        /// Snapshot of context state taken when speculative rendering begins.
+        ///
+        /// The `@CoW` property wrapper on both `PDF.HTML.Context` and
+        /// `PDF.Context` gives cheap snapshots via reference counting.
+        /// On rollback, the entire context is restored from the snapshot.
+        public var speculativeSnapshot: PDF.HTML.Context?
+
+        /// Actions recorded during speculative rendering for replay after rollback.
+        public var speculativeActions: [Rendering.Action]?
 
         // MARK: - Section Tracking
 

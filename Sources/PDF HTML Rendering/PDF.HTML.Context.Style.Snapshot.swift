@@ -15,6 +15,7 @@ extension PDF.HTML.Context.Style {
         let constraint: PDF.Context.Constraint
         let layoutBoxLLX: PDF.UserSpace.X
         let layoutBoxURX: PDF.UserSpace.X
+        let forcePageBreakAfter: Bool
 
         init(from context: PDF.HTML.Context) {
             self.style = context.pdf.style
@@ -23,6 +24,7 @@ extension PDF.HTML.Context.Style {
             self.constraint = context.pdf.constraint
             self.layoutBoxLLX = context.pdf.layout.box.llx
             self.layoutBoxURX = context.pdf.layout.box.urx
+            self.forcePageBreakAfter = context.forcePageBreakAfter
         }
 
         func restore(to context: inout PDF.HTML.Context) {

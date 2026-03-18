@@ -489,6 +489,8 @@ extension PDF.HTML.Context {
     public static func _pushStyle(_ context: inout Self) {
         if record(.pushStyle, context: &context) { return }
         context.styleScopeStack.append(Style.Snapshot(from: context))
+        // Clear so inner scopes don't consume the parent's break flag.
+        context.forcePageBreakAfter = false
     }
 
     public static func _popStyle(_ context: inout Self) {
@@ -502,16 +504,17 @@ extension PDF.HTML.Context {
             context.pdf.advance(marginBottom)
         }
 
-        // Handle force page break after
+        // Handle force page break set in THIS scope only.
         if context.forcePageBreakAfter {
             context.pdf.flush.inline()
             context.pdf.page.new()
             context.forcePageBreakAfter = false
         }
 
-        // Restore saved state
+        // Restore saved state, then restore parent's break flag.
         if let snapshot = context.styleScopeStack.popLast() {
             snapshot.restore(to: &context)
+            context.forcePageBreakAfter = snapshot.forcePageBreakAfter
         }
     }
 }

@@ -15,7 +15,7 @@ extension PDF.HTML {
     ) -> [PDF.Page] {
         let state = Ownership.Mutable(prepareContext(configuration: configuration))
         var renderCtx = Rendering.Context.pdfHTML(state: state)
-        H._render(html(), context: &renderCtx)
+        renderCtx.render(html())
         return finalizeRendering(context: &state.value).pages
     }
 
@@ -26,7 +26,7 @@ extension PDF.HTML {
     ) -> Render.Result {
         let state = Ownership.Mutable(prepareContext(configuration: configuration))
         var renderCtx = Rendering.Context.pdfHTML(state: state)
-        H._render(html(), context: &renderCtx)
+        renderCtx.render(html())
         return finalizeRendering(context: &state.value)
     }
 }
@@ -67,7 +67,7 @@ extension PDF.HTML {
         let pass1State = Ownership.Mutable(prepareContext(configuration: pass1Config))
         let contentView = content()
         var pass1RenderCtx = Rendering.Context.pdfHTML(state: pass1State)
-        Content._render(contentView, context: &pass1RenderCtx)
+        pass1RenderCtx.render(contentView)
 
         if let deferred = pass1State.value.deferredKeepWithNextRender {
             pass1State.value.deferredKeepWithNextRender = nil
@@ -105,7 +105,7 @@ extension PDF.HTML {
 
             let headerState = Ownership.Mutable(PDF.HTML.Context(pdf: headerContext, configuration: configuration))
             var headerRenderCtx = Rendering.Context.pdfHTML(state: headerState)
-            Header._render(header(pageInfo), context: &headerRenderCtx)
+            headerRenderCtx.render(header(pageInfo))
             headerState.value.pdf.flush.inline()
 
             // Create a single-page context for footer
@@ -122,7 +122,7 @@ extension PDF.HTML {
 
             let footerState = Ownership.Mutable(PDF.HTML.Context(pdf: footerContext, configuration: configuration))
             var footerRenderCtx = Rendering.Context.pdfHTML(state: footerState)
-            Footer._render(footer(pageInfo), context: &footerRenderCtx)
+            footerRenderCtx.render(footer(pageInfo))
             footerState.value.pdf.flush.inline()
 
             // Combine: get content page, header content, footer content
