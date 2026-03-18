@@ -16,6 +16,7 @@ extension HTML.Element.Tag {
     ) {
         let color = tableCtx.borderColor
         let width = tableCtx.borderWidth.width
+        guard tableCtx.borderWidth != .init(0) else { return }
 
         // Draw left edge (from lower-left to upper-left)
         context.pdf.emit.line(
@@ -49,6 +50,7 @@ extension HTML.Element.Tag {
 
         let color = tableCtx.borderColor
         let width = tableCtx.borderWidth.width
+        guard tableCtx.borderWidth != .init(0) else { return }
         let tableBounds = tableCtx.bounds
 
         // Draw right edge (from fragment top to fragment bottom)
