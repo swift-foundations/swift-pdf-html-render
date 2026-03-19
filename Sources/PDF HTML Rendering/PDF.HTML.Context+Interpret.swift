@@ -8,10 +8,13 @@ extension PDF.HTML.Context {
     public mutating func interpret(_ action: Rendering.Action) {
         switch action {
         case .text(let content): text(content)
-        case .lineBreak: lineBreak()
-        case .thematicBreak: thematicBreak()
+        case .break(let kind):
+            switch kind {
+            case .line: lineBreak()
+            case .thematic: thematicBreak()
+            case .page: pageBreak()
+            }
         case .image(let source, let alt): image(source: source, alt: alt)
-        case .pageBreak: pageBreak()
         case .attribute(let name, let value): set(attribute: name, value)
         case .class(let name): add(class: name)
         case .raw(let bytes): write(raw: bytes)

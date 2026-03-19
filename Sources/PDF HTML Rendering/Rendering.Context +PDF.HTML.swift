@@ -54,22 +54,125 @@ extension Rendering.Context {
                 record(.text($0))
                 state.value.text($0)
             },
-            lineBreak: {
-                record(.lineBreak)
-                state.value.lineBreak()
-            },
-            thematicBreak: {
-                record(.thematicBreak)
-                state.value.thematicBreak()
-            },
+            break: Rendering.Break(
+                line: {
+                    record(.break(.line))
+                    state.value.lineBreak()
+                },
+                thematic: {
+                    record(.break(.thematic))
+                    state.value.thematicBreak()
+                },
+                page: {
+                    record(.break(.page))
+                    state.value.pageBreak()
+                }
+            ),
             image: {
                 record(.image(source: $0, alt: $1))
                 state.value.image(source: $0, alt: $1)
             },
-            pageBreak: {
-                record(.pageBreak)
-                state.value.pageBreak()
-            },
+            push: Rendering.Push(
+                block: {
+                    record(.push(.block(role: $0, style: $1)))
+                    PDF.HTML.Context._pushBlock(&state.value, role: $0, style: $1)
+                },
+                inline: {
+                    record(.push(.inline(role: $0, style: $1)))
+                    PDF.HTML.Context._pushInline(&state.value, role: $0, style: $1)
+                },
+                list: {
+                    record(.push(.list(kind: $0, start: $1)))
+                    PDF.HTML.Context._pushList(&state.value, kind: $0, start: $1)
+                },
+                item: {
+                    record(.push(.item))
+                    PDF.HTML.Context._pushItem(&state.value)
+                },
+                link: {
+                    record(.push(.link(destination: $0)))
+                    PDF.HTML.Context._pushLink(&state.value, destination: $0)
+                },
+                attributes: {
+                    record(.push(.attributes))
+                    PDF.HTML.Context._pushAttributes(&state.value)
+                },
+                element: { tagName, isBlock, isVoid, isPreElement in
+                    if isBlock {
+                        let isHeading = HTML.Element.Tag<Never>.headingLevel(for: tagName) != nil
+
+                        // When a non-heading block element opens and speculative
+                        // content is pending, check whether the heading + this block
+                        // fit on the current page. Heading → heading doesn't resolve
+                        // (consecutive headings should stick together).
+                        if !isHeading && state.value.speculativeSnapshot != nil {
+                            let lineHeight = state.value.pdf.style.line.height
+                            let marginTop = PDF.UserSpace.Size<1>(
+                                HTML.Element.Tag<Never>.blockMargins(
+                                    for: tagName,
+                                    configuration: state.value.configuration
+                                )?.top ?? .length(.em(0)),
+                                currentSize: state.value.pdf.style.fontSize,
+                                baseFontSize: state.value.configuration.defaultFontSize
+                            ).height
+                            // Require enough space for the next block's margin plus
+                            // at least 3 lines of content — a heading with only 1-2
+                            // orphaned lines beneath it looks worse than a page break.
+                            let minimumFollowingContent = marginTop + lineHeight * 3
+                            resolveSpeculative(minimumRequired: minimumFollowingContent)
+                        }
+
+                        // Headings implicitly begin speculative rendering so they
+                        // keep with the next block — same as browser UA stylesheet
+                        // `break-after: avoid` on h1–h6.
+                        if isHeading && state.value.speculativeSnapshot == nil {
+                            state.value.speculativeSnapshot = state.value
+                            state.value.speculativeActions = []
+                        }
+                    }
+
+                    record(.push(.element(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)))
+                    PDF.HTML.Context._pushElement(&state.value, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+                },
+                style: {
+                    record(.push(.style))
+                    PDF.HTML.Context._pushStyle(&state.value)
+                }
+            ),
+            pop: Rendering.Pop(
+                block: {
+                    record(.pop(.block))
+                    PDF.HTML.Context._popBlock(&state.value)
+                },
+                inline: {
+                    record(.pop(.inline))
+                    PDF.HTML.Context._popInline(&state.value)
+                },
+                list: {
+                    record(.pop(.list))
+                    PDF.HTML.Context._popList(&state.value)
+                },
+                item: {
+                    record(.pop(.item))
+                    PDF.HTML.Context._popItem(&state.value)
+                },
+                link: {
+                    record(.pop(.link))
+                    PDF.HTML.Context._popLink(&state.value)
+                },
+                attributes: {
+                    record(.pop(.attributes))
+                    PDF.HTML.Context._popAttributes(&state.value)
+                },
+                element: {
+                    record(.pop(.element(isBlock: $0)))
+                    PDF.HTML.Context._popElement(&state.value, isBlock: $0)
+                },
+                style: {
+                    record(.pop(.style))
+                    PDF.HTML.Context._popStyle(&state.value)
+                }
+            ),
             setAttribute: {
                 record(.attribute(set: $0, value: $1))
                 state.value.set(attribute: $0, $1)
@@ -97,113 +200,18 @@ extension Rendering.Context {
                 }
                 return handled
             },
-            pushBlock: {
-                record(.push(.block(role: $0, style: $1)))
-                PDF.HTML.Context._pushBlock(&state.value, role: $0, style: $1)
-            },
-            popBlock: {
-                record(.pop(.block))
-                PDF.HTML.Context._popBlock(&state.value)
-            },
-            pushInline: {
-                record(.push(.inline(role: $0, style: $1)))
-                PDF.HTML.Context._pushInline(&state.value, role: $0, style: $1)
-            },
-            popInline: {
-                record(.pop(.inline))
-                PDF.HTML.Context._popInline(&state.value)
-            },
-            pushList: {
-                record(.push(.list(kind: $0, start: $1)))
-                PDF.HTML.Context._pushList(&state.value, kind: $0, start: $1)
-            },
-            popList: {
-                record(.pop(.list))
-                PDF.HTML.Context._popList(&state.value)
-            },
-            pushItem: {
-                record(.push(.item))
-                PDF.HTML.Context._pushItem(&state.value)
-            },
-            popItem: {
-                record(.pop(.item))
-                PDF.HTML.Context._popItem(&state.value)
-            },
-            pushLink: {
-                record(.push(.link(destination: $0)))
-                PDF.HTML.Context._pushLink(&state.value, destination: $0)
-            },
-            popLink: {
-                record(.pop(.link))
-                PDF.HTML.Context._popLink(&state.value)
-            },
-            pushAttributes: {
-                record(.push(.attributes))
-                PDF.HTML.Context._pushAttributes(&state.value)
-            },
-            popAttributes: {
-                record(.pop(.attributes))
-                PDF.HTML.Context._popAttributes(&state.value)
-            },
-            pushElement: { tagName, isBlock, isVoid, isPreElement in
-                if isBlock {
-                    let isHeading = HTML.Element.Tag<Never>.headingLevel(for: tagName) != nil
-
-                    // When a non-heading block element opens and speculative
-                    // content is pending, check whether the heading + this block
-                    // fit on the current page. Heading → heading doesn't resolve
-                    // (consecutive headings should stick together).
-                    if !isHeading && state.value.speculativeSnapshot != nil {
-                        let lineHeight = state.value.pdf.style.line.height
-                        let marginTop = PDF.UserSpace.Size<1>(
-                            HTML.Element.Tag<Never>.blockMargins(
-                                for: tagName,
-                                configuration: state.value.configuration
-                            )?.top ?? .length(.em(0)),
-                            currentSize: state.value.pdf.style.fontSize,
-                            baseFontSize: state.value.configuration.defaultFontSize
-                        ).height
-                        // Require enough space for the next block's margin plus
-                        // at least 3 lines of content — a heading with only 1-2
-                        // orphaned lines beneath it looks worse than a page break.
-                        let minimumFollowingContent = marginTop + lineHeight * 3
-                        resolveSpeculative(minimumRequired: minimumFollowingContent)
-                    }
-
-                    // Headings implicitly begin speculative rendering so they
-                    // keep with the next block — same as browser UA stylesheet
-                    // `break-after: avoid` on h1–h6.
-                    if isHeading && state.value.speculativeSnapshot == nil {
-                        state.value.speculativeSnapshot = state.value
-                        state.value.speculativeActions = []
-                    }
+            speculative: Rendering.Speculative(
+                begin: {
+                    guard state.value.speculativeSnapshot == nil else { return }
+                    state.value.speculativeSnapshot = state.value
+                    state.value.speculativeActions = []
+                },
+                check: { minimumRequired in
+                    resolveSpeculative(
+                        minimumRequired: PDF.UserSpace.Height(Double(minimumRequired))
+                    )
                 }
-
-                record(.push(.element(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)))
-                PDF.HTML.Context._pushElement(&state.value, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
-            },
-            popElement: {
-                record(.pop(.element(isBlock: $0)))
-                PDF.HTML.Context._popElement(&state.value, isBlock: $0)
-            },
-            pushStyle: {
-                record(.push(.style))
-                PDF.HTML.Context._pushStyle(&state.value)
-            },
-            popStyle: {
-                record(.pop(.style))
-                PDF.HTML.Context._popStyle(&state.value)
-            },
-            beginSpeculative: {
-                guard state.value.speculativeSnapshot == nil else { return }
-                state.value.speculativeSnapshot = state.value
-                state.value.speculativeActions = []
-            },
-            checkFit: { minimumRequired in
-                resolveSpeculative(
-                    minimumRequired: PDF.UserSpace.Height(Double(minimumRequired))
-                )
-            }
+            )
         )
     }
 }
