@@ -48,9 +48,9 @@ extension PDF.HTML {
     /// - Returns: Array of PDF pages with headers and footers
     public static func pages<Content: Rendering.View, Header: Rendering.View, Footer: Rendering.View>(
         configuration: PDF.HTML.Configuration,
-        @HTML.Builder header: @escaping (Page.Info) -> Header,
-        @HTML.Builder footer: @escaping (Page.Info) -> Footer,
-        @HTML.Builder content: () -> Content
+        @HTML.Builder content: () -> Content,
+        @HTML.Builder header: @escaping (Page.Info) -> Header = { _ in Rendering.Empty() },
+        @HTML.Builder footer: @escaping (Page.Info) -> Footer = { _ in Rendering.Empty() }
     ) -> [PDF.Page] {
         // Adjust margins to account for header/footer space
         let adjustedMargins = PDF.UserSpace.EdgeInsets(
