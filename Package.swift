@@ -12,14 +12,14 @@ extension Target.Dependency {
 }
 
 extension Target.Dependency {
-    static var htmlRenderable: Self {
-        .product(name: "HTML Renderable", package: "swift-html-rendering")
+    static var htmlRenderingCore: Self {
+        .product(name: "HTML Rendering Core", package: "swift-html-rendering")
     }
     static var htmlRendering: Self {
         .product(name: "HTML Rendering", package: "swift-html-rendering")
     }
-    static var htmlRenderableTestSupport: Self {
-        .product(name: "HTML Renderable Test Support", package: "swift-html-rendering")
+    static var htmlRenderingCoreTestSupport: Self {
+        .product(name: "HTML Rendering Core Test Support", package: "swift-html-rendering")
     }
     static var pdfRenderingTestSupport: Self {
         .product(name: "PDF Rendering Test Support", package: "swift-pdf-rendering")
@@ -82,7 +82,7 @@ let package = Package(
         .target(
             name: .pdfHTMLRendering,
             dependencies: [
-                .htmlRenderable,
+                .htmlRenderingCore,
                 .pdfRendering,
                 .copyOnWrite,
                 .css,
@@ -98,7 +98,7 @@ let package = Package(
             name: "PDF HTML Rendering Test Support",
             dependencies: [
                 .pdfHTMLRendering,
-                .htmlRenderableTestSupport,
+                .htmlRenderingCoreTestSupport,
                 .pdfRenderingTestSupport,
             ],
             path: "Tests/Support"

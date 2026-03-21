@@ -1,7 +1,7 @@
 // HTML.Element.Tag+TagStyle.swift
 // Tag-specific styling, block margins, and heading level detection
 
-import HTML_Renderable
+import HTML_Rendering_Core
 import PDF_Rendering
 
 extension HTML.Element.Tag {

@@ -1,7 +1,7 @@
 // HTML.Element.Tag+TableBorders.swift
 // Table border and background drawing helpers
 
-import HTML_Renderable
+import HTML_Rendering_Core
 import PDF_Rendering
 
 extension HTML.Element.Tag {

@@ -6,7 +6,7 @@
 // (for byte output) and PDF.HTML.Context (for PDF pages) via pure
 // static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
 
-import HTML_Renderable
+import HTML_Rendering_Core
 import Layout_Primitives
 import PDF_Rendering
 import Rendering_Primitives

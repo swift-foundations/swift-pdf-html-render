@@ -1,7 +1,7 @@
 // PDF.HTML+EntryPoints.swift
 // Public entry points for HTML to PDF rendering
 
-import HTML_Renderable
+import HTML_Rendering_Core
 import PDF_Rendering
 import Rendering_Primitives
 

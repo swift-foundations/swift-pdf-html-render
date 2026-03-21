@@ -1,7 +1,7 @@
 // PDF.Document+HTML.swift
 // Create PDF documents from HTML content
 
-import HTML_Renderable
+import HTML_Rendering_Core
 import ISO_32000
 import PDF_Rendering
 import PDF_Standard
@@ -23,11 +23,11 @@ extension PDF.Document {
     ///   - configuration: PDF rendering configuration
     ///   - generateOutline: If true, generates bookmarks from H1-H6 headings (default: false)
     ///   - html: The HTML content to render
-    public init<H: HTML_Renderable.HTML.View>(
+    public init<H: HTML_Rendering_Core.HTML.View>(
         info: ISO_32000.Document.Info? = nil,
         configuration: PDF.HTML.Configuration = .init(),
         generateOutline: Bool = false,
-        @HTML_Renderable.HTML.Builder _ html: () -> H
+        @HTML_Rendering_Core.HTML.Builder _ html: () -> H
     ) {
         // Build viewer from configuration, converting nested types
         let viewer = ISO_32000.Viewer(
