@@ -192,7 +192,7 @@ extension PDF.HTML.Context {
 
     /// Record a command if in table first-row recording mode.
     /// Returns `true` if the command was recorded (caller should return early).
-    @inline(__always)
+    @inline(always)
     private static func record(
         _ command: Table.Recording.Command,
         context: inout Self
