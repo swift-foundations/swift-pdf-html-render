@@ -53,7 +53,7 @@ extension PDF.HTML {
         @HTML.Builder footer: @escaping (Page.Info) -> Footer = { _ in Rendering.Empty() }
     ) -> [PDF.Page] {
         // Adjust margins to account for header/footer space
-        let adjustedMargins = PDF.UserSpace.EdgeInsets(
+        let adjustedMargins = PDF.UserSpace.Insets(
             top: configuration.margins.top + configuration.header.height,
             leading: configuration.margins.leading,
             bottom: configuration.margins.bottom + configuration.footer.height,
@@ -90,7 +90,7 @@ extension PDF.HTML {
             // Create a single-page context for header
             var headerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
-                margins: PDF.UserSpace.EdgeInsets(
+                margins: PDF.UserSpace.Insets(
                     top: configuration.margins.top,
                     leading: configuration.margins.leading,
                     bottom: configuration.paperSize.height - configuration.margins.top - configuration.header.height,
@@ -107,7 +107,7 @@ extension PDF.HTML {
             // Create a single-page context for footer
             var footerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
-                margins: PDF.UserSpace.EdgeInsets(
+                margins: PDF.UserSpace.Insets(
                     top: configuration.paperSize.height - configuration.margins.bottom - configuration.footer.height,
                     leading: configuration.margins.leading,
                     bottom: configuration.margins.bottom,

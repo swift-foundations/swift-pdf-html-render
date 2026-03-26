@@ -18,7 +18,7 @@ extension PDF.HTML {
         public var paperSize: PDF.UserSpace.Rectangle
 
         /// Page margins
-        public var margins: PDF.UserSpace.EdgeInsets
+        public var margins: PDF.UserSpace.Insets
 
         // MARK: - Headers & Footers
 
@@ -125,7 +125,7 @@ extension PDF.HTML {
 
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
-            margins: PDF.UserSpace.EdgeInsets = .init(all: 72),
+            margins: PDF.UserSpace.Insets = .init(all: 72),
             header: Header = .init(),
             footer: Footer = .init(),
             documentTitle: String? = nil,

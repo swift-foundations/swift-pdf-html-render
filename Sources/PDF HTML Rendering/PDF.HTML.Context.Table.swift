@@ -15,7 +15,7 @@ extension PDF.HTML.Context {
     /// Uses Geometry types from swift-standards for type-safe dimensions:
     /// - `PDF.UserSpace.Rectangle` for table/cell bounds
     /// - `PDF.UserSpace.Width`/`Height` for column/row dimensions
-    /// - `PDF.UserSpace.EdgeInsets` for cell padding
+    /// - `PDF.UserSpace.Insets` for cell padding
     public struct Table {
         // MARK: - Layout Bounds
 
