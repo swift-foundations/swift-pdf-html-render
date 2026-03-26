@@ -8,16 +8,16 @@ import Rendering_Primitives
 // MARK: - Entry Points
 
 extension PDF.HTML {
-    /// Render HTML content to PDF pages.
-    public static func pages<H: Rendering.View>(
-        configuration: PDF.HTML.Configuration = .init(),
-        @HTML.Builder html: () -> H
-    ) -> [PDF.Page] {
-        let state = Ownership.Mutable(prepareContext(configuration: configuration))
-        var renderCtx = Rendering.Context.pdfHTML(state: state)
-        renderCtx.render(html())
-        return finalizeRendering(context: &state.value).pages
-    }
+//    /// Render HTML content to PDF pages.
+//    public static func pages<H: Rendering.View>(
+//        configuration: PDF.HTML.Configuration = .init(),
+//        @HTML.Builder html: () -> H
+//    ) -> [PDF.Page] {
+//        let state = Ownership.Mutable(prepareContext(configuration: configuration))
+//        var renderCtx = Rendering.Context.pdfHTML(state: state)
+//        renderCtx.render(html())
+//        return finalizeRendering(context: &state.value).pages
+//    }
 
     /// Render HTML content to PDF pages with collected metadata.
     public static func render<H: Rendering.View>(
@@ -46,7 +46,11 @@ extension PDF.HTML {
     ///   - footer: Builder that creates footer content for each page
     ///   - content: The main HTML content to render
     /// - Returns: Array of PDF pages with headers and footers
-    public static func pages<Content: Rendering.View, Header: Rendering.View, Footer: Rendering.View>(
+    public static func pages<
+        Content: Rendering.View,
+        Header: Rendering.View,
+        Footer: Rendering.View
+    >(
         configuration: PDF.HTML.Configuration,
         @HTML.Builder content: () -> Content,
         @HTML.Builder header: @escaping (Page.Info) -> Header = { _ in Rendering.Empty() },

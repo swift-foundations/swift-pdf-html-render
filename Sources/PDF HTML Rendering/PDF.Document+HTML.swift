@@ -93,7 +93,7 @@ extension PDF.Document {
             // Simple path without outline generation
             let pages = PDF.HTML.pages(
                 configuration: configuration,
-                html: html
+                content: html
             )
 
             self.init(
