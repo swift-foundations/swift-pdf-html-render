@@ -1,0 +1,32 @@
+{
+  "$schema": "https://swift-institute.org/schemas/research-index-v1.json",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-04-18",
+  "title": "Research Index",
+  "blurb": "",
+  "scope": "swift-pdf-html-rendering (swift-foundations)",
+  "documents": [
+    {
+      "file": "iterative-tuple-rendering.md",
+      "displayName": "iterative-tuple-rendering.md",
+      "topic": "Iterative _Tuple rendering — eliminates O(N) stack depth from left-heavy binary nesting in dynamic dispatch path. Partially superseded by worklist-rendering-dispatch.md (tuple solution retained, overall approach replaced).",
+      "date": "2026-03-12",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": null,
+      "scope": null
+    },
+    {
+      "file": "audit.md",
+      "displayName": "audit.md",
+      "topic": "Modularization audit (MOD-001–MOD-014) — 1 REVIEW (MOD-008: 58 files)",
+      "date": "2026-04-08",
+      "status": "LEGACY",
+      "statusDetail": null,
+      "statusRaw": "LEGACY",
+      "tier": null,
+      "scope": null
+    }
+  ]
+}
