@@ -1,9 +1,9 @@
 import HTML_Rendering_Core
 import Layout_Primitives
 import PDF_Rendering
-import Rendering_Primitives
+import Render_Primitives
 
-extension Rendering.Context {
+extension Render.Context {
     /// Creates a rendering context that forwards operations to a PDF HTML context.
     ///
     /// - Parameter state: A mutable reference to the PDF HTML rendering state.
@@ -11,7 +11,7 @@ extension Rendering.Context {
     public static func pdfHTML(state: Ownership.Mutable<PDF.HTML.Context>) -> Self {
 
         /// Records an action during speculative rendering (if active).
-        func record(_ action: Rendering.Action) {
+        func record(_ action: Render.Action) {
             if state.value.speculativeActions != nil {
                 state.value.speculativeActions!.append(action)
             }
@@ -54,7 +54,7 @@ extension Rendering.Context {
                 record(.text($0))
                 state.value.text($0)
             },
-            break: Rendering.Break(
+            break: Render.Break(
                 line: {
                     record(.break(.line))
                     state.value.lineBreak()
@@ -72,7 +72,7 @@ extension Rendering.Context {
                 record(.image(source: $0, alt: $1))
                 state.value.image(source: $0, alt: $1)
             },
-            push: Rendering.Push(
+            push: Render.Push(
                 block: {
                     record(.push(.block(role: $0, style: $1)))
                     PDF.HTML.Context._pushBlock(&state.value, role: $0, style: $1)
@@ -139,7 +139,7 @@ extension Rendering.Context {
                     PDF.HTML.Context._pushStyle(&state.value)
                 }
             ),
-            pop: Rendering.Pop(
+            pop: Render.Pop(
                 block: {
                     record(.pop(.block))
                     PDF.HTML.Context._popBlock(&state.value)
@@ -200,7 +200,7 @@ extension Rendering.Context {
                 }
                 return handled
             },
-            speculative: Rendering.Speculative(
+            speculative: Render.Speculative(
                 begin: {
                     guard state.value.speculativeSnapshot == nil else { return }
                     state.value.speculativeSnapshot = state.value

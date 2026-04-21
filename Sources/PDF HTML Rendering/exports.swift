@@ -8,4 +8,4 @@
 
 // MemberImportVisibility: modules used in public extensions
 public import Dictionary_Primitives
-public import Rendering_Primitives
+public import Render_Primitives

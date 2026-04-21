@@ -1,7 +1,7 @@
 // PDF.HTML.Context.Table.Recording.Command.swift
 // Recorded rendering operation for first-row replay
 
-import Rendering_Primitives
+import Render_Primitives
 
 extension PDF.HTML.Context.Table.Recording {
     /// A single rendering operation recorded during first-row measurement.
@@ -28,11 +28,11 @@ extension PDF.HTML.Context.Table.Recording {
         case inlineStyle(Any)
 
         // Structure
-        case pushBlock(role: Rendering.Semantic.Block?, style: Rendering.Style)
+        case pushBlock(role: Render.Semantic.Block?, style: Render.Style)
         case popBlock
-        case pushInline(role: Rendering.Semantic.Inline?, style: Rendering.Style)
+        case pushInline(role: Render.Semantic.Inline?, style: Render.Style)
         case popInline
-        case pushList(kind: Rendering.Semantic.List, start: Int?)
+        case pushList(kind: Render.Semantic.List, start: Int?)
         case popList
         case pushItem
         case popItem

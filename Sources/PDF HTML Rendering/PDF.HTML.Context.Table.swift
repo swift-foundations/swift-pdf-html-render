@@ -5,7 +5,7 @@ import HTML_Rendering_Core
 import Layout_Primitives
 import Dictionary_Primitives
 import PDF_Rendering
-import Rendering_Primitives
+import Render_Primitives
 
 // MARK: - Table Layout Support
 

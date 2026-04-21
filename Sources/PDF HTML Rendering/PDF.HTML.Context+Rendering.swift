@@ -1,17 +1,17 @@
-// PDF.HTML.Context+Rendering.swift
-// Rendering.Context conformance for HTML-to-PDF rendering.
+// PDF.HTML.Context+Render.swift
+// Render.Context conformance for HTML-to-PDF rendering.
 //
-// Maps the Rendering.Context protocol to PDF.HTML.Context, enabling
-// the same Rendering.View tree to render through both HTML.Context
+// Maps the Render.Context protocol to PDF.HTML.Context, enabling
+// the same Render.View tree to render through both HTML.Context
 // (for byte output) and PDF.HTML.Context (for PDF pages) via pure
 // static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
 
 import HTML_Rendering_Core
 import Layout_Primitives
 import PDF_Rendering
-import Rendering_Primitives
+import Render_Primitives
 
-// MARK: - Rendering.Context Conformance
+// MARK: - Render.Context Conformance
 
 extension PDF.HTML.Context {
 
@@ -206,8 +206,8 @@ extension PDF.HTML.Context {
 
     public static func _pushBlock(
         _ context: inout Self,
-        role: Rendering.Semantic.Block?,
-        style: Rendering.Style
+        role: Render.Semantic.Block?,
+        style: Render.Style
     ) {
         if record(.pushBlock(role: role, style: style), context: &context) { return }
         if context.pdf.inline.hasRuns {
@@ -228,8 +228,8 @@ extension PDF.HTML.Context {
 
     public static func _pushInline(
         _ context: inout Self,
-        role: Rendering.Semantic.Inline?,
-        style: Rendering.Style
+        role: Render.Semantic.Inline?,
+        style: Render.Style
     ) {
         if record(.pushInline(role: role, style: style), context: &context) { return }
         PDF.Context._pushInline(&context.pdf, role: role, style: style)
@@ -244,7 +244,7 @@ extension PDF.HTML.Context {
 
     public static func _pushList(
         _ context: inout Self,
-        kind: Rendering.Semantic.List,
+        kind: Render.Semantic.List,
         start: Int?
     ) {
         if record(.pushList(kind: kind, start: start), context: &context) { return }

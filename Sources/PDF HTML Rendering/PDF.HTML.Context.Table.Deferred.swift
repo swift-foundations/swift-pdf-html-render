@@ -3,7 +3,7 @@
 
 import Layout_Primitives
 import PDF_Rendering
-import Rendering_Primitives
+import Render_Primitives
 
 extension PDF.HTML.Context.Table {
     /// Deferred spanning cells (rowspan > 1) that need content + borders drawn after all rows

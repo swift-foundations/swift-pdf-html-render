@@ -3,7 +3,7 @@
 
 import Copy_on_Write
 public import Dictionary_Primitives
-import Rendering_Primitives
+import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
 
@@ -63,14 +63,14 @@ extension PDF.HTML {
         public var speculativeSnapshot: PDF.HTML.Context?
 
         /// Actions recorded during speculative rendering for replay after rollback.
-        public var speculativeActions: [Rendering.Action]?
+        public var speculativeActions: [Render.Action]?
 
         // MARK: - Section Tracking
 
         /// Section and heading state for headers/footers and bookmarks.
         public var section: Section = .init()
 
-        // MARK: - Rendering.Context Scope Stacks
+        // MARK: - Render.Context Scope Stacks
 
         /// Element scope stack for push.element/pop.element state save/restore.
         public var elementStack: [Element.Scope] = []
