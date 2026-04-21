@@ -13,19 +13,19 @@ extension Target.Dependency {
 
 extension Target.Dependency {
     static var htmlRenderingCore: Self {
-        .product(name: "HTML Rendering Core", package: "swift-html-rendering")
+        .product(name: "HTML Rendering Core", package: "swift-html-render")
     }
     static var htmlRendering: Self {
-        .product(name: "HTML Rendering", package: "swift-html-rendering")
+        .product(name: "HTML Rendering", package: "swift-html-render")
     }
     static var htmlRenderingCoreTestSupport: Self {
-        .product(name: "HTML Rendering Core Test Support", package: "swift-html-rendering")
+        .product(name: "HTML Rendering Core Test Support", package: "swift-html-render")
     }
     static var pdfRenderingTestSupport: Self {
-        .product(name: "PDF Rendering Test Support", package: "swift-pdf-rendering")
+        .product(name: "PDF Rendering Test Support", package: "swift-pdf-render")
     }
     static var pdfRendering: Self {
-        .product(name: "PDF Rendering", package: "swift-pdf-rendering")
+        .product(name: "PDF Rendering", package: "swift-pdf-render")
     }
     static var copyOnWrite: Self {
         .product(name: "Copy on Write", package: "swift-copy-on-write")
@@ -54,7 +54,7 @@ extension Target.Dependency {
 }
 
 let package = Package(
-    name: "swift-pdf-html-rendering",
+    name: "swift-pdf-html-render",
     platforms: [
         .macOS(.v26),
         .iOS(.v26),
@@ -67,8 +67,8 @@ let package = Package(
         .library(name: "PDF HTML Rendering Test Support", targets: ["PDF HTML Rendering Test Support"]),
     ],
     dependencies: [
-        .package(path: "../swift-html-rendering"),
-        .package(path: "../swift-pdf-rendering"),
+        .package(path: "../swift-html-render"),
+        .package(path: "../swift-pdf-render"),
         .package(path: "../swift-copy-on-write"),
         .package(path: "../swift-css"),
         .package(path: "../../swift-standards/swift-html-standard"),
