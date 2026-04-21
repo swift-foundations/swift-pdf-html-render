@@ -5,7 +5,7 @@ extension PDF.HTML.Context {
     ///
     /// Used by speculative rendering to replay recorded actions after
     /// a rollback (page break due to keep-with-next).
-    public mutating func interpret(_ action: Render.Action) {
+    public mutating func interpret(_ action: Render_Primitives.Render.Action) {
         switch action {
         case .text(let content): text(content)
         case .break(let kind):

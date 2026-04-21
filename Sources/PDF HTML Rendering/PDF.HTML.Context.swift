@@ -63,14 +63,14 @@ extension PDF.HTML {
         public var speculativeSnapshot: PDF.HTML.Context?
 
         /// Actions recorded during speculative rendering for replay after rollback.
-        public var speculativeActions: [Render.Action]?
+        public var speculativeActions: [Render_Primitives.Render.Action]?
 
         // MARK: - Section Tracking
 
         /// Section and heading state for headers/footers and bookmarks.
         public var section: Section = .init()
 
-        // MARK: - Render.Context Scope Stacks
+        // MARK: - Render_Primitives.Render.Context Scope Stacks
 
         /// Element scope stack for push.element/pop.element state save/restore.
         public var elementStack: [Element.Scope] = []

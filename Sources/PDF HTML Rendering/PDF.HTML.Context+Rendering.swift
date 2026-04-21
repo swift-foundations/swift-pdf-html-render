@@ -1,8 +1,8 @@
 // PDF.HTML.Context+Render.swift
-// Render.Context conformance for HTML-to-PDF rendering.
+// Render_Primitives.Render.Context conformance for HTML-to-PDF rendering.
 //
-// Maps the Render.Context protocol to PDF.HTML.Context, enabling
-// the same Render.View tree to render through both HTML.Context
+// Maps the Render_Primitives.Render.Context protocol to PDF.HTML.Context, enabling
+// the same Render_Primitives.Render.View tree to render through both HTML.Context
 // (for byte output) and PDF.HTML.Context (for PDF pages) via pure
 // static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
 
@@ -11,7 +11,7 @@ import Layout_Primitives
 import PDF_Rendering
 import Render_Primitives
 
-// MARK: - Render.Context Conformance
+// MARK: - Render_Primitives.Render.Context Conformance
 
 extension PDF.HTML.Context {
 
@@ -206,8 +206,8 @@ extension PDF.HTML.Context {
 
     public static func _pushBlock(
         _ context: inout Self,
-        role: Render.Semantic.Block?,
-        style: Render.Style
+        role: Render_Primitives.Render.Semantic.Block?,
+        style: Render_Primitives.Render.Style
     ) {
         if record(.pushBlock(role: role, style: style), context: &context) { return }
         if context.pdf.inline.hasRuns {
@@ -228,8 +228,8 @@ extension PDF.HTML.Context {
 
     public static func _pushInline(
         _ context: inout Self,
-        role: Render.Semantic.Inline?,
-        style: Render.Style
+        role: Render_Primitives.Render.Semantic.Inline?,
+        style: Render_Primitives.Render.Style
     ) {
         if record(.pushInline(role: role, style: style), context: &context) { return }
         PDF.Context._pushInline(&context.pdf, role: role, style: style)
@@ -244,7 +244,7 @@ extension PDF.HTML.Context {
 
     public static func _pushList(
         _ context: inout Self,
-        kind: Render.Semantic.List,
+        kind: Render_Primitives.Render.Semantic.List,
         start: Int?
     ) {
         if record(.pushList(kind: kind, start: start), context: &context) { return }
