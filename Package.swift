@@ -21,12 +21,12 @@ let package = Package(
         .package(url: "https://github.com/coenttb/swift-css", from: "0.6.1"),
         .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.6"),
         .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.7"),
-        .package(url: "https://github.com/swift-standards/swift-w3c-css", from: "0.3.0"),
+        .package(url: "https://github.com/swift-w3c/swift-w3c-css", from: "0.3.0"),
         .package(path: "../../swift-primitives/swift-layout-primitives"),
         .package(path: "../../swift-primitives/swift-test-primitives"),
-        .package(url: "https://github.com/swift-standards/swift-iso-9899", from: "0.2.3"),
-        .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.2.1"),
-        .package(url: "https://github.com/swift-standards/swift-iec-61966", from: "0.1.3"),
+        .package(url: "https://github.com/swift-iso/swift-iso-9899", from: "0.2.3"),
+        .package(url: "https://github.com/swift-ietf/swift-rfc-4648", from: "0.2.1"),
+        .package(url: "https://github.com/swift-iec/swift-iec-61966", from: "0.1.3"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.7")
     ],
     targets: [
