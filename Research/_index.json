@@ -27,6 +27,17 @@
       "statusRaw": "LEGACY",
       "tier": null,
       "scope": null
+    },
+    {
+      "file": "modifier-dispatch-ordering.md",
+      "displayName": "modifier-dispatch-ordering.md",
+      "topic": "CSS modifier dispatch ordering — inventories all 46 modifier conformances, all `_pushElement` push-time READs, all `_popElement` / `_popStyle` pop-time CONSUMES; classifies each modifier by phase set; recommends α₂-flat (per-modifier `phase` declaration on `Modifier` protocols) over α₁ (uniform post-push reorder, provably broken).",
+      "date": "2026-05-11",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": 2,
+      "scope": "cross-package"
     }
   ]
 }
