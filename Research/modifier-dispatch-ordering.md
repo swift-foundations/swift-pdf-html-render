@@ -2,12 +2,24 @@
 
 <!--
 ---
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-11
 status: RECOMMENDATION
 scope: cross-package
 tier: 2
 ---
+-->
+
+<!--
+Changelog:
+  v1.0.0 — 2026-05-11 — Initial A1 dispatch-ordering audit + α₂-flat recommendation.
+  v1.1.0 — 2026-05-11 — Additive amendment per Rev-4 path-α extension
+                        (`tenthijeboonkkamp/timekeeping` commit `b3e4690`):
+                        added § Inventory — PDF Emission Order per Render-Primitive
+                        per Tag (A2 axis); added § A1+A2 Cross-Reference +
+                        Compliance Analysis; refined Recommendation to address
+                        both axes; added R8–R10 RELATED items for A2-induced
+                        findings.
 -->
 
 ## Context
@@ -64,7 +76,20 @@ all targets**. Greenfield analysis; no cite-and-extend per `[HANDOFF-013a]`.
 > `_pushElement(tag, …)`, what dispatch shape allows every modifier to
 > mutate state at the phase its target state is actually consumed?
 
-Concretely:
+The Rev-4 path-α extension widens this question to a second axis (added
+in doc v1.1.0):
+
+> Independently of *when* CSS modifiers run, *when* are PDF
+> render-primitives (`Tj` text, stroke/fill ops, line operators) emitted
+> to the content stream, and does that emission order satisfy CSS painting
+> order (§E.2, §17.6)?
+
+The two axes are referred to as **A1 (dispatch ordering)** and **A2
+(emission ordering)** below. The original Question and Inventory sections
+address A1; the new § Inventory — PDF Emission Order and § A1+A2
+Cross-Reference + Compliance Analysis address A2 and confirm orthogonality.
+
+Concretely (A1):
 
 - **α₁** — *All modifiers fire post-push uniformly*. The pipeline applies the
   CSS modifier dispatch site after `_pushElement` instead of before.
@@ -216,6 +241,89 @@ Key pop-time consumers: `pdf.padding.bottom`, `pdf.margin.bottom` (from
 flags (from `_popStyle`); `tableCtx.{borderColor,borderWidth}` (from cell-
 border draw routine and `drawTableRightAndBottomBorders`).
 
+## Inventory — PDF Emission Order per Render-Primitive per Tag
+
+### A2 axis preamble
+
+The user's "are we respecting BOTH PDF and CSS drawing order?" question
+identifies a second axis orthogonal to A1 (modifier-dispatch timing): A2 is
+the *emission order* of PDF content-stream operators. A1 governs when
+modifier `apply` bodies *mutate state*; A2 governs when render-primitives
+(`Tj` text, `m`/`l`/`S` stroke triples, `re`/`f` fill rectangles, line
+operators for separators, etc.) are *emitted into the PDF content stream*.
+
+PDF content-stream semantics are painter-style: later operators paint over
+earlier operators. CSS painting order (§E.2, §17.6) specifies the inverse
+constraint on rendering — backgrounds first, borders next, content on top.
+Producing CSS-compliant output therefore requires the PDF emission order to
+match the CSS painting order per element.
+
+This inventory enumerates every render-primitive currently emitted to the
+content stream by this package, records the pipeline phase at which it is
+emitted, and cross-references against the CSS painting-order rules in
+§ A1+A2 Cross-Reference + Compliance Analysis below.
+
+### Per render-primitive emission sites
+
+Source: `PDF.HTML.Context+Rendering.swift`, `HTML.Element.Tag+TableBorders.swift`,
+`PDF.HTML.Context+Interpret.swift` (text + inline media), plus header/footer
+two-pass rendering (out of scope for the present table-and-block analysis).
+
+| # | Render-primitive | Definition site | Call site | Emission phase | Notes |
+|---|------------------|-----------------|-----------|----------------|-------|
+| E1 | Cell border (left+top edges) | `HTML.Element.Tag+TableBorders.swift:12-36` (`drawCellBorder`) | `PDF.HTML.Context+Rendering.swift:1000` (`popTableRow`) | **row-end deferred** | All cell-border `m/l/S` triples emitted AFTER all cells in the row have rendered their content. Border-collapse model: each cell draws left+top. |
+| E2 | Cell rowspan border extension | `pdf.emit.line` inline | `PDF.HTML.Context+Rendering.swift:1016-1021` (`popTableRow`) | **row-end deferred** | Left-border extension for cells with active rowspan from previous rows. Same row-end timing as E1. |
+| E3 | Table outer right+bottom border | `HTML.Element.Tag+TableBorders.swift:75-85` (`drawTableRightAndBottomBorders`) | `PDF.HTML.Context+Rendering.swift:750` (`popBlockElement` "table") | **table-end deferred** | After all row-end emissions for the table. Right edge spans `currentFragmentStartY → currentFragmentEndY`; bottom edge spans `tableBounds.llx → tableBounds.urx`. |
+| E4 | Fragment right+bottom border (multi-page) | `HTML.Element.Tag+TableBorders.swift:43-71` (`drawFragmentRightAndBottomBorders`) | `PDF.HTML.Context+Rendering.swift:617-622` (in `pushBlockElement` "tr" before page break) | **pre-page-break deferred** | Mirrors E3 but per-page-fragment. Fires when a new `<tr>` push detects page overflow; closes the fragment on the current page. |
+| E5 | Cell background fill | `HTML.Element.Tag+TableBorders.swift:88-102` (`drawCellBackground`) | **NONE** — defined but never called | **N/A (dead code)** | The function exists with `pdf.emit.rectangle(bounds, fill: color, stroke: nil)`; **zero call sites** in the entire codebase (grep verified). Per CSS 2.1 §17.6.1 the cell-background paint is required between cell-background and cell-border, ordering background under border. Currently the table model emits no backgrounds whatsoever. |
+| E6 | Cell text content (`Tj`/`TJ`) | `pdf.append(inline:)` via `text(...)` etc. | During `<td>`/`<th>` body rendering, between `_pushElement("td"/"th",…)` and `_popElement` | **content-time (in-cell, pre-pop)** | The first row is recorded via `Table.Recording` and replayed after column-width finalization at line 907 — its emission is *replayed* at content-time but is *captured at apply-time during the first row*. Subsequent rows emit synchronously. |
+| E7 | Block-element text content (`Tj`/`TJ`) | `pdf.append(inline:)` | During the owning element's body between push and pop | **content-time** | No special phase: text emission is inline with the rendering flow. |
+| E8 | Inline element open/close glyphs (`<q>` curly quotes) | `pdf.append(inline:)` at `pushInlineElement`/`popInlineElement` | `PDF.HTML.Context+Rendering.swift:820-854` | **push-time (open) / pop-time (close)** | E.g., U+201C and U+201D quote-mark glyphs appended at element push and pop respectively. |
+| E9 | List marker glyph | Set in `pdf.list.marker` at `_pushElement("li",…)` line 720-734; *emitted* in `pdf.flush.inline()` at next inline flush | `PDF.HTML.Context+Rendering.swift:719-734` (assignment) + `pdf.flush.inline()` (emission) | **push-time (assignment) → first-inline-flush (emission)** | Marker is staged at push; actual `Tj` for the glyph fires when the first inline run is flushed. Marker cleared at `_popElement("li",…)` line 792. |
+| E10 | Thematic break (`<hr>`) line | `pdf.emit.line` | `PDF.HTML.Context+Rendering.swift:550-555` (`handleVoidElement` "hr") | **apply-time of `<hr>` void element** | Single stroke line at current `pdf.layout.box.lly`; `<hr>` is a void element so no push/pop pair. |
+| E11 | Thematic break (markdown rule via `thematicBreak()`) | `pdf.emit.line` | `PDF.HTML.Context+Rendering.swift:71-76` | **call-time** | Distinct entry point from E10; same primitive shape. |
+| E12 | Hyperlink underline / strike-through / highlight | `pdf.style.textMarkup` → emitted at text-run construction via `textDecoration:` parameter | `PDF.HTML.Context+Rendering.swift:829-832, 847-850` and similar | **content-time inline-with-text** | The markup is *part of the text-run record*; it's a property of the `Tj` operator emission, not a separate stroke. Underlines are emitted as a line below the baseline as part of the run; the renderer composes them with the text. |
+| E13 | Image (`<img>`) | `pdf.append(inline:)` with image-style run | `PDF.HTML.Context+Interpret.swift:image(source:alt:)` | **content-time inline** | Currently the `image(...)` body emits a placeholder text run (`[image]` or `[\(alt)]`), not actual image data. Real image XObject support is a separate concern. |
+| E14 | Page-break trigger | `pdf.page.new()` | Multiple sites: `apply(inlineStyle:)` for `BreakBefore`/`PageBreakBefore` (apply-time-immediate); `pushBlockElement` "tr" line 626 (when row overflows); `_popStyle` line 487 (when `forcePageBreakAfter` set) | **mixed: apply-time / push-time / pop-time** | Page transitions are control-flow, not a paint primitive per se, but the page-new emission flushes accumulated content and starts a new content stream. |
+
+### Per-cell painting-order snapshot (current behaviour)
+
+For a non-first row of a typical `<tr>` containing two `<td>` cells:
+
+```
+Sequence emitted to content stream:
+  ┌─────────────────────────────────────────────────────────────┐
+  │ <tr> push                                                   │
+  │   ├─ <td 1> push (saves layout box for cell 1's content)    │
+  │   │   ├─ E6: cell 1 text content (Tj operators)             │
+  │   │   └─ <td 1> pop (popTableCell — records pending border) │
+  │   ├─ <td 2> push (saves layout box for cell 2's content)    │
+  │   │   ├─ E6: cell 2 text content (Tj operators)             │
+  │   │   └─ <td 2> pop (popTableCell — records pending border) │
+  │   └─ <tr> pop (popTableRow)                                 │
+  │       ├─ E1: drawCellBorder × 2 (cell 1 + cell 2 borders)   │
+  │       │   ↳ EMITTED AFTER both cells' text content          │
+  │       └─ E2: rowspan border extensions (none here)          │
+  └─────────────────────────────────────────────────────────────┘
+
+Cell background (E5): NEVER emitted (dead function).
+Table outer borders (E3): emitted at <table> pop, after the last row's E1/E2.
+```
+
+In PDF content-stream order: **text-content first, borders last**. Painter
+semantics: each later operator paints over earlier ones. Borders therefore
+paint ON TOP of cell content. This is the inverse of CSS painting order.
+
+The defect is **latent today** because cell content is inset by
+`tableCtx.cell.padding` (line 678-685 of `_pushElement("td"/"th",…)`), so the
+border rectangle does not visually overlap with the text. But the defect is
+real: if `padding == 0` or if the cell border has alpha < 1, content
+clipping would be visible.
+
+For cell backgrounds: not emitted at all today, so no painting-order issue
+yet. As soon as cell backgrounds land (sub-wave (b) candidate), the
+emission-order question becomes load-bearing.
+
 ## Phase Classification
 
 ### Definitions
@@ -325,6 +433,120 @@ Concrete pre-push modifiers that break under α₁:
 **Verdict**: α₁ breaks at least 14 modifier types (counting shorthands and
 stubbed intents). It is *not* a viable dispatch model.
 
+## A1+A2 Cross-Reference + Compliance Analysis
+
+### Painting-order specification
+
+CSS 2.1 §E.2 (visual formatting model painting order) specifies the order
+in which an element's render-primitives must be painted, for stacking
+context purposes:
+
+1. Background of the root element / element forming the stacking context
+2. Descendant blocks in the normal flow, in tree order:
+   - Background color
+   - Background image(s)
+   - Border
+3. Descendant non-positioned floats
+4. Descendant inline-level non-positioned content
+5. Outlines
+6. Descendant positioned content with stacking context
+
+The relevant invariant for this audit: **background, then border, then
+descendant content** (within a non-positioned non-floating block).
+
+For tables specifically, CSS 2.1 §17.6 ("Borders") and §17.6.1 ("Separated
+borders model") /§17.6.2 ("Collapsing border model") specify per-cell
+painting order:
+
+- Separated model (`border-collapse: separate`): each cell paints its own
+  background, then its own border, in tree order. Cell content paints on
+  top.
+- Collapsing model (`border-collapse: collapse`, the institute renderer's
+  effective mode): borders are shared and painted in tree order at table-,
+  row-group-, row-, column-group-, column-, and cell-level. Backgrounds
+  paint behind borders. Cell content paints on top.
+
+### Per-primitive compliance scan
+
+For each render-primitive in § Inventory — PDF Emission Order, the
+compliance status is determined by whether its emission phase produces a
+content-stream sequence that satisfies the CSS painting order.
+
+| Primitive | Current emission phase | Required by CSS painting order | Compliance | Severity |
+|-----------|------------------------|-------------------------------|------------|----------|
+| E1 (cell border) | row-end deferred — AFTER cell content | Cell content must paint OVER cell border (§E.2 step 2 + §17.6) — border under content | **NON-COMPLIANT** | Latent (current cell padding insets content; visible if `padding == 0` or border `alpha < 1`) |
+| E2 (rowspan border extension) | row-end deferred — AFTER spanned-cells' content | Same as E1 | **NON-COMPLIANT** | Latent (mirror of E1) |
+| E3 (table outer right/bottom border) | table-end deferred — AFTER all rows' content | Painted at table-level in tree order per §17.6; OK if before next descendant. Since table is last-flushed before `<table>` pop, no later descendants exist in the current implementation. | **COMPLIANT** | None |
+| E4 (fragment right/bottom border, multi-page) | pre-page-break deferred | Painted at fragment boundary; no later content on this page | **COMPLIANT** | None |
+| E5 (cell background fill) | NOT emitted (dead function) | Required to paint behind cell content under §17.6 | **MISSING** | High (architectural gap; once cell backgrounds are wired up, MUST be emitted *before* content) |
+| E6 (cell text content `Tj`/`TJ`) | content-time, after cell push, before cell pop | Painted on top of cell background + cell border | **COMPLIANT relative to E1/E2** but only because E1/E2 fire LATER. Actually: content fires FIRST, borders fire SECOND. PDF painter semantics paint borders ON TOP. So the *real* order is: cell content → cell border. Inverse of CSS. | **NON-COMPLIANT** (the same finding as E1/E2 from the other direction) |
+| E7 (block-element text) | content-time, inline | No block-level background/border emission today; trivially compliant | **N/A (no block paints yet)** | None |
+| E8 (`<q>` curly quotes) | push-time / pop-time | Text glyphs; no painting-order interaction | **COMPLIANT** | None |
+| E9 (list marker) | push-time (assignment) → flush-time (emission) | Marker is text glyph painted with cell content; no painting-order interaction with backgrounds/borders today | **COMPLIANT** | None |
+| E10 (`<hr>` line) | apply-time of void element | Stroke line, no background interaction | **COMPLIANT** | None |
+| E11 (`thematicBreak()` line) | call-time | Same as E10 | **COMPLIANT** | None |
+| E12 (textMarkup underline/strike/highlight) | content-time inline-with-text | Decoration is part of the text run; PDF emission composes it with the `Tj` op | **COMPLIANT** | None |
+| E13 (image placeholder) | content-time inline | Placeholder text run, no painting-order interaction today | **COMPLIANT** | None |
+| E14 (page break) | mixed | Control-flow, not a paint primitive | **N/A** | None |
+
+**Compliance headline**: of the 14 render-primitives, **2 non-compliant**
+(E1 + E2, both cell borders, latent due to padding inset) and **1 missing**
+(E5 cell background, dead function never wired up). The non-compliance is
+**latent today** — the reproducer's defect class is dispatch-side (A1), not
+emission-side (A2). But the A2 architectural gap exists and will surface as
+soon as either (a) cell backgrounds are implemented, or (b) any block-level
+border/background landing forces the same ordering question for non-table
+elements.
+
+### A1+A2 orthogonality
+
+The A1 fix (when modifier `apply` bodies *run*) and the A2 fix (when
+render-primitives are *emitted*) are orthogonal:
+
+- A1 is a dispatch-time question: phase-aware modifier protocol.
+- A2 is an emission-time question: deferred-emission per cell, ordering
+  background → border → content within the content stream.
+
+Fixing A1 does not fix A2. Fixing A2 does not fix A1. The α₂-flat
+recommendation for A1 remains correct — it does not depend on A2 and does
+not preclude any A2 fix shape.
+
+### A2 fix shape (sketch only — not authorized in this commit)
+
+For separated-border / non-table-element painting, the natural shape is:
+
+- `_pushElement(block, …)` captures the cell/block rectangle at push time.
+- Background fill (`re`/`f`) is emitted *immediately on push* with the
+  width-known rectangle (height TBD for table cells).
+- Border stroke is emitted at the appropriate boundary.
+- Content is emitted normally between push and pop.
+
+For collapsing borders (the institute model) on table cells with row-end
+height determination:
+
+- The current pattern emits content first then border at row-end.
+- To swap order, content must be deferred: buffer cell content stream ops
+  during the cell's body, then at row-end emit *background → border → buffered
+  content* in that order.
+- The `Table.Recording` mechanism (currently used for first-row
+  column-width measurement) is structurally adjacent — extending it to all
+  rows for emission-order reasons is the natural lift.
+
+Alternative: use PDF form XObjects per cell — each cell renders into its
+own XObject, then the row-end emission composites in `background → border
+→ content` order. Heavier-weight but cleaner.
+
+The A2 fix is **out of scope for the present audit** — flagged here as a
+follow-on architectural question gated on A1 (which lands first).
+
+### Updated α₁/α₂ recommendation under A1+A2
+
+The A2 axis does not change the A1 recommendation. **α₂-flat for A1 still
+stands.** A2 is a separate axis whose fix path is independent of the A1
+choice; it should be authored as its own Research doc once A1 has landed
+and Wave-2 sub-wave (a) Border-family modifiers reveal the cell-background
+follow-on.
+
 ### α₂ feasibility
 
 α₂ requires each modifier to declare its phase(s). For multi-phase modifiers
@@ -369,6 +591,8 @@ Variants under α₂:
 α₂-flat is simpler. α₂-typed is more type-safe but adds protocol surface.
 
 ## Recommendation
+
+### For the A1 (dispatch-ordering) axis
 
 **α₂-flat**: introduce a single enum `PDF.HTML.Style.Dispatch.Phase` and a
 `var phase: Phase { get }` requirement on the existing
@@ -446,6 +670,21 @@ This sketch is illustrative — the Phase 2 patch will commit the exact protocol
 shape, the exact queue site, and the per-modifier `phase` overrides as
 separate commits per `[SUPER-046]` per-modifier coherence.
 
+### For the A2 (emission-ordering) axis
+
+Out of scope for this audit. The compliance scan (see § A1+A2
+Cross-Reference + Compliance Analysis) identifies E1+E2 cell borders as
+latently non-compliant (emitted after cell content; PDF painter semantics
+paint borders on top of text, opposite to CSS §17.6) and E5 cell
+backgrounds as architecturally missing (`drawCellBackground` defined but
+never called). The A2 fix path requires deferred cell content emission
+(extending the `Table.Recording` pattern from first-row-only to all rows)
+or per-cell PDF form XObjects. **Recommend authoring a follow-on Research
+doc `table-emission-ordering.md` once A1 Phase 2 has landed** — A1 is the
+gating dependency because the Border modifier (which would set
+`context.table.borderColor`/`borderWidth`) must work correctly before any
+A2 emission-ordering fix is meaningfully testable.
+
 ## Open Questions / RELATED
 
 Surfaced during the read; not in scope for this Research doc nor for the
@@ -502,8 +741,38 @@ Surfaced during the read; not in scope for this Research doc nor for the
   table-recording inventory's `Command.inlineStyle(_)` case needs a phase
   field or the modifier's `phase` is queried at replay. Phase 2 detail.
 
-None of R1–R7 invalidate the α₂ recommendation; they bound the Phase 2 patch
-scope.
+A2-induced RELATED items (added in v1.1.0 per Rev-4 amendment):
+
+- **R8 — `drawCellBackground` dead code**: `HTML.Element.Tag+TableBorders.swift:88-102`
+  defines `drawCellBackground` with full body (`pdf.emit.rectangle(bounds,
+  fill: color, stroke: nil)`) but zero call sites in the codebase (grep
+  verified). Wiring this up is gated on (a) A1 Border family landing (so
+  `context.table.background*` defaults can be modifier-overridden the same
+  way `borderColor`/`Width` will be), and (b) A2 emission-ordering fix
+  (background must paint before content; current emission order paints
+  borders after content; backgrounds would need to paint before both).
+  Out of scope for both A1 Phase 2 and the A2 follow-on doc.
+- **R9 — Latent non-compliance severity assessment**: cell borders paint
+  AFTER text content (E1+E2), inverse of CSS §17.6 painting order. Latent
+  today because cell-padding insets text. As soon as: (a) cell-padding is
+  configurable per cell (no fixed inset guarantee), (b) cell borders carry
+  alpha < 1 (translucent borders would visibly clip text), or (c) cell
+  backgrounds are wired up (E5 → R8), the latent defect surfaces visibly.
+  Estimated 6-12 month horizon before this becomes user-visible. The Phase
+  2 A1 fix is non-dependent.
+- **R10 — Block-level border/background emission order**: when
+  `PDF.Context.Style.border` and `PDF.Context.Style.background` fields
+  land for non-table block elements (Open Question G), the same
+  before-content emission constraint applies. The fix shape will be
+  symmetric to the table cell case but easier — block bounds are known at
+  push time (no row-end height determination) so background and border
+  can be emitted directly at push. Authoring suggestion: when block-level
+  border lands, the modifier writes to `pdf.style.border`; `_pushElement`
+  reads and emits background + border *before* dispatching prePush
+  modifiers' descendant content. This naturally satisfies §E.2 step 2.
+
+None of R1–R10 invalidate the α₂-flat recommendation for A1; they bound
+the Phase 2 A1 patch scope and seed the A2 follow-on doc.
 
 ## References
 
@@ -515,6 +784,18 @@ scope.
 - Authorizing dispatch: `tenthijeboonkkamp/timekeeping/HANDOFF-swift-pdf-render-parity.md`
   `## Constraints / Adjudications (Revision 3, 2026-05-11)` — user
   adjudication for path α (architecturally-best, unbounded effort).
+- Authorizing extension (v1.1.0): `tenthijeboonkkamp/timekeeping/HANDOFF-swift-pdf-render-parity.md`
+  commit `b3e4690` — Revision 4 path-α extension to A2 emission-ordering
+  axis ("are we respecting BOTH PDF and CSS drawing order here?").
+- CSS painting order normative references: CSS 2.1 §E.2 (Painting order
+  for stacking contexts); §17.6 (Borders); §17.6.1 (Separated borders
+  model); §17.6.2 (Collapsing border model).
+- A2 emission inventory sources: `HTML.Element.Tag+TableBorders.swift`
+  (drawCellBorder / drawTableRightAndBottomBorders /
+  drawFragmentRightAndBottomBorders / drawCellBackground); `PDF.HTML.Context+Rendering.swift`
+  (E1 call site at line 1000, E2 at 1016, E3 at 750, E4 at 617, E9
+  list-marker assignment at 720-734, E10 `<hr>` at 550-555, E14 page-break
+  at 487/626).
 - Related Research: `swift-foundations/swift-pdf-html-render/Research/css-fidelity-gap-inventory.md`
   (the 22-stub modifier inventory and per-symptom mapping); this audit
   generalizes that inventory's phase implications.
