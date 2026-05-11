@@ -598,6 +598,19 @@ extension PDF.HTML.Context {
             context.table?.currentFragmentEndY = tableStartY
             context.resetMarginCollapsing()
 
+            // γ-slot drain: Border-family CSS modifiers that fired before
+            // `_pushElement("table", …)` (when `context.table == nil`) stashed
+            // their target values here; apply them now that the table context
+            // exists, then clear the slots.
+            if let pendingColor = context.pendingTableBorderColor {
+                context.table?.borderColor = pendingColor
+                context.pendingTableBorderColor = nil
+            }
+            if let pendingWidth = context.pendingTableBorderWidth {
+                context.table?.borderWidth = pendingWidth
+                context.pendingTableBorderWidth = nil
+            }
+
         case "thead":
             context.with(\.table) { tc in
                 tc.header.startCapturing()

@@ -29,6 +29,20 @@ extension PDF.HTML {
         /// Active table layout context (nil when not in a table)
         public var table: Context.Table?
 
+        // MARK: - Post-Push Layout Slots (γ-slots)
+
+        /// Pending table border color set by a post-push_layout CSS modifier
+        /// before `_pushElement("table", …)` created `table`.
+        ///
+        /// Drained at `pushBlockElement` "table" case after `context.table` is
+        /// instantiated; cleared on drain. Border-family CSS modifiers write
+        /// here when `context.table == nil` at dispatch time.
+        public var pendingTableBorderColor: PDF.Color?
+
+        /// Pending table border width set by a post-push_layout CSS modifier
+        /// before `_pushElement("table", …)` created `table`.
+        public var pendingTableBorderWidth: PDF.UserSpace.Size<1>?
+
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.
