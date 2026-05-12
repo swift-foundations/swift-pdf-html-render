@@ -977,4 +977,38 @@ struct `Baseline Empirical Tests` {
         #expect(lineBreaks >= 2,
                 "Paragraph with nowrap child in middle must still wrap at line boundaries; got \(lineBreaks) line-breaks (Tj with y<0). The nowrap child's mode mutation should be scoped to the child, not leak to the whole paragraph.")
     }
+
+    /// Regression test for CSS Backgrounds 3 §3 border-bottom on a TR scope.
+    ///
+    /// `.css.border(.bottom, .solid)` on a row must emit exactly one
+    /// horizontal stroke at the row's bottom edge. Pre-fix the per-side
+    /// `BorderBottom` modifier had no institute conformance and was silently
+    /// dropped, so no border rendered.
+    ///
+    /// Suppresses the default table-wide cell-border draw via
+    /// `table.border.width = 0` so the only stroke remaining is the per-side
+    /// border declared on the row.
+    @Test
+    func `css.borderBottom on TR emits one horizontal stroke at row bottom`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "TOPCELL" }
+                    }.css.borderBottom(.init(.px(1), .solid, .hex("000000")))
+                    TableRow {
+                        TableDataCell { "BOTTOMCELL" }
+                    }
+                }.css.borderCollapse(.separate)
+            }
+        }
+        var config = PDF.HTML.Configuration()
+        config.table.border.width = 0
+        let bytes = pageBytes(PDF.HTML.pages(configuration: config) { V() })
+        // Count `S` (stroke) operators on a line by themselves.
+        let s = String(decoding: bytes, as: UTF8.self)
+        let strokes = s.components(separatedBy: "\nS\n").count - 1
+        #expect(strokes == 1,
+                "border-bottom on TR should emit exactly one horizontal stroke at the row's bottom edge; got \(strokes) strokes")
+    }
 }

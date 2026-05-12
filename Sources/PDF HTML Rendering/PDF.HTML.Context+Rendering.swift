@@ -454,8 +454,20 @@ extension PDF.HTML.Context {
             return
         }
 
-        // Save element-scoped state
-        let scope = Element.Scope(
+        // Save element-scoped state. Drain any pending per-side border
+        // declarations (set by CSS modifiers that fired between this
+        // element's `open(.style)` and `_pushElement`). The pending fields
+        // on `context` represent borders intended for THIS element; clear
+        // them after transfer so they don't leak to the next push.
+        let pendingBorderTop = context.pendingSideBorderTop
+        let pendingBorderRight = context.pendingSideBorderRight
+        let pendingBorderBottom = context.pendingSideBorderBottom
+        let pendingBorderLeft = context.pendingSideBorderLeft
+        context.pendingSideBorderTop = nil
+        context.pendingSideBorderRight = nil
+        context.pendingSideBorderBottom = nil
+        context.pendingSideBorderLeft = nil
+        var scope = Element.Scope(
             tagName: tagName,
             isBlock: isBlock,
             style: context.pdf.style,
@@ -469,6 +481,10 @@ extension PDF.HTML.Context {
             savedPendingMargin: context.pendingBottomMargin,
             isVoid: false
         )
+        scope.pendingBorderTop = pendingBorderTop
+        scope.pendingBorderRight = pendingBorderRight
+        scope.pendingBorderBottom = pendingBorderBottom
+        scope.pendingBorderLeft = pendingBorderLeft
         context.elementStack.append(scope)
 
         // Apply tag-specific style
@@ -958,10 +974,10 @@ extension PDF.HTML.Context {
             break
 
         case "tr":
-            popTableRow(context: &context)
+            popTableRow(scope: scope, context: &context)
 
         case "td", "th":
-            popTableCell(isHeader: scope.tagName == "th", context: &context)
+            popTableCell(scope: scope, isHeader: scope.tagName == "th", context: &context)
 
         case "ol", "ul":
             if context.pdf.inline.hasRuns {
@@ -1243,7 +1259,10 @@ extension PDF.HTML.Context {
 
 extension PDF.HTML.Context {
     /// Finalize a table row: compute row height, draw borders, advance Y.
-    private static func popTableRow(context: inout PDF.HTML.Context) {
+    private static func popTableRow(
+        scope: Element.Scope,
+        context: inout PDF.HTML.Context
+    ) {
         guard var tableCtx = context.table else { return }
 
         if context.pdf.inline.hasRuns {
@@ -1272,7 +1291,34 @@ extension PDF.HTML.Context {
                 tableCtx: tableCtx,
                 context: &context
             )
+            // Per-side borders declared via CSS modifiers on the cell (TD/TH).
+            // Rendered here once cell bounds are finalized.
+            drawScopeSideBorders(
+                top: pending.pendingBorderTop,
+                right: pending.pendingBorderRight,
+                bottom: pending.pendingBorderBottom,
+                left: pending.pendingBorderLeft,
+                bounds: cellBounds,
+                context: &context
+            )
         }
+
+        // Per-side borders declared via CSS modifiers on the row (TR).
+        // Span the row's full width.
+        let rowBounds = PDF.UserSpace.Rectangle(
+            x: tableCtx.bounds.llx,
+            y: rowStartY,
+            width: tableCtx.bounds.width,
+            height: actualRowHeight
+        )
+        drawScopeSideBorders(
+            top: scope.pendingBorderTop,
+            right: scope.pendingBorderRight,
+            bottom: scope.pendingBorderBottom,
+            left: scope.pendingBorderLeft,
+            bounds: rowBounds,
+            context: &context
+        )
 
         // Draw left border extensions for columns occupied by rowspan from previous rows
         let currentRow = tableCtx.totalRowsRendered
@@ -1327,6 +1373,7 @@ extension PDF.HTML.Context {
 
     /// Finalize a table cell: track height, register pending border.
     private static func popTableCell(
+        scope: Element.Scope,
         isHeader: Bool,
         context: inout PDF.HTML.Context
     ) {
@@ -1358,9 +1405,63 @@ extension PDF.HTML.Context {
                 colspan: colspan,
                 rowspan: rowspan,
                 isHeader: isHeader,
-                textAlignment: textAlignment
+                textAlignment: textAlignment,
+                pendingBorderTop: scope.pendingBorderTop,
+                pendingBorderRight: scope.pendingBorderRight,
+                pendingBorderBottom: scope.pendingBorderBottom,
+                pendingBorderLeft: scope.pendingBorderLeft
             ))
             tc.currentColumn += colspan
+        }
+    }
+
+    /// Render per-side borders declared via CSS modifiers on a row or cell.
+    /// Per CSS Backgrounds 3 §3, each side's border is an independent stroke
+    /// at the box's corresponding edge. `style` is captured but currently
+    /// ignored — all sides render as `.solid`; future work wires `.double`.
+    private static func drawScopeSideBorders(
+        top: Element.Scope.PendingSideBorder?,
+        right: Element.Scope.PendingSideBorder?,
+        bottom: Element.Scope.PendingSideBorder?,
+        left: Element.Scope.PendingSideBorder?,
+        bounds: PDF.UserSpace.Rectangle,
+        context: inout PDF.HTML.Context
+    ) {
+        if let top {
+            HTML.Element.Tag<Never>.drawHorizontalBorder(
+                from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+                to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
+                color: top.color,
+                width: top.width.width,
+                context: &context
+            )
+        }
+        if let bottom {
+            HTML.Element.Tag<Never>.drawHorizontalBorder(
+                from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
+                to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
+                color: bottom.color,
+                width: bottom.width.width,
+                context: &context
+            )
+        }
+        if let left {
+            HTML.Element.Tag<Never>.drawVerticalBorder(
+                from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
+                to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
+                color: left.color,
+                width: left.width.width,
+                context: &context
+            )
+        }
+        if let right {
+            HTML.Element.Tag<Never>.drawVerticalBorder(
+                from: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
+                to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
+                color: right.color,
+                width: right.width.width,
+                context: &context
+            )
         }
     }
 }

@@ -84,6 +84,34 @@ extension HTML.Element.Tag {
         )
     }
 
+    /// Draw a horizontal side border (top or bottom edge of a box).
+    ///
+    /// Used by per-side CSS border modifiers (`border-top`/`border-bottom`)
+    /// to render a single horizontal stroke at a given Y, spanning the box's
+    /// X range. Per CSS Backgrounds 3 §3, this is rendered as a solid stroke
+    /// at the declared width — line-style support beyond `.solid` is wired
+    /// in subsequent changes.
+    static func drawHorizontalBorder(
+        from: PDF.UserSpace.Coordinate,
+        to: PDF.UserSpace.Coordinate,
+        color: PDF.Color,
+        width: PDF.UserSpace.Width,
+        context: inout PDF.HTML.Context
+    ) {
+        context.pdf.emit.line(from: from, to: to, color: color, width: width)
+    }
+
+    /// Draw a vertical side border (left or right edge of a box).
+    static func drawVerticalBorder(
+        from: PDF.UserSpace.Coordinate,
+        to: PDF.UserSpace.Coordinate,
+        color: PDF.Color,
+        width: PDF.UserSpace.Width,
+        context: inout PDF.HTML.Context
+    ) {
+        context.pdf.emit.line(from: from, to: to, color: color, width: width)
+    }
+
     /// Draw cell background (inset by half border width to avoid overlap)
     static func drawCellBackground(
         bounds: PDF.UserSpace.Rectangle,

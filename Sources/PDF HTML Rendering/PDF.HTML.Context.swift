@@ -43,6 +43,17 @@ extension PDF.HTML {
         /// before `_pushElement("table", …)` created `table`.
         public var pendingTableBorderWidth: PDF.UserSpace.Size<1>?
 
+        /// Pending per-side border declarations captured from CSS modifiers
+        /// (`border-top`/`border-right`/`border-bottom`/`border-left`) that
+        /// fired AFTER `open(.style)` but BEFORE the inner element's
+        /// `_pushElement`. Drained into `Element.Scope.pendingBorder*` at
+        /// the next `_pushElement`; cleared on drain. Rendered at element
+        /// pop time per CSS Backgrounds 3 §3.
+        public var pendingSideBorderTop: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderRight: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderBottom: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderLeft: Element.Scope.PendingSideBorder?
+
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.
