@@ -15,7 +15,7 @@ extension PDF.HTML.Configuration.Table {
 
         public init(
             color: PDF.Color = .gray(0.3),
-            width: PDF.UserSpace.Size<1> = 0.5
+            width: PDF.UserSpace.Size<1> = 0
         ) {
             self.color = color
             self.width = width
