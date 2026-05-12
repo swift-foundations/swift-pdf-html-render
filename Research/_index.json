@@ -38,6 +38,17 @@
       "statusRaw": "RECOMMENDATION",
       "tier": 2,
       "scope": "cross-package"
+    },
+    {
+      "file": "coenttb-rendering-reference.md",
+      "displayName": "coenttb-rendering-reference.md",
+      "topic": "Phase D cumulative-vertical-spacing reference inventory: coenttb/swift-html-to-pdf is a WebKit/Quartz bridge with no custom CSS engine, so comparison reduces to vs-WebKit-UA-stylesheet. Inventories 5 axes (inter-element spacing; tag-default margins; font setup; cell layout; paragraph wrapping) with institute file:line evidence for every divergence. Per-finding mapping for C-1 through C-10 with proposed institute-shaped fix-shapes. Highest-impact finding: `<table>` tag-default 1em margins (C-2) diverge from WebKit's 0 default; one-line fix at HTML.Element.Tag+TagStyle.swift:120-121.",
+      "date": "2026-05-12",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": 2,
+      "scope": "cross-package"
     }
   ]
 }
