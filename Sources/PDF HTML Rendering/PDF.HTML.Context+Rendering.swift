@@ -1416,9 +1416,10 @@ extension PDF.HTML.Context {
     }
 
     /// Render per-side borders declared via CSS modifiers on a row or cell.
-    /// Per CSS Backgrounds 3 §3, each side's border is an independent stroke
-    /// at the box's corresponding edge. `style` is captured but currently
-    /// ignored — all sides render as `.solid`; future work wires `.double`.
+    /// Per CSS Backgrounds 3 §3, each side's border is an independent
+    /// stroke at the box's corresponding edge. `style` is passed through
+    /// to the renderer: `.solid` (default) emits one stroke; `.double`
+    /// emits two parallel strokes with a gap per §3.5.
     private static func drawScopeSideBorders(
         top: Element.Scope.PendingSideBorder?,
         right: Element.Scope.PendingSideBorder?,
@@ -1433,6 +1434,7 @@ extension PDF.HTML.Context {
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
                 color: top.color,
                 width: top.width.width,
+                style: top.style,
                 context: &context
             )
         }
@@ -1442,6 +1444,7 @@ extension PDF.HTML.Context {
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
                 color: bottom.color,
                 width: bottom.width.width,
+                style: bottom.style,
                 context: &context
             )
         }
@@ -1451,6 +1454,7 @@ extension PDF.HTML.Context {
                 to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
                 color: left.color,
                 width: left.width.width,
+                style: left.style,
                 context: &context
             )
         }
@@ -1460,6 +1464,7 @@ extension PDF.HTML.Context {
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
                 color: right.color,
                 width: right.width.width,
+                style: right.style,
                 context: &context
             )
         }

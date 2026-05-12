@@ -87,29 +87,76 @@ extension HTML.Element.Tag {
     /// Draw a horizontal side border (top or bottom edge of a box).
     ///
     /// Used by per-side CSS border modifiers (`border-top`/`border-bottom`)
-    /// to render a single horizontal stroke at a given Y, spanning the box's
-    /// X range. Per CSS Backgrounds 3 §3, this is rendered as a solid stroke
-    /// at the declared width — line-style support beyond `.solid` is wired
-    /// in subsequent changes.
+    /// to render a horizontal stroke at a given Y, spanning the box's X
+    /// range, at the declared CSS line-style.
+    ///
+    /// Per CSS Backgrounds 3 §3.5:
+    /// - `.solid` (and dotted/dashed/groove/ridge/inset/outset which fall
+    ///   back to solid here): one stroke at the full declared width.
+    /// - `.double`: two parallel strokes with a gap, sized so that
+    ///   `line + gap + line == width`. Each sub-line is `width / 3` thick;
+    ///   the gap between them is `width / 3`.
     static func drawHorizontalBorder(
         from: PDF.UserSpace.Coordinate,
         to: PDF.UserSpace.Coordinate,
         color: PDF.Color,
         width: PDF.UserSpace.Width,
+        style: W3C_CSS_Values.LineStyle,
         context: inout PDF.HTML.Context
     ) {
-        context.pdf.emit.line(from: from, to: to, color: color, width: width)
+        switch style {
+        case .double:
+            let third = width / 3
+            let offsetY = third.retag(Extent.Y<UserSpace>.self)
+            let topY = from.y - offsetY
+            let bottomY = from.y + offsetY
+            context.pdf.emit.line(
+                from: PDF.UserSpace.Coordinate(x: from.x, y: topY),
+                to: PDF.UserSpace.Coordinate(x: to.x, y: topY),
+                color: color,
+                width: third
+            )
+            context.pdf.emit.line(
+                from: PDF.UserSpace.Coordinate(x: from.x, y: bottomY),
+                to: PDF.UserSpace.Coordinate(x: to.x, y: bottomY),
+                color: color,
+                width: third
+            )
+        default:
+            context.pdf.emit.line(from: from, to: to, color: color, width: width)
+        }
     }
 
     /// Draw a vertical side border (left or right edge of a box).
+    /// Style support mirrors `drawHorizontalBorder`.
     static func drawVerticalBorder(
         from: PDF.UserSpace.Coordinate,
         to: PDF.UserSpace.Coordinate,
         color: PDF.Color,
         width: PDF.UserSpace.Width,
+        style: W3C_CSS_Values.LineStyle,
         context: inout PDF.HTML.Context
     ) {
-        context.pdf.emit.line(from: from, to: to, color: color, width: width)
+        switch style {
+        case .double:
+            let third = width / 3
+            let leftX = from.x - third
+            let rightX = from.x + third
+            context.pdf.emit.line(
+                from: PDF.UserSpace.Coordinate(x: leftX, y: from.y),
+                to: PDF.UserSpace.Coordinate(x: leftX, y: to.y),
+                color: color,
+                width: third
+            )
+            context.pdf.emit.line(
+                from: PDF.UserSpace.Coordinate(x: rightX, y: from.y),
+                to: PDF.UserSpace.Coordinate(x: rightX, y: to.y),
+                color: color,
+                width: third
+            )
+        default:
+            context.pdf.emit.line(from: from, to: to, color: color, width: width)
+        }
     }
 
     /// Draw cell background (inset by half border width to avoid overlap)

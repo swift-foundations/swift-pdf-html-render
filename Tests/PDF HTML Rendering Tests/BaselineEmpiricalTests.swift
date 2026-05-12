@@ -1005,10 +1005,41 @@ struct `Baseline Empirical Tests` {
         var config = PDF.HTML.Configuration()
         config.table.border.width = 0
         let bytes = pageBytes(PDF.HTML.pages(configuration: config) { V() })
-        // Count `S` (stroke) operators on a line by themselves.
-        let s = String(decoding: bytes, as: UTF8.self)
+        // Append a trailing newline so the final `S` operator (if present
+        // at end-of-stream without a closing newline) still matches the
+        // `\nS\n` separator pattern.
+        let s = String(decoding: bytes + [0x0A], as: UTF8.self)
         let strokes = s.components(separatedBy: "\nS\n").count - 1
         #expect(strokes == 1,
                 "border-bottom on TR should emit exactly one horizontal stroke at the row's bottom edge; got \(strokes) strokes")
+    }
+
+    /// Regression test for CSS Backgrounds 3 §3.5 `border-style: double`.
+    ///
+    /// `border-bottom: 3px double <color>` on a TD must emit TWO parallel
+    /// horizontal strokes with a gap totaling `width`. Pre-fix the
+    /// renderer ignored `.double` and fell back to a single solid stroke.
+    @Test
+    func `css.borderBottom with double style emits two parallel strokes`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "CELL" }
+                            .css.borderBottom(.init(.px(3), .double, .hex("000000")))
+                    }
+                }.css.borderCollapse(.separate)
+            }
+        }
+        var config = PDF.HTML.Configuration()
+        config.table.border.width = 0
+        let bytes = pageBytes(PDF.HTML.pages(configuration: config) { V() })
+        // Append a trailing newline so the final `S` operator (if present
+        // at end-of-stream without a closing newline) still matches the
+        // `\nS\n` separator pattern.
+        let s = String(decoding: bytes + [0x0A], as: UTF8.self)
+        let strokes = s.components(separatedBy: "\nS\n").count - 1
+        #expect(strokes == 2,
+                "border-style: double should emit two parallel strokes (line + gap + line); got \(strokes)")
     }
 }
