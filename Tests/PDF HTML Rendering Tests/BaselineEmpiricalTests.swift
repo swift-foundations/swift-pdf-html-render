@@ -949,4 +949,32 @@ struct `Baseline Empirical Tests` {
         #expect(abs(gap23 - gap34) < 3,
                 "C-E4: row M2→M3 gap (\(gap23)) vs M3→M4 gap (\(gap34)) should match.")
     }
+
+    /// C-E5 reproducer (Phase E Round 3, 2026-05-12): paragraph wrap
+    /// REGRESSES when a child element uses `.css.whiteSpace(.nowrap)`.
+    ///
+    /// Bug shape observed in factuur-21 payment paragraph (Invoice.swift:286
+    /// onwards): the paragraph contains `HTML.Text(sender.iban).css.whiteSpace(.nowrap)`
+    /// among normally-wrapping siblings. Empirically the entire paragraph
+    /// renders as a single line extending past `bounds.width`, suggesting
+    /// the mode.noWrap mutation set during the IBAN child's inlineStyle
+    /// application is not restored after the IBAN's text emits, leaking
+    /// the nowrap mode onto subsequent siblings AND/OR onto the flush
+    /// of pre-IBAN runs.
+    @Test
+    func `C-E5: paragraph wraps despite nowrap child in middle`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Paragraph {
+                    "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+                    HTML.Text("NOWRAP_TOKEN").css.whiteSpace(.nowrap)
+                    " Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+                }
+            }
+        }
+        let bytes = pageBytes(PDF.HTML.pages { V() })
+        let lineBreaks = bytes.tjPositions().filter { $0.y < 0 }.count
+        #expect(lineBreaks >= 2,
+                "Paragraph with nowrap child in middle must still wrap at line boundaries; got \(lineBreaks) line-breaks (Tj with y<0). The nowrap child's mode mutation should be scoped to the child, not leak to the whole paragraph.")
+    }
 }

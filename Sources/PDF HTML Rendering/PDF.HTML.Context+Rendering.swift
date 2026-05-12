@@ -216,6 +216,17 @@ extension PDF.HTML.Context {
         var handled = false
 
         if let modifier = unwrapped as? any PDF.HTML.Style.Modifier {
+            // Inline style mutations to wrap-controlling modes (`whiteSpace`,
+            // `whiteSpaceCollapse`) are NOT scoped to a paired pop in
+            // swift-html's serialization of `HTML.Text("X").css.X` — the
+            // builder emits `inlineStyle(modifier)` + `text("X")` without a
+            // closing marker. Mode mutations therefore leak to subsequent
+            // siblings within the enclosing block. To preserve correct wrap
+            // semantics for the prior accumulated runs, flush before
+            // mutating the mode.
+            if pdf.inline.hasRuns {
+                pdf.flush.inline()
+            }
             modifier.apply(to: &pdf, configuration: configuration)
             handled = true
         }
