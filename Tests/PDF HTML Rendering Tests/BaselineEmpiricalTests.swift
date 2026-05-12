@@ -455,4 +455,50 @@ struct `Baseline Empirical Tests` {
         #expect(heading!.x > lbold!.x + 100,
                 "h3 absolute x (\(heading!.x)) must render in right column, well right of LBOLD (\(lbold!.x))")
     }
+
+    /// Regression test for the `constraint.width` scope-leak (Phase B.3,
+    /// 2026-05-12).
+    ///
+    /// Before the fix, the Width modifier's `constraint.width` output
+    /// was set but never cleared by `applyBoxModel`. Any descendant
+    /// element's CSS-modifier dispatch (which re-runs `applyBoxModel`)
+    /// re-applied the stale ancestor constraint, overwriting the
+    /// descendant's correct `layout.box.urx` with `llx + ancestorWidth`.
+    /// In Letter.Header-shaped content (factuur-21), an `h3` with its
+    /// own margin/textAlign modifiers inside the sender cell pushed
+    /// `urx` to `cellLlx + 451 = 827` — off-page (A4 width = 595.276).
+    @Test
+    func `Width constraint does not leak into descendant box-model resolution`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "LEFT" }
+                            .css.verticalAlign(.top).width(.percent(100))
+                        TableDataCell {
+                            HTML.Element.Tag(tag: "h3") { "RIGHT" }
+                                .css.margin(top: 0).margin(bottom: 0)
+                                .textAlign(.right)
+                        }.css.verticalAlign(.top)
+                    }
+                }
+                .css.width(.percent(100))
+                .borderCollapse(.collapse)
+            }
+        }
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let right = positions.first { $0.text.contains("RIGHT") }
+        try #require(right != nil, "RIGHT must appear in content stream")
+        // A4 width = 595.276pt. Pre-fix bug placed RIGHT at x ≈ 719
+        // (cell llx + leaked outer constraint.width = 376 + 451 = 827,
+        // minus right-align trim).
+        #expect(right!.x < 595,
+                "RIGHT absolute x (\(right!.x)) must be on-page — pre-fix bug rendered descendants past A4 right edge due to constraint.width leak from outer .css.width(.percent(100)) ancestor")
+        // Also assert RIGHT is in the actual right column (not collapsed
+        // back to the left edge): it must be well right of the LEFT cell.
+        let left = positions.first { $0.text.contains("LEFT") }
+        try #require(left != nil, "LEFT must appear in content stream")
+        #expect(right!.x > left!.x + 100,
+                "RIGHT (\(right!.x)) must render in right column, well right of LEFT (\(left!.x))")
+    }
 }

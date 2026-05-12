@@ -601,6 +601,19 @@ extension PDF.HTML.Context {
         }
         if let explicitWidth = pdf.constraint.width {
             pdf.layout.box.urx = pdf.layout.box.llx + explicitWidth
+            // Consume the Width modifier's one-shot output. CSS `width`
+            // does not inherit (CSS 2.1 §10.3.4 / CSS Box Sizing 3 §6),
+            // so a child element's own applyBoxModel must NOT re-apply
+            // its ancestor's resolved width. Clearing here scopes the
+            // constraint to the modifier dispatch that set it.
+            pdf.constraint.width = nil
+        }
+        if pdf.constraint.height != nil {
+            // Symmetric one-shot consumption. `applyBoxModel` does not
+            // currently read constraint.height, but clearing here keeps
+            // the semantic consistent so a future Height-consumer reads
+            // from a freshly-set value rather than a stale ancestor one.
+            pdf.constraint.height = nil
         }
     }
 }
