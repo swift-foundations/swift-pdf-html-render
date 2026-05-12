@@ -270,26 +270,57 @@ struct `Baseline Empirical Tests` {
                 "Long text under .nowrap should NOT wrap (no Td with y < 0); got \(nowrapLineBreaks)")
     }
 
-    // 5. State-stack pop-ordering bug reproducer placeholder (γ-5 trigger v)
+    // 5. State-stack pop-ordering bug reproducer (γ-5 trigger v)
     //
-    // Currently a SHAPE placeholder: two sibling top-level tables render
-    // without crash. Phase B's sub-investigation will author the proper
-    // reproducer with CSS modifier on the second table whose write should
-    // reach its state — and that fails today because the state-stack
-    // pop-ordering defect lets the write go to a stale snapshot.
+    // Phase B reproducer. Two sibling top-level `<table>` elements, each
+    // a 60/40 column split via `.css.width(.percent(60))` /
+    // `.css.width(.percent(40))`. Per Test 6 (isolated), this allocation
+    // is honored and the second cell's relative-Td x-offset is ~270pt
+    // (well above the equal-width baseline of ~226pt).
     //
-    // Re-enable + replace assertion when Phase B's reproducer materialises.
-    @Test(.disabled("γ-5 trigger v state-stack pop-ordering bug; precise reproducer TBD as part of Phase B sub-investigation"))
-    func `sibling tables placeholder: both render without crash`() {
+    // The state-stack hypothesis (per `Research/css-fidelity-gap-inventory.md`
+    // §Addendum 2026-05-11): writes from Table 2's column-width modifiers
+    // hit STALE state — either Table 1's `context.table.recording` (if
+    // pops missed), or `context.table == nil` (if some other state
+    // corruption), causing Table 2's column-width allocator to fall back
+    // to equal-width OR to collapse columns into a single column.
+    //
+    // Discriminating assertions:
+    //  • Both tables should produce a `B1` and `B2` Tj.
+    //  • Both relative-Td x-offsets for B1 and B2 should exceed 50pt
+    //    (clear evidence of horizontal cell layout in both tables).
+    //  • The two offsets should be approximately equal (within 5pt) —
+    //    proving the second table's allocator behaves identically to
+    //    the first's.
+    @Test
+    func `sibling tables: second table column-width hints reach their state`() throws {
         struct TestView: HTML.View {
             var body: some HTML.View {
-                Table { TableRow { TableDataCell { "FIRST" } } }
-                Table { TableRow { TableDataCell { "SECOND" } } }
+                Table {
+                    TableRow {
+                        TableDataCell { "A1" }.css.width(.percent(60))
+                        TableDataCell { "B1" }.css.width(.percent(40))
+                    }
+                }
+                Table {
+                    TableRow {
+                        TableDataCell { "A2" }.css.width(.percent(60))
+                        TableDataCell { "B2" }.css.width(.percent(40))
+                    }
+                }
             }
         }
         let bytes = pageBytes(PDF.HTML.pages { TestView() })
-        let s = String(decoding: bytes, as: UTF8.self)
-        #expect(s.contains("FIRST"))
-        #expect(s.contains("SECOND"))
+        let positions = bytes.tjPositions()
+        let b1 = positions.first { $0.text.contains("B1") }
+        let b2 = positions.first { $0.text.contains("B2") }
+        try #require(b1 != nil, "Sibling 1: B1 should appear in content stream")
+        try #require(b2 != nil, "Sibling 2: B2 should appear in content stream")
+        #expect(b1!.x > 50,
+                "Sibling 1 (no leakage source): B1 x-offset \(b1!.x) should exceed 50pt — confirms isolated column layout works")
+        #expect(b2!.x > 50,
+                "Sibling 2 (leakage target): B2 x-offset \(b2!.x) should exceed 50pt — if state-stack leaks, Table 2's width hints don't reach its allocator and B2 collapses near 0")
+        #expect(abs(b1!.x - b2!.x) < 5,
+                "Sibling tables 1 & 2 with identical width hints should yield identical column allocations; got B1.x=\(b1!.x), B2.x=\(b2!.x)")
     }
 }
