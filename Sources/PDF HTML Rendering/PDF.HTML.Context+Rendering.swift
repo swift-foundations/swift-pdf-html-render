@@ -865,9 +865,6 @@ extension PDF.HTML.Context {
                     context: &context
                 )
             }
-            context.pdf.advance(
-                (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
-            )
             // Restore saved table context from scope
             context.table = scope.savedTable
 
