@@ -50,5 +50,21 @@ extension PDF.HTML.Context.Table {
         /// Column index → width-weight hints collected during recording. Used
         /// by `finalizeFirstRow` to allocate proportional column widths.
         var columnWidthWeights: [Int: Double] = [:]
+
+        /// Round 2b.1 (C-1 measurement): per-column min/max content widths
+        /// captured during first-row recording. Read by allocator in
+        /// Round 2b.2; ignored in Round 2b.1 (no behavior change invariant).
+        /// min-content (W3C CSS Box Sizing 3 §4.1): widest unbreakable token
+        /// per cell. max-content: sum of token + space widths per cell
+        /// (single-line interpretation per orchestrator design; br handling
+        /// deferred to Round 2b.2).
+        var columnMinContentWidths: [Int: PDF.UserSpace.Width] = [:]
+        var columnMaxContentWidths: [Int: PDF.UserSpace.Width] = [:]
+
+        /// Round 2b.1: per-cell accumulators reset on each cell push,
+        /// finalized into columnMin/MaxContentWidths on cell pop.
+        var currentCellColumn: Int? = nil
+        var currentCellMinWidth: PDF.UserSpace.Width = .init(0)
+        var currentCellMaxWidth: PDF.UserSpace.Width = .init(0)
     }
 }

@@ -22,6 +22,50 @@ extension PDF.HTML.Context {
 
         if table?.recording != nil {
             table!.recording!.commands.append(.text(copy))
+            // Round 2b.1 (C-1 measurement): measure tokens for column min/max
+            // accumulators when inside a recorded cell. Style is frozen at
+            // recording-entry value (style stack isn't mutated during
+            // recording per _pushStyle:542); nested-element font changes
+            // (small/h3) therefore measure at outer style — approximate by
+            // design; Round 2b.2 will assess fidelity.
+            if table!.recording!.currentCellColumn != nil {
+                let runs = PDF.Context.Text.Run.runsWithSymbolSupport(
+                    text: copy,
+                    font: pdf.style.font,
+                    fontSize: pdf.style.fontSize,
+                    color: pdf.style.color
+                )
+                let spaceWidth = pdf.style.font.winAnsi.width(
+                    of: [.ascii.space], atSize: pdf.style.fontSize
+                )
+                var maxToken: PDF.UserSpace.Width = .init(0)
+                var lineWidth: PDF.UserSpace.Width = .init(0)
+                for run in runs {
+                    var tokenStart = 0
+                    for (i, byte) in run.bytes.enumerated() {
+                        if byte.ascii.isWhitespace {
+                            if i > tokenStart {
+                                let tokenBytes = Array(run.bytes[tokenStart..<i])
+                                let w = run.font.winAnsi.width(of: tokenBytes, atSize: run.fontSize)
+                                if w > maxToken { maxToken = w }
+                                lineWidth = lineWidth + w
+                            }
+                            lineWidth = lineWidth + spaceWidth
+                            tokenStart = i + 1
+                        }
+                    }
+                    if tokenStart < run.bytes.count {
+                        let tokenBytes = Array(run.bytes[tokenStart...])
+                        let w = run.font.winAnsi.width(of: tokenBytes, atSize: run.fontSize)
+                        if w > maxToken { maxToken = w }
+                        lineWidth = lineWidth + w
+                    }
+                }
+                if maxToken > table!.recording!.currentCellMinWidth {
+                    table!.recording!.currentCellMinWidth = maxToken
+                }
+                table!.recording!.currentCellMaxWidth = table!.recording!.currentCellMaxWidth + lineWidth
+            }
             return
         }
 
@@ -364,6 +408,12 @@ extension PDF.HTML.Context {
                     }
                     context.table!.recording!.columnCount += context.table!.recording!.pendingColspan
                     context.table!.recording!.pendingColspan = 1
+                    // Round 2b.1 (C-1 measurement): mark this cell as the
+                    // active measurement target; reset per-cell accumulators.
+                    // Cell pop will finalize into per-column dicts.
+                    context.table!.recording!.currentCellColumn = columnIdx
+                    context.table!.recording!.currentCellMinWidth = .init(0)
+                    context.table!.recording!.currentCellMaxWidth = .init(0)
                 }
                 context.table!.recording!.elementDepth += 1
             }
@@ -504,6 +554,23 @@ extension PDF.HTML.Context {
                 finalizeFirstRow(recording, context: &context)
                 // Fall through to normal pop logic for the TR
             } else {
+                // Round 2b.1 (C-1 measurement): cell-pop detection — when
+                // elementDepth decrements to 0, the popping element was at
+                // depth 0 (a td/th cell). Finalize per-cell min/max into
+                // per-column dicts.
+                if context.table!.recording!.elementDepth == 0,
+                   let col = context.table!.recording!.currentCellColumn {
+                    let r = context.table!.recording!
+                    let prevMin = r.columnMinContentWidths[col] ?? .init(0)
+                    let prevMax = r.columnMaxContentWidths[col] ?? .init(0)
+                    if r.currentCellMinWidth > prevMin {
+                        context.table!.recording!.columnMinContentWidths[col] = r.currentCellMinWidth
+                    }
+                    if r.currentCellMaxWidth > prevMax {
+                        context.table!.recording!.columnMaxContentWidths[col] = r.currentCellMaxWidth
+                    }
+                    context.table!.recording!.currentCellColumn = nil
+                }
                 context.table!.recording!.commands.append(.popElement(isBlock: isBlock))
                 return
             }
