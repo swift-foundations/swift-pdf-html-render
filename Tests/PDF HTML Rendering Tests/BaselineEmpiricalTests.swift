@@ -456,6 +456,107 @@ struct `Baseline Empirical Tests` {
                 "h3 absolute x (\(heading!.x)) must render in right column, well right of LBOLD (\(lbold!.x))")
     }
 
+    /// C-11 reproducer (Phase D, 2026-05-12): nested-table mid-row page-break
+    /// pushes subsequent block to a NEW page even when prior page has room.
+    ///
+    /// Bug shape observed in factuur-21 post-C-2: the Invoice's totals table
+    /// (Invoice.swift:255-281, outer 2-col table containing nested 3-row
+    /// totals) page-breaks mid-rows — first 2 totals rows fit on page 1,
+    /// 3rd row (`Totaalbedrag`) goes to page 2. The following payment
+    /// paragraph (`Wij verzoeken u...`) — which logically should fit on
+    /// page 2 after the broken-table-end with ~680pt of free space —
+    /// renders on page 3.
+    ///
+    /// Minimal reproducer: outer 1-row 2-cell table with a TALL nested
+    /// inner table; the inner table's last row falls below page-1 boundary
+    /// and goes to page 2; a `Paragraph` follows.
+    ///
+    /// Expected (correct): total 2 pages. The `AFTER_PAYMENT_MARKER`
+    /// paragraph renders on page 2 right after the broken-table-end.
+    /// Actual (bug present): total 3 pages. `AFTER_PAYMENT_MARKER` is on
+    /// page 3 alone.
+    ///
+    /// Currently disabled until the fix lands; on enable, will lock the
+    /// invariant via `pageCount == 2`.
+    @Test
+    func `C-11: nested-table mid-row break does not force next block to new page`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                // Filler: 28 rows × 22pt ≈ 616pt — leaves ~80pt on page 1 for
+                // the totals table to partially break (2 of 3 inner rows fit
+                // on page 1; 3rd row TOTALMARKER falls to page 2).
+                Table {
+                    TableRow { TableDataCell { "F01" }; TableDataCell { "v01" } }
+                    TableRow { TableDataCell { "F02" }; TableDataCell { "v02" } }
+                    TableRow { TableDataCell { "F03" }; TableDataCell { "v03" } }
+                    TableRow { TableDataCell { "F04" }; TableDataCell { "v04" } }
+                    TableRow { TableDataCell { "F05" }; TableDataCell { "v05" } }
+                    TableRow { TableDataCell { "F06" }; TableDataCell { "v06" } }
+                    TableRow { TableDataCell { "F07" }; TableDataCell { "v07" } }
+                    TableRow { TableDataCell { "F08" }; TableDataCell { "v08" } }
+                    TableRow { TableDataCell { "F09" }; TableDataCell { "v09" } }
+                    TableRow { TableDataCell { "F10" }; TableDataCell { "v10" } }
+                    TableRow { TableDataCell { "F11" }; TableDataCell { "v11" } }
+                    TableRow { TableDataCell { "F12" }; TableDataCell { "v12" } }
+                    TableRow { TableDataCell { "F13" }; TableDataCell { "v13" } }
+                    TableRow { TableDataCell { "F14" }; TableDataCell { "v14" } }
+                    TableRow { TableDataCell { "F15" }; TableDataCell { "v15" } }
+                    TableRow { TableDataCell { "F16" }; TableDataCell { "v16" } }
+                    TableRow { TableDataCell { "F17" }; TableDataCell { "v17" } }
+                    TableRow { TableDataCell { "F18" }; TableDataCell { "v18" } }
+                    TableRow { TableDataCell { "F19" }; TableDataCell { "v19" } }
+                    TableRow { TableDataCell { "F20" }; TableDataCell { "v20" } }
+                    TableRow { TableDataCell { "F21" }; TableDataCell { "v21" } }
+                    TableRow { TableDataCell { "F22" }; TableDataCell { "v22" } }
+                    TableRow { TableDataCell { "F23" }; TableDataCell { "v23" } }
+                    TableRow { TableDataCell { "F24" }; TableDataCell { "v24" } }
+                    TableRow { TableDataCell { "F25" }; TableDataCell { "v25" } }
+                    TableRow { TableDataCell { "F26" }; TableDataCell { "v26" } }
+                    TableRow { TableDataCell { "F27" }; TableDataCell { "v27" } }
+                    TableRow { TableDataCell { "F28" }; TableDataCell { "v28" } }
+                }
+                HTML.Element.Tag<Never>(tag: "hr")
+                // The totals table — outer 2-cell with nested 3-row inner.
+                Table {
+                    TableRow {
+                        TableDataCell { HTML.Empty() }.css.width(.percent(100))
+                        TableDataCell {
+                            Table {
+                                TableRow { TableDataCell { "Bedrag" }; TableDataCell { "€ 6000" } }
+                                TableRow { TableDataCell { "BTW" }; TableDataCell { "€ 1260" } }
+                                TableRow { TableDataCell { "TOTALMARKER" }; TableDataCell { "€ 7260" } }
+                            }
+                        }
+                    }
+                }.css.borderCollapse(.collapse)
+                HTML.Element.Tag<Never>(tag: "br")
+                HTML.Element.Tag<Never>(tag: "br")
+                Paragraph { "AFTER_PAYMENT_MARKER" }
+            }
+        }
+        let pages = PDF.HTML.pages { V() }
+        // Determine which page each marker lands on via per-page tjPositions.
+        // The bug: pre-fix, AFTER_PAYMENT_MARKER lands on a new page beyond
+        // where TOTALMARKER's row ended; post-fix, it lands on the same
+        // page as TOTALMARKER (page 2 in this reproducer).
+        var totalPage: Int?
+        var afterPage: Int?
+        for (i, page) in pages.enumerated() {
+            let pb = Array(page.contents.flatMap { $0.data })
+            let positions = pb.tjPositions()
+            if positions.contains(where: { $0.text.contains("TOTALMARKER") }) {
+                totalPage = i + 1
+            }
+            if positions.contains(where: { $0.text.contains("AFTER_PAYMENT_MARKER") }) {
+                afterPage = i + 1
+            }
+        }
+        try #require(totalPage != nil, "TOTALMARKER missing")
+        try #require(afterPage != nil, "AFTER_PAYMENT_MARKER missing")
+        #expect(afterPage! == totalPage!,
+                "C-11: AFTER_PAYMENT_MARKER (page \(afterPage!)) must land on the same page where TOTALMARKER (page \(totalPage!)) ended; pre-fix bug forced it to a new page via stale rowStartY in popTableRow")
+    }
+
     /// Regression test for the `constraint.width` scope-leak (Phase B.3,
     /// 2026-05-12).
     ///

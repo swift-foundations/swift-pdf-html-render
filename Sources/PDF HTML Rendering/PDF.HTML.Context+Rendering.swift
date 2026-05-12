@@ -1155,10 +1155,30 @@ extension PDF.HTML.Context {
         // Update row heights
         tableCtx.rowHeights.append(actualRowHeight)
 
-        // Advance past this row
-        context.pdf.layout.box.lly = rowEndY
-        tableCtx.tableEndY = rowEndY
-        tableCtx.currentFragmentEndY = rowEndY
+        // Advance past this row.
+        //
+        // When the row's content (typically a cell containing a nested table
+        // or multi-line text that page-broke) crossed a page boundary during
+        // rendering, the current cursor (`pdf.layout.box.lly`) reflects the
+        // new page's row-end-Y. `rowStartY` was captured at row-push time on
+        // the previous page, so `rowStartY + actualRowHeight` is a stale
+        // page-N coord that would overwrite the page-(N+M) cursor and shoot
+        // it past the content boundary — manifesting downstream as a forced
+        // page break when the subsequent block's text-run trips
+        // `page.ensure`.
+        //
+        // Detection: `lly` only decreases via `page.new()` (resets to top-
+        // of-content); `pdf.advance` only increases it. So `currentLly <
+        // rowStartY` is a reliable single-page-break signal. (Multi-page-
+        // break rows — content spanning 3+ pages — could in theory miss
+        // this heuristic if rowStartY on page N is numerically smaller than
+        // currentLly on page N+2; flagged as C-14 future work, not observed
+        // in practice.)
+        let pageBrokeInRow = context.pdf.layout.box.lly < rowStartY
+        let effectiveRowEndY = pageBrokeInRow ? context.pdf.layout.box.lly : rowEndY
+        context.pdf.layout.box.lly = effectiveRowEndY
+        tableCtx.tableEndY = effectiveRowEndY
+        tableCtx.currentFragmentEndY = effectiveRowEndY
         tableCtx.totalRowsRendered += 1
         tableCtx.currentColumn = 0
         tableCtx.pendingCellBorders = []
