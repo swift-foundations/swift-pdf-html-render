@@ -185,6 +185,51 @@ struct `Baseline Empirical Tests` {
                 "Setting table.border.width = 0 should suppress all border strokes; got \(strokes)")
     }
 
+    // 6. Discriminating test for H1 (cell-layout primitive missing) vs H2
+    //    (state-stack pop-ordering bug as invoice page-1 cause).
+    //
+    // After A.1'+A.3 landed, factuur-21 still has 3 pages and the Letter.Header
+    // 2-col layout stacks vertically on page 1. Two hypotheses about the cause:
+    //   H1 — cell horizontal-row layout primitive is missing
+    //   H2 — state-stack pop-ordering bug between sibling tables corrupts layout
+    //
+    // This test renders an ISOLATED single 2-col table with explicit asymmetric
+    // width hints. No sibling tables → state-stack pop-ordering is sidestepped.
+    // If cells render side-by-side here, the cell-layout primitive IS present;
+    // the invoice page-1 stacking is caused by sibling-table interactions (H2).
+    // If cells stack vertically here, the primitive is missing (H1).
+    //
+    // Phase B scope decision is gated on this test's result.
+    @Test
+    func `discriminating: isolated 2-col table cells render side-by-side`() throws {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "ALPHA" }.css.width(.percent(60))
+                        TableDataCell { "BETA" }.css.width(.percent(40))
+                    }
+                }
+            }
+        }
+        let bytes = pageBytes(PDF.HTML.pages { TestView() })
+        let positions = bytes.tjPositions()
+        let alpha = positions.first { $0.text.contains("ALPHA") }
+        let beta = positions.first { $0.text.contains("BETA") }
+        try #require(alpha != nil && beta != nil,
+                     "Both ALPHA and BETA should appear in content stream")
+        // Renderer emits ALPHA via absolute Tm, BETA via relative Td.
+        // BETA's captured x is the offset from ALPHA's text origin (≈ LEFT
+        // column width minus cellPadding). For 60/40 split on a4 content
+        // width 451pt: LEFT column ≈ 271pt → BETA's relative x ≈ 270.
+        // For stacked layout (H1), both texts share the same absolute X,
+        // making BETA's relative x ≈ 0.
+        //
+        // Discriminating threshold: BETA.x > 50pt = clearly horizontal layout.
+        #expect(beta!.x > 50,
+                "Discriminating test: BETA's relative x-offset from ALPHA (\(beta!.x)) should be > 50pt if cells are side-by-side (case A → H2 confirmed); near 0 if vertically stacked (case B → H1 confirmed). ALPHA pos = (\(alpha!.x), \(alpha!.y)); BETA pos = (\(beta!.x), \(beta!.y)).")
+    }
+
     // 5. State-stack pop-ordering bug reproducer placeholder (γ-5 trigger v)
     //
     // Currently a SHAPE placeholder: two sibling top-level tables render
