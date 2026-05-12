@@ -155,6 +155,7 @@ extension PDF.HTML.Context {
     public mutating func apply(inlineStyle property: Any) -> Bool {
         if table?.recording != nil {
             table!.recording!.commands.append(.inlineStyle(property))
+            Self.captureCellWidthHint(from: property, into: &table!.recording!)
             return true
         }
 
@@ -200,6 +201,30 @@ extension PDF.HTML.Context {
         guard context.table?.recording != nil else { return false }
         context.table!.recording!.commands.append(command)
         return true
+    }
+
+    /// Extract a CSS `width: <percentage>` hint from a recorded inline-style
+    /// property and buffer it for the next `<td>`/`<th>` push at recording
+    /// depth 0. Only the percentage form is consumed; length-form (px/em/cm)
+    /// hints fall through as uniform-weight, a documented gap for the current
+    /// invoice corpus (verified to use only %-form). Optional unwrapping
+    /// mirrors the runtime dispatch path at `apply(inlineStyle:)`.
+    private static func captureCellWidthHint(
+        from property: Any,
+        into recording: inout PDF.HTML.Context.Table.Recording
+    ) {
+        let unwrapped: Any
+        let mirror = Mirror(reflecting: property)
+        if mirror.displayStyle == .optional {
+            guard let first = mirror.children.first else { return }
+            unwrapped = first.value
+        } else {
+            unwrapped = property
+        }
+        guard let width = unwrapped as? W3C_CSS_BoxModel.Width else { return }
+        if case .lengthPercentage(.percentage(let p)) = width {
+            recording.pendingCellWidthPercent = p.value
+        }
     }
 
     // MARK: - Block Structure
@@ -327,6 +352,11 @@ extension PDF.HTML.Context {
                 // Track grid columns at depth 0 (direct cell children of the row)
                 if context.table!.recording!.elementDepth == 0
                     && (tagName == "td" || tagName == "th") {
+                    let columnIdx = context.table!.recording!.columnCount
+                    if let weight = context.table!.recording!.pendingCellWidthPercent {
+                        context.table!.recording!.columnWidthWeights[columnIdx] = weight
+                        context.table!.recording!.pendingCellWidthPercent = nil
+                    }
                     context.table!.recording!.columnCount += context.table!.recording!.pendingColspan
                     context.table!.recording!.pendingColspan = 1
                 }
@@ -901,9 +931,26 @@ extension PDF.HTML.Context {
     ) {
         guard var tableCtx = context.table, recording.columnCount > 0 else { return }
 
-        // Equal-width column distribution
-        let equalWidth = tableCtx.bounds.width / Dimension_Primitives.Scale(Double(recording.columnCount))
-        tableCtx.columnWidths = Array(repeating: equalWidth, count: recording.columnCount)
+        // Weighted column-width allocation. Per-cell %-hints (from
+        // `<td>.css.width(.percent(N))`) are recorded into
+        // `recording.columnWidthWeights` keyed by column index; columns without
+        // hints get a uniform weight (100/n). All weights are normalized to
+        // sum to `bounds.width`. When no hints are present (every column gets
+        // uniformWeight), this degrades to the prior `equalWidth` behavior.
+        let n = recording.columnCount
+        let totalWidth = tableCtx.bounds.width
+        let uniformWeight = 100.0 / Double(n)
+        var weights: [Double] = []
+        weights.reserveCapacity(n)
+        var weightSum = 0.0
+        for i in 0..<n {
+            let w = recording.columnWidthWeights[i] ?? uniformWeight
+            weights.append(w)
+            weightSum += w
+        }
+        tableCtx.columnWidths = weights.map { w in
+            totalWidth / Dimension_Primitives.Scale(weightSum / w)
+        }
         tableCtx.columnsInitialized = true
         tableCtx.spans.preallocate(rows: 64, columns: recording.columnCount)
 

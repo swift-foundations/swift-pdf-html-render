@@ -34,5 +34,14 @@ extension PDF.HTML.Context.Table {
         /// Colspan value from most recent `setAttribute("colspan", ...)`.
         /// Consumed when a cell push is recorded, then reset to 1.
         var pendingColspan: Int = 1
+
+        /// Pending per-cell width hint (in percent) buffered from a recorded
+        /// `<td>.css.width(.percent(N))` inlineStyle. Consumed at the next
+        /// `_pushElement("td"/"th")` at recording depth 0, then cleared.
+        var pendingCellWidthPercent: Double?
+
+        /// Column index → width-weight hints collected during recording. Used
+        /// by `finalizeFirstRow` to allocate proportional column widths.
+        var columnWidthWeights: [Int: Double] = [:]
     }
 }
