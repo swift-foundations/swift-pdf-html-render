@@ -15,6 +15,7 @@ extension PDF.HTML.Context.Element {
         let llx: PDF.UserSpace.X
         let urx: PDF.UserSpace.X
         let preserveWhitespace: Bool
+        let noWrap: Bool
         let linkURL: String?
         let internalLinkId: String?
         /// Saved table context (for "table" elements)

@@ -320,6 +320,7 @@ extension PDF.HTML.Context {
             llx: context.pdf.layout.box.llx,
             urx: context.pdf.layout.box.urx,
             preserveWhitespace: context.pdf.mode.preserveWhitespace,
+            noWrap: context.pdf.mode.noWrap,
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: nil,
@@ -379,6 +380,7 @@ extension PDF.HTML.Context {
             llx: context.pdf.layout.box.llx,
             urx: context.pdf.layout.box.urx,
             preserveWhitespace: context.pdf.mode.preserveWhitespace,
+            noWrap: context.pdf.mode.noWrap,
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: tagName == "table" ? context.table : nil,
@@ -485,6 +487,7 @@ extension PDF.HTML.Context {
         context.pdf.layout.box.llx = scope.llx
         context.pdf.layout.box.urx = scope.urx
         context.pdf.mode.preserveWhitespace = scope.preserveWhitespace
+        context.pdf.mode.noWrap = scope.noWrap
         context.link.currentURL = scope.linkURL
         context.link.currentInternalId = scope.internalLinkId
     }
@@ -750,6 +753,7 @@ extension PDF.HTML.Context {
                         llx: last.llx,
                         urx: last.urx,
                         preserveWhitespace: last.preserveWhitespace,
+                        noWrap: last.noWrap,
                         linkURL: last.linkURL,
                         internalLinkId: last.internalLinkId,
                         savedTable: last.savedTable,

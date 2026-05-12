@@ -230,6 +230,46 @@ struct `Baseline Empirical Tests` {
                 "Discriminating test: BETA's relative x-offset from ALPHA (\(beta!.x)) should be > 50pt if cells are side-by-side (case A → H2 confirmed); near 0 if vertically stacked (case B → H1 confirmed). ALPHA pos = (\(alpha!.x), \(alpha!.y)); BETA pos = (\(beta!.x), \(beta!.y)).")
     }
 
+    // 7. CSS `white-space: nowrap` suppresses line-wrap on overflow (A.4)
+    //
+    // Renders the same long line — clearly wider than a4 content width
+    // (≈ 451pt at default margins) — twice: once under default
+    // `white-space: normal`, once under `.nowrap`.
+    //
+    // Empirically, the renderer emits one `BT` block with words separated
+    // by `dx 0 Td` (relative move along same baseline). When wrap-on-
+    // overflow triggers (default `.normal`), the next Td drops the line:
+    // `−width(consumed) −lineHeight Td`. That NEGATIVE-Y Td is the
+    // assertion-level signal of "wrap happened".
+    //
+    // .normal: at least one Td with y < 0 → wrap happened.
+    // .nowrap: no Td has y < 0 → wrap-on-overflow was suppressed.
+    //
+    // This anchors A.4. The wrap-on-overflow primitive lives in
+    // PDF.Context.Text.Run.render(into:) gated by `context.mode.noWrap`;
+    // the HTML mapping is in
+    // W3C_CSS_Text.WhiteSpace+PDF.HTML.Style.Modifier.swift.
+    @Test
+    func `white-space nowrap suppresses wrap-on-overflow line-breaks`() throws {
+        struct WideText: HTML.View {
+            let nowrap: Bool
+            var body: some HTML.View {
+                Paragraph {
+                    "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+                }
+                .css.whiteSpace(nowrap ? .nowrap : .normal)
+            }
+        }
+        let normalBytes = pageBytes(PDF.HTML.pages { WideText(nowrap: false) })
+        let nowrapBytes = pageBytes(PDF.HTML.pages { WideText(nowrap: true) })
+        let normalLineBreaks = normalBytes.tjPositions().filter { $0.y < 0 }.count
+        let nowrapLineBreaks = nowrapBytes.tjPositions().filter { $0.y < 0 }.count
+        #expect(normalLineBreaks > 0,
+                "Long text under .normal should wrap (at least one Td with y < 0); got \(normalLineBreaks)")
+        #expect(nowrapLineBreaks == 0,
+                "Long text under .nowrap should NOT wrap (no Td with y < 0); got \(nowrapLineBreaks)")
+    }
+
     // 5. State-stack pop-ordering bug reproducer placeholder (γ-5 trigger v)
     //
     // Currently a SHAPE placeholder: two sibling top-level tables render
