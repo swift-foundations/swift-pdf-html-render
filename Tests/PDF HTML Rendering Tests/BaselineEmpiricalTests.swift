@@ -292,6 +292,45 @@ struct `Baseline Empirical Tests` {
     //  • The two offsets should be approximately equal (within 5pt) —
     //    proving the second table's allocator behaves identically to
     //    the first's.
+    // 8. CSS `width: N%` on a TABLE element is mis-interpreted as
+    //    percentage of FONT SIZE (per `CSS+PDF.UserSpace.Size.swift:73-75`),
+    //    when CSS spec defines `width: N%` as percentage of containing-block
+    //    width. For `.css.width(.percent(100))` on a table with 11pt default
+    //    font, the constraint becomes 11pt — collapsing the table's layout
+    //    box to ~11pt wide. All cells then render overlapping at the left.
+    //
+    //    This is the actual root cause of factuur-21's Letter.Header
+    //    appearing to render "vertically stacked": Letter.Header is
+    //    `table { ... }.css.width(.percent(100)).borderCollapse(.collapse)`
+    //    which collapses the table to ~11pt, and both cells render at the
+    //    left in that narrow window.
+    //
+    //    Test is `.disabled` until the fix lands. Re-enable + expect
+    //    RIGHT.x > 270pt (per A.1' weighted allocation on full-width box).
+    @Test(.disabled("CSS width: N% misinterpreted as percentage of font size — see Research/css-width-percentage-misinterpretation.md"))
+    func `outer table css width(.percent(100)) does not collapse layout box`() throws {
+        struct TestView: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "LEFT" }.css.width(.percent(100))
+                        TableDataCell { "RIGHT" }
+                    }
+                }
+                .css.width(.percent(100))
+            }
+        }
+        let bytes = pageBytes(PDF.HTML.pages { TestView() })
+        let positions = bytes.tjPositions()
+        let right = positions.first { $0.text.contains("RIGHT") }
+        try #require(right != nil, "RIGHT should appear in content stream")
+        // Without the fix: RIGHT.x ≈ 8pt (table collapsed to ~11pt wide).
+        // With the fix: RIGHT.x should match A.1' regression (~300pt for
+        // 67%/33% split of full a4 content width of 451pt).
+        #expect(right!.x > 270,
+                "Outer `<table>.css.width(.percent(100))` must NOT collapse the table to ~11pt; got RIGHT.x=\(right!.x)")
+    }
+
     @Test
     func `sibling tables: second table column-width hints reach their state`() throws {
         struct TestView: HTML.View {
