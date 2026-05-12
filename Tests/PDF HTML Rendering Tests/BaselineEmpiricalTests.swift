@@ -602,4 +602,345 @@ struct `Baseline Empirical Tests` {
         #expect(right!.x > left!.x + 100,
                 "RIGHT (\(right!.x)) must render in right column, well right of LEFT (\(left!.x))")
     }
+
+    /// C-E1 reproducer (Phase E, 2026-05-12): nested 2-col table cells
+    /// render on separate Y positions instead of side-by-side.
+    ///
+    /// Bug shape observed in factuur-21: Letter.Sender's inner table
+    /// (rows of `<td>label</td><td>value</td>`) — placed in the RIGHT
+    /// cell of the outer 2-column header table — renders each label and
+    /// its value on separate Y positions instead of side-by-side. Affects
+    /// tel / address / iban / kvk / btw / email / website pairs.
+    ///
+    /// Test 6 (`discriminating: isolated 2-col table cells render
+    /// side-by-side`, line 232) confirmed isolated 2-col tables render
+    /// correctly. The C-E1 hypothesis: the bug is specific to NESTED
+    /// 2-col tables (a 2-col table inside a cell of another 2-col table).
+    ///
+    /// Minimal reproducer: outer 2-col table with simple LEFT cell content
+    /// and an inner 2-col table in the RIGHT cell with two label/value
+    /// rows. No additional styling (no padding/verticalAlign/textAlign on
+    /// inner cells) — isolates the bug to nested-table layout, not
+    /// modifier-dispatch interactions.
+    ///
+    /// Discriminating assertions (absolute-coordinate-extraction per
+    /// Phase B.3 / HANDOFF-state-stack-pop-ordering.md):
+    ///   - LABEL1 and VALUE1 share approximately the same Y (within 2pt)
+    ///     → cells side-by-side in inner row 1.
+    ///   - VALUE1.x > LABEL1.x + 30pt → clearly horizontal layout.
+    ///   - Same for row 2 (LABEL2 / VALUE2).
+    ///   - Row 2 Y < row 1 Y → inner rows correctly stack vertically.
+    ///
+    /// If this test FAILS (cells share X, differ in Y), the root cause is
+    /// inside the nested-table layout pass and localize via instrumentation.
+    /// If this test PASSES (cells side-by-side in synthetic), the
+    /// factuur-21 defect has a different root cause — read
+    /// Letter.Sender.swift's actual HTML tree and compare.
+    @Test
+    func `C-E1: nested 2-col table cells render side-by-side`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "OUTER_LEFT" }
+                        TableDataCell {
+                            Table {
+                                TableRow {
+                                    TableDataCell { "LABEL1" }
+                                    TableDataCell { "VALUE1" }
+                                }
+                                TableRow {
+                                    TableDataCell { "LABEL2" }
+                                    TableDataCell { "VALUE2" }
+                                }
+                            }
+                        }
+                    }
+                }
+                .css.borderCollapse(.collapse)
+            }
+        }
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let label1 = positions.first { $0.text.contains("LABEL1") }
+        let value1 = positions.first { $0.text.contains("VALUE1") }
+        let label2 = positions.first { $0.text.contains("LABEL2") }
+        let value2 = positions.first { $0.text.contains("VALUE2") }
+        try #require(label1 != nil, "LABEL1 must appear in content stream")
+        try #require(value1 != nil, "VALUE1 must appear in content stream")
+        try #require(label2 != nil, "LABEL2 must appear in content stream")
+        try #require(value2 != nil, "VALUE2 must appear in content stream")
+        // Row 1: side-by-side
+        #expect(abs(label1!.y - value1!.y) < 2,
+                "C-E1 row 1: LABEL1.y (\(label1!.y)) and VALUE1.y (\(value1!.y)) must share the same baseline (Δy < 2pt). If Δy is large, the bug stacks cells vertically inside nested tables.")
+        #expect(value1!.x > label1!.x + 30,
+                "C-E1 row 1: VALUE1.x (\(value1!.x)) must be well right of LABEL1.x (\(label1!.x)) — clear horizontal layout (Δx > 30pt). If Δx ~ 0, cells collapsed to a single column.")
+        // Row 2: side-by-side
+        #expect(abs(label2!.y - value2!.y) < 2,
+                "C-E1 row 2: LABEL2.y (\(label2!.y)) and VALUE2.y (\(value2!.y)) must share the same baseline (Δy < 2pt).")
+        #expect(value2!.x > label2!.x + 30,
+                "C-E1 row 2: VALUE2.x (\(value2!.x)) must be well right of LABEL2.x (\(label2!.x)) — Δx > 30pt.")
+        // Inner rows stack vertically (row 1 above row 2)
+        #expect(label1!.y > label2!.y,
+                "C-E1 inner-row ordering: row 1 baseline (\(label1!.y)) must be above row 2 baseline (\(label2!.y)).")
+    }
+
+    /// C-E2 reproducer (Phase E, 2026-05-12): row-height anomaly in
+    /// inner-table rows when value cell contains internal whitespace.
+    ///
+    /// Empirical bbox extraction on factuur-21 shows inner-table label/value
+    /// pairs ARE side-by-side (C-E1 falsified) but row gaps are anomalously
+    /// inflated when the value contains whitespace:
+    ///
+    ///   tel    +31 6 43 90 14 29        ← row N (value has internal spaces)
+    ///                                     gap = 35.6pt (anomalous, +14pt)
+    ///   email  info@tenthijeboonkkamp.nl ← row N+1 (no spaces)
+    ///                                     gap = 21.8pt (normal)
+    ///   website tenthijeboonkkamp.nl    ← row N+2
+    ///                                     gap = 21.8pt (normal)
+    ///
+    /// Same pattern observed: Verzonden→Inkoopordernummer (long
+    /// space-separated email list value) shows same anomaly.
+    ///
+    /// Hypothesis: the renderer's cell-content height accounting reserves
+    /// space assuming a wrap *might* happen at internal whitespace tokens,
+    /// inflating `cellContentHeight` past the actually-rendered 1-line
+    /// visible content. The inflated height becomes `actualRowHeight`
+    /// via `maxCellHeightInCurrentRow` and pushes the following row down.
+    ///
+    /// Locus candidates per popTableCell at
+    /// PDF.HTML.Context+Rendering.swift:1189-1225:
+    ///   cellContentHeight = (lly - tableCtx.bounds.lly) + padding.height
+    /// If `lly` advance overshoots the rendered content (e.g., reserved
+    /// 2 lines but rendered 1), the row over-reserves vertical space.
+    ///
+    /// Discriminating assertion: in a synthetic 3-row inner table where
+    /// row 1's value contains internal whitespace and rows 2-3 do not,
+    /// row-1→row-2 gap should equal row-2→row-3 gap (both single-line
+    /// visible content). If row-1→row-2 is significantly larger, the
+    /// anomaly is reproducible and localizable.
+    @Test
+    func `C-E2: row height stable across rows with same visible content shape`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "OUTER_LEFT" }.css.verticalAlign(.top)
+                        TableDataCell {
+                            Table {
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L1" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "alpha beta gamma delta" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L2" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "no-spaces-here" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L3" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "still-no-spaces" } }
+                                }
+                            }
+                            .css.borderCollapse(.collapse)
+                        }.css.verticalAlign(.top)
+                    }
+                }
+                .css.borderCollapse(.collapse).width(.percent(100))
+            }
+        }
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let l1 = positions.first { $0.text == "L1" }
+        let l2 = positions.first { $0.text == "L2" }
+        let l3 = positions.first { $0.text == "L3" }
+        try #require(l1 != nil, "L1 must appear in content stream")
+        try #require(l2 != nil, "L2 must appear in content stream")
+        try #require(l3 != nil, "L3 must appear in content stream")
+        // Y decreases as we go down the page (per absoluteTjPositions
+        // tracking — Td shifts are relative; cumulative Y reflects user
+        // space). gap = positive when row N is above row N+1.
+        let gap12 = abs(l1!.y - l2!.y)
+        let gap23 = abs(l2!.y - l3!.y)
+        // Diagnostic output: print exact gaps so the failure message shows
+        // empirical evidence of the anomaly directly.
+        #expect(abs(gap12 - gap23) < 3,
+                "C-E2: row 1→2 gap (\(gap12)) should equal row 2→3 gap (\(gap23)) — both rows have single-line visible content. Δ > 3pt indicates value-with-whitespace inflates row height (factuur-21 anomaly reproduced). Pos: L1=(\(l1!.x),\(l1!.y)) L2=(\(l2!.x),\(l2!.y)) L3=(\(l3!.x),\(l3!.y)).")
+    }
+
+    /// C-E3 reproducer (Phase E, 2026-05-12): Variant adding Letter.Sender's
+    /// first-row structure (address column with `<small>line</small><br>`
+    /// pattern) before the metadata rows. Tests whether the multi-line
+    /// address row's trailing `<br>` (which the renderer documents as a
+    /// "1 line advance") leaks state that inflates the FIRST metadata row's
+    /// computed height.
+    ///
+    /// Empirical anchor (factuur-21 bbox extraction):
+    ///   address row spans y=123→187 (3 small lines + trailing br advance)
+    ///   row 2 (tel)     y=200, yMax=209  (1 visible line)
+    ///   row 3 (email)   y=235.6           ← GAP 26.6pt below row 2's yMax
+    ///   row 4 (website) y=257.4           ← gap 13pt (normal)
+    ///   row 5 (kvk)     y=279.2           ← gap 13pt
+    /// The anomaly: row 2 → row 3 = 26.6pt (14pt extra); subsequent
+    /// rows = 13pt (normal).
+    ///
+    /// If this test reproduces the anomaly (row1→row2 normal, row2→row3
+    /// >> row3→row4), the trigger is the transition from address-row to
+    /// metadata-rows. If it does NOT reproduce, the trigger is something
+    /// else (h3 before table, or HTML.AnyView wrapping).
+    @Test
+    func `C-E3: row height stable after preceding multi-line br-stack row`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "OUTER_LEFT" }.css.verticalAlign(.top)
+                        TableDataCell {
+                            Table {
+                                // Address-like row: empty + multi-line small/br stack
+                                TableRow {
+                                    TableDataCell { HTML.Empty() }
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "ADDR1" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Element.Tag(tag: "small") { "ADDR2" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Element.Tag(tag: "small") { "ADDR3" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                    }
+                                }
+                                // Metadata rows
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "value one two three" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "nospaces-here" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "anothernospaces" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
+                                }
+                            }
+                            .css.borderCollapse(.collapse)
+                        }.css.verticalAlign(.top)
+                    }
+                }
+                .css.borderCollapse(.collapse).width(.percent(100))
+            }
+        }
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let m1 = positions.first { $0.text == "M1" }
+        let m2 = positions.first { $0.text == "M2" }
+        let m3 = positions.first { $0.text == "M3" }
+        let m4 = positions.first { $0.text == "M4" }
+        try #require(m1 != nil, "M1 must appear")
+        try #require(m2 != nil, "M2 must appear")
+        try #require(m3 != nil, "M3 must appear")
+        try #require(m4 != nil, "M4 must appear")
+        let gap12 = abs(m1!.y - m2!.y)
+        let gap23 = abs(m2!.y - m3!.y)
+        let gap34 = abs(m3!.y - m4!.y)
+        // All metadata rows have single-line visible content. Gaps should be uniform.
+        // The factuur-21 anomaly: gap12 is anomalously large vs gap23 / gap34.
+        #expect(abs(gap12 - gap23) < 3,
+                "C-E3: row 1→2 gap (\(gap12)) vs row 2→3 gap (\(gap23)). Δ > 3 means the first metadata row inherits extra height — anomaly reproduced. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y)).")
+        #expect(abs(gap23 - gap34) < 3,
+                "C-E3: row 2→3 gap (\(gap23)) vs row 3→4 gap (\(gap34)) should match.")
+    }
+
+    /// C-E4 reproducer (Phase E, 2026-05-12): exact replica of Letter.Header
+    /// + Letter.Sender shape used in factuur-21:
+    ///   - Outer table .css.width(.percent(100)).borderCollapse(.collapse)
+    ///     - LEFT cell .css.verticalAlign(.top).width(.percent(100)) — recipient
+    ///     - RIGHT cell .css.verticalAlign(.top) — sender, containing:
+    ///       - h3 .css.margin(top: 0).margin(bottom: 0).textAlign(.right)
+    ///       - Inner table .css.borderCollapse(.collapse) with:
+    ///         - Address row (empty + small/br stack)
+    ///         - Metadata rows (label/value with small + CSS)
+    ///
+    /// Variant D adds (vs C-E3):
+    ///   - .width(.percent(100)) on the LEFT cell of the OUTER table
+    ///   - h3 BEFORE the inner table inside the RIGHT cell
+    ///
+    /// If this test reproduces the factuur-21 anomaly (gap M1→M2 >> M2→M3),
+    /// the localizing feature(s) are one of: outer LEFT cell's width(100%),
+    /// the h3-before-inner-table, or their combination.
+    @Test
+    func `C-E4: Letter.Header + Letter.Sender exact-shape replica`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell { "RECIPIENT" }
+                            .css.verticalAlign(.top).width(.percent(100))
+                        TableDataCell {
+                            HTML.Element.Tag(tag: "h3") { "SENDER_NAME" }
+                                .css.margin(top: 0).margin(bottom: 0).textAlign(.right)
+                            Table {
+                                TableRow {
+                                    TableDataCell { HTML.Empty() }
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "ADDR1" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Element.Tag(tag: "small") { "ADDR2" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Element.Tag(tag: "small") { "ADDR3" }
+                                        HTML.Element.Tag<Never>(tag: "br")
+                                    }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "v one two three" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "nospaces" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "anothernospaces" } }
+                                }
+                                TableRow {
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                    TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
+                                }
+                            }
+                            .css.borderCollapse(.collapse)
+                        }.css.verticalAlign(.top)
+                    }
+                }
+                .css.width(.percent(100)).borderCollapse(.collapse)
+            }
+        }
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let m1 = positions.first { $0.text == "M1" }
+        let m2 = positions.first { $0.text == "M2" }
+        let m3 = positions.first { $0.text == "M3" }
+        let m4 = positions.first { $0.text == "M4" }
+        try #require(m1 != nil, "M1 must appear")
+        try #require(m2 != nil, "M2 must appear")
+        try #require(m3 != nil, "M3 must appear")
+        try #require(m4 != nil, "M4 must appear")
+        let gap12 = abs(m1!.y - m2!.y)
+        let gap23 = abs(m2!.y - m3!.y)
+        let gap34 = abs(m3!.y - m4!.y)
+        #expect(abs(gap12 - gap23) < 3,
+                "C-E4: row M1→M2 gap (\(gap12)) vs M2→M3 gap (\(gap23)). Δ > 3 means factuur-21 anomaly reproduced in synthetic Letter.Header+Letter.Sender shape. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y)).")
+        #expect(abs(gap23 - gap34) < 3,
+                "C-E4: row M2→M3 gap (\(gap23)) vs M3→M4 gap (\(gap34)) should match.")
+    }
 }
