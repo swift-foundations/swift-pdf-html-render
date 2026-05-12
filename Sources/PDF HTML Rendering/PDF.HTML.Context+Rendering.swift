@@ -417,9 +417,19 @@ extension PDF.HTML.Context {
                 context.pdf.flush.inline()
             }
 
-            // Block margins (CSS margin collapsing)
+            // Block margins (CSS margin collapsing).
+            // Tag-default margins are skipped when the consumer has supplied
+            // an explicit CSS margin via `.css.margin(top:)` / `.margin(bottom:)`
+            // — `pdf.margin.top`/`pdf.margin.bottom` set by the Margin modifier
+            // is taken as the cascade winner. `applyBoxModel` already advances Y
+            // by the user-supplied top margin at modifier-dispatch time, so
+            // skipping the tag default here avoids double-applying the same
+            // margin (the prior code emitted user + default).
             let isNestedList = (tagName == "ul" || tagName == "ol") && context.pdf.list.depth > 0
+            let userOverrodeMargin = context.pdf.margin.top != nil
+                || context.pdf.margin.bottom != nil
             if !isNestedList,
+               !userOverrodeMargin,
                let margins = HTML.Element.Tag<Never>.blockMargins(
                    for: tagName,
                    configuration: context.configuration
