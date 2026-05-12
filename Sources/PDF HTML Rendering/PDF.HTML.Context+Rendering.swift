@@ -571,8 +571,17 @@ extension PDF.HTML.Context {
     ) {
         switch tagName {
         case "br":
-            context.pdf.flush.inline()
-            context.pdf.advance.line()
+            // `<br>` produces a single line break. `flush.inline()` renders
+            // the buffered text run AND advances Y by line height as part of
+            // that render. Only emit an explicit `advance.line()` when there
+            // was nothing to flush — that case handles consecutive `<br><br>`
+            // (blank line). Without this guard, `text<br>` advances TWO
+            // lines instead of one.
+            if context.pdf.inline.runs.isEmpty {
+                context.pdf.advance.line()
+            } else {
+                context.pdf.flush.inline()
+            }
         case "hr":
             if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
