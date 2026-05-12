@@ -51,7 +51,7 @@ extension PDF.HTML {
         Header: Render_Primitives.Render.View,
         Footer: Render_Primitives.Render.View
     >(
-        configuration: PDF.HTML.Configuration,
+        configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder content: () -> Content,
         @HTML.Builder header: @escaping (Page.Info) -> Header = { _ in Render_Primitives.Render.Empty() },
         @HTML.Builder footer: @escaping (Page.Info) -> Footer = { _ in Render_Primitives.Render.Empty() }

@@ -33,7 +33,7 @@ struct `PDF.HTML.View Tests` {
             }
         }
         
-        let pages = PDF.HTML.pages(html: TestView.init)
+        let pages = PDF.HTML.pages(configuration: .init(), content: TestView.init)
         
         // Should have at least one page with content
         #expect(pages.count >= 1)
@@ -48,7 +48,7 @@ struct `PDF.HTML.View Tests` {
             }
         }
         
-        let pages = PDF.HTML.pages(html: TestView.init)
+        let pages = PDF.HTML.pages(configuration: .init(), content: TestView.init)
         #expect(pages.count >= 1)
         #expect(!pages[0].contents.isEmpty)
     }
@@ -67,7 +67,7 @@ struct `PDF.HTML.View Tests` {
             }
         }
         
-        let pages = PDF.HTML.pages(html: TestView.init)
+        let pages = PDF.HTML.pages(configuration: .init(), content: TestView.init)
         #expect(pages.count >= 1)
         
         // Check content stream contains text
@@ -87,7 +87,7 @@ struct `PDF.HTML.View Tests` {
     //            }
     //        }
     //
-    //        let pages = PDF.HTML.pages(html: TestView.init)
+    //        let pages = PDF.HTML.pages(configuration: .init(), content: TestView.init)
     //        #expect(pages.count >= 1)
     //
     //        // Check that Helvetica-Bold font is used
@@ -134,7 +134,7 @@ struct `PDF.HTML.View Tests` {
     //            }
     //        }
     //
-    //        let pages = PDF.HTML.pages(html: TestView.init)
+    //        let pages = PDF.HTML.pages(configuration: .init(), content: TestView.init)
     //        #expect(pages.count >= 1)
     //
     //        // Check that bold-oblique font is used

@@ -13,11 +13,11 @@ import Testing
 
 /// Generic heading wrapper that applies `.css.pageBreakAfter(.avoid)` to keep headings with following content.
 /// This is the same pattern used in rule-legal documents.
-public struct H<let N: Int> {
-    public init() {}
+struct H<let N: Int> {
+    init() {}
 
     @HTML.Builder
-    public func callAsFunction(
+    func callAsFunction(
         @HTML.Builder _ content: () -> some HTML.View
     ) -> some HTML.View {
         switch N {
