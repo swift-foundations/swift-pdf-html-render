@@ -1065,26 +1065,91 @@ extension PDF.HTML.Context {
     ) {
         guard var tableCtx = context.table, recording.columnCount > 0 else { return }
 
-        // Weighted column-width allocation. Per-cell %-hints (from
-        // `<td>.css.width(.percent(N))`) are recorded into
-        // `recording.columnWidthWeights` keyed by column index; columns without
-        // hints get a uniform weight (100/n). All weights are normalized to
-        // sum to `bounds.width`. When no hints are present (every column gets
-        // uniformWeight), this degrades to the prior `equalWidth` behavior.
+        // Round 2b.2 (C-1 allocator): hybrid percent+content weighted
+        // allocation. Per-column weight is the SUM of the percent hint and
+        // the max-content measurement captured during first-row recording in
+        // Round 2b.1. Weights are normalized to `bounds.width`; each column
+        // is floored at its min-content width (W3C-required invariant).
+        //
+        // Algorithm:
+        //   weight[i] = percentHint[i] + maxContent[i]
+        //   where percentHint[i] is `recording.columnWidthWeights[i]` (or
+        //   uniform `100/n` if no hint), and maxContent[i] is
+        //   `recording.columnMaxContentWidths[i]` (or the average of
+        //   measured columns when this column's first-row cell is empty).
+        //   columnWidths[i] = bounds.width × weight[i] / Σweight
+        //   columnWidths[i] = max(columnWidths[i], minContentWidth[i])
+        //
+        // Heuristic rationale (NOT strict CSS 2.1 §17.5.2.2):
+        //   Strict W3C treats `width: N%` on a cell as `N% of containing
+        //   block` (hard fraction). Existing institute consumer code
+        //   (Letter.Header, Invoice header, Invoice totals) uses
+        //   `.width(.percent(100))` as a dominance HINT, not a literal 100%
+        //   constraint. Strict W3C starves adjacent columns to min-content
+        //   (verified empirically in Phase E Round 2b.2 attempts a/b — broke
+        //   C-E4 by collapsing inner-table host cell). Pure content-measured
+        //   (ignore percent) breaks the percent regression locks (verified
+        //   in attempt c). Additive `percent + content` respects both:
+        //   short-content tables with `width(100%)` preserve dominance via
+        //   the percent term; rich-content tables let content-heavy columns
+        //   claim proportional space via the max-content term.
+        //
+        // Content metric: max-content (`columnMaxContentWidths`) — sum of
+        // per-token + inter-token-space widths per cell, single-line
+        // interpretation per the Recording.swift comment. This is the
+        // W3C "max-content" preferred width: the width that fits all
+        // content on a single line. Min-content (`columnMinContentWidths`)
+        // is the widest unbreakable token per cell and is applied as the
+        // FLOOR (W3C-required: a column never goes below its min-content).
+        //
+        // Approximations (Round 2c follow-up):
+        //   * First-row-only measurement: columns whose first-row cell is
+        //     empty (e.g., `td { HTML.Empty() }` in Letter.Sender header)
+        //     have max-content == 0. We substitute the average-of-measured
+        //     so the column gets a fair share rather than zero.
+        //   * Pure-content fallback when no measurements exist: degrades
+        //     to legacy weighted allocator (matches prior empty-table
+        //     behavior; preserves byte-identity).
         let n = recording.columnCount
         let totalWidth = tableCtx.bounds.width
-        let uniformWeight = 100.0 / Double(n)
+        let uniformPercentHint = 100.0 / Double(n)
+
+        // Average-measured max-content for substituting unmeasured columns
+        // (W3C "first-row empty cell" approximation; deferred to Round 2c).
+        var measuredSum = 0.0
+        var measuredCount = 0
+        for i in 0..<n {
+            if let m = recording.columnMaxContentWidths[i], m.underlying > 0 {
+                measuredSum += m.underlying
+                measuredCount += 1
+            }
+        }
+        let avgMeasured = measuredCount > 0 ? measuredSum / Double(measuredCount) : 0.0
+
+        // Compute weights: percent hint + max-content (with avg substitute).
         var weights: [Double] = []
         weights.reserveCapacity(n)
         var weightSum = 0.0
         for i in 0..<n {
-            let w = recording.columnWidthWeights[i] ?? uniformWeight
+            let pct = recording.columnWidthWeights[i] ?? uniformPercentHint
+            let measured = recording.columnMaxContentWidths[i]?.underlying ?? 0
+            let content = measured > 0 ? measured : avgMeasured
+            let w = pct + content
             weights.append(w)
             weightSum += w
         }
-        tableCtx.columnWidths = weights.map { w in
-            totalWidth / Dimension_Primitives.Scale(weightSum / w)
+
+        // Allocate column widths; apply min-content floor per W3C.
+        var columnWidths: [PDF.UserSpace.Width] = []
+        columnWidths.reserveCapacity(n)
+        for i in 0..<n {
+            var w = totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
+            if let minC = recording.columnMinContentWidths[i], w < minC {
+                w = minC
+            }
+            columnWidths.append(w)
         }
+        tableCtx.columnWidths = columnWidths
         tableCtx.columnsInitialized = true
         tableCtx.spans.preallocate(rows: 64, columns: recording.columnCount)
 
