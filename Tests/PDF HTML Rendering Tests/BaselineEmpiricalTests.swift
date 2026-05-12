@@ -292,22 +292,24 @@ struct `Baseline Empirical Tests` {
     //  • The two offsets should be approximately equal (within 5pt) —
     //    proving the second table's allocator behaves identically to
     //    the first's.
-    // 8. CSS `width: N%` on a TABLE element is mis-interpreted as
-    //    percentage of FONT SIZE (per `CSS+PDF.UserSpace.Size.swift:73-75`),
-    //    when CSS spec defines `width: N%` as percentage of containing-block
-    //    width. For `.css.width(.percent(100))` on a table with 11pt default
-    //    font, the constraint becomes 11pt — collapsing the table's layout
-    //    box to ~11pt wide. All cells then render overlapping at the left.
+    // 8. CSS `width: N%` per CSS 2.1 §10.3.4 / CSS Box Sizing 3 §6.3 is
+    //    percentage of containing-block width. The renderer's
+    //    `W3C_CSS_BoxModel.Width.apply` previously routed every
+    //    `.lengthPercentage` form through the shared
+    //    `PDF.UserSpace.Size(lp, currentSize:, baseFontSize:)` init, which
+    //    resolves percentages against font size — correct for `font-size`
+    //    and `line-height`, but wrong for layout-related properties.
     //
-    //    This is the actual root cause of factuur-21's Letter.Header
-    //    appearing to render "vertically stacked": Letter.Header is
-    //    `table { ... }.css.width(.percent(100)).borderCollapse(.collapse)`
-    //    which collapses the table to ~11pt, and both cells render at the
-    //    left in that narrow window.
+    //    For `.css.width(.percent(100))` on an outer `<table>` with 11pt
+    //    default font, the old code yielded `constraint.width = 11pt`,
+    //    collapsing the layout box to ~11pt wide; both cells then
+    //    rendered overlapping at the left. This was the actual root cause
+    //    of factuur-21's Letter.Header appearing as a vertical stack.
     //
-    //    Test is `.disabled` until the fix lands. Re-enable + expect
-    //    RIGHT.x > 270pt (per A.1' weighted allocation on full-width box).
-    @Test(.disabled("CSS width: N% misinterpreted as percentage of font size — see Research/css-width-percentage-misinterpretation.md"))
+    //    Fix: `.lengthPercentage(.percentage(p))` now uses
+    //    `context.layout.box.width * p/100` as the percentage reference.
+    //    Length forms (px, em, pt) continue through the existing path.
+    @Test
     func `outer table css width(.percent(100)) does not collapse layout box`() throws {
         struct TestView: HTML.View {
             var body: some HTML.View {
