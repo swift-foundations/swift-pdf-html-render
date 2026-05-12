@@ -324,7 +324,8 @@ extension PDF.HTML.Context {
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: nil,
-            savedPendingMargin: context.pendingBottomMargin
+            savedPendingMargin: context.pendingBottomMargin,
+            isVoid: false
         ))
     }
 
@@ -349,6 +350,9 @@ extension PDF.HTML.Context {
             context.table!.recording!.commands.append(
                 .pushElement(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
             )
+            // Mirror push order in pushedIsVoid so the matching pop can
+            // skip its decrement (keeps elementDepth symmetric).
+            context.table!.recording!.pushedIsVoid.append(isVoid)
             if !isVoid {
                 // Track grid columns at depth 0 (direct cell children of the row)
                 if context.table!.recording!.elementDepth == 0
@@ -366,8 +370,25 @@ extension PDF.HTML.Context {
             return
         }
 
-        // Handle void elements
+        // Handle void elements: push a marker scope so the matching
+        // `pop.element` from the Render contract pops a balanced entry
+        // (skipping state restoration via `scope.isVoid`).
         if isVoid {
+            let voidScope = Element.Scope(
+                tagName: tagName,
+                isBlock: isBlock,
+                style: context.pdf.style,
+                llx: context.pdf.layout.box.llx,
+                urx: context.pdf.layout.box.urx,
+                preserveWhitespace: context.pdf.mode.preserveWhitespace,
+                noWrap: context.pdf.mode.noWrap,
+                linkURL: context.link.currentURL,
+                internalLinkId: context.link.currentInternalId,
+                savedTable: nil,
+                savedPendingMargin: context.pendingBottomMargin,
+                isVoid: true
+            )
+            context.elementStack.append(voidScope)
             handleVoidElement(tagName, context: &context)
             return
         }
@@ -384,7 +405,8 @@ extension PDF.HTML.Context {
             linkURL: context.link.currentURL,
             internalLinkId: context.link.currentInternalId,
             savedTable: tagName == "table" ? context.table : nil,
-            savedPendingMargin: context.pendingBottomMargin
+            savedPendingMargin: context.pendingBottomMargin,
+            isVoid: false
         )
         context.elementStack.append(scope)
 
@@ -465,8 +487,15 @@ extension PDF.HTML.Context {
     }
 
     public static func _popElement(_ context: inout Self, isBlock: Bool) {
-        // Recording mode: track element depth
+        // Recording mode: track element depth. Mirror the push-side
+        // `if !isVoid` guard via the `pushedIsVoid` stack so a void pop
+        // doesn't decrement depth that its push didn't increment.
         if context.table?.recording != nil {
+            let wasVoid = context.table!.recording!.pushedIsVoid.popLast() ?? false
+            if wasVoid {
+                context.table!.recording!.commands.append(.popElement(isBlock: isBlock))
+                return
+            }
             context.table!.recording!.elementDepth -= 1
             if context.table!.recording!.elementDepth < 0 {
                 // Row pop reached — finalize column widths and replay
@@ -481,6 +510,10 @@ extension PDF.HTML.Context {
         }
 
         guard let scope = context.elementStack.popLast() else { return }
+
+        // Void scopes are markers — handleVoidElement made no per-scope
+        // state changes at push, so no state to restore at pop.
+        if scope.isVoid { return }
 
         if isBlock {
             popBlockElement(scope, context: &context)
@@ -764,7 +797,7 @@ extension PDF.HTML.Context {
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = .init(0)
                 // Store the saved margin in the element stack's last entry
-                if var last = context.elementStack.popLast() {
+                if let last = context.elementStack.popLast() {
                     context.elementStack.append(Element.Scope(
                         tagName: last.tagName,
                         isBlock: last.isBlock,
@@ -776,7 +809,8 @@ extension PDF.HTML.Context {
                         linkURL: last.linkURL,
                         internalLinkId: last.internalLinkId,
                         savedTable: last.savedTable,
-                        savedPendingMargin: savedPendingMargin
+                        savedPendingMargin: savedPendingMargin,
+                        isVoid: last.isVoid
                     ))
                 }
             }

@@ -22,5 +22,10 @@ extension PDF.HTML.Context.Element {
         let savedTable: PDF.HTML.Context.Table?
         /// Saved pending bottom margin (for list elements)
         let savedPendingMargin: PDF.UserSpace.Height
+        /// Marker for void elements (e.g. `<br>`, `<hr>`, `<img>`). Void
+        /// pushes don't change per-scope state; void pops therefore skip
+        /// state restoration to keep `elementStack` balanced with the
+        /// Render contract's symmetric `push.element`/`pop.element` calls.
+        let isVoid: Bool
     }
 }

@@ -44,6 +44,34 @@ extension Array where Element == UInt8 {
         }
         return out
     }
+
+    /// Extract ABSOLUTE text positions per BT/ET block. Within a BT block,
+    /// each `Td` is a relative shift from the previous start-of-line; this
+    /// helper accumulates those shifts so each `(text) Tj` reports its real
+    /// user-space coordinate. BT resets the accumulator to (0, 0).
+    fileprivate func absoluteTjPositions() -> [(x: Double, y: Double, text: String)] {
+        let s = String(decoding: self, as: UTF8.self)
+        var out: [(Double, Double, String)] = []
+        var x = 0.0, y = 0.0
+        var inBT = false
+        let tdRe = /^\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s+Td\s*$/
+        let tjRe = /^\s*\(([^)]*)\)\s*Tj\s*$/
+        for rawLine in s.components(separatedBy: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line == "BT" { inBT = true; x = 0; y = 0; continue }
+            if line == "ET" { inBT = false; continue }
+            guard inBT else { continue }
+            if let m = try? tdRe.wholeMatch(in: rawLine) {
+                x += Double(m.output.1) ?? 0
+                y += Double(m.output.2) ?? 0
+                continue
+            }
+            if let m = try? tjRe.wholeMatch(in: rawLine) {
+                out.append((x, y, String(m.output.1)))
+            }
+        }
+        return out
+    }
 }
 
 private func pageBytes(_ pages: [PDF.Page]) -> [UInt8] {
@@ -363,5 +391,68 @@ struct `Baseline Empirical Tests` {
                 "Sibling 2 (leakage target): B2 x-offset \(b2!.x) should exceed 50pt — if state-stack leaks, Table 2's width hints don't reach its allocator and B2 collapses near 0")
         #expect(abs(b1!.x - b2!.x) < 5,
                 "Sibling tables 1 & 2 with identical width hints should yield identical column allocations; got B1.x=\(b1!.x), B2.x=\(b2!.x)")
+    }
+
+    /// Regression test for the void-element push/pop asymmetry bug
+    /// (Phase B.2, 2026-05-12).
+    ///
+    /// Before the fix, `<br>` (a void element) would push without
+    /// adding a scope to `elementStack` and without incrementing
+    /// `Recording.elementDepth`, but its matching pop would
+    /// unconditionally decrement both. In Letter.Recipient-shaped
+    /// content (multiple `<br>` followed by an empty nested table in
+    /// the left cell of a 2-cell layout), this caused
+    /// `finalizeFirstRow` to fire prematurely mid-content, and the
+    /// chain of corrupted scope-pops nilled `context.table` by the
+    /// time the right cell pushed — so the right cell's `<h3>` would
+    /// render at the bottom of the left cell's content, not at the
+    /// top of the right cell.
+    @Test
+    func `Void elements before sibling cell do not nil context.table`() throws {
+        struct V: HTML.View {
+            var body: some HTML.View {
+                Table {
+                    TableRow {
+                        TableDataCell {
+                            HTML.Element.Tag(tag: "b") { "LBOLD" }
+                            HTML.Element.Tag<Never>(tag: "br")
+                            "L1"
+                            HTML.Element.Tag<Never>(tag: "br")
+                            "L2"
+                            HTML.Element.Tag<Never>(tag: "br")
+                            "L3"
+                            HTML.Element.Tag<Never>(tag: "br")
+                            "L4"
+                            HTML.Element.Tag<Never>(tag: "br")
+                            Table { TableRow { TableDataCell { "" }; TableDataCell { "" } } }
+                        }.css.verticalAlign(.top).width(.percent(100))
+                        TableDataCell {
+                            HTML.Element.Tag(tag: "h3") { "HEADING" }
+                        }.css.verticalAlign(.top)
+                    }
+                }
+                .css.width(.percent(100))
+                .borderCollapse(.collapse)
+            }
+        }
+        // Use ABSOLUTE positions (accumulated Td shifts) since LBOLD and
+        // HEADING share a BT block and HEADING's Td is relative to L4's
+        // start-of-line, not to BT origin.
+        let positions = pageBytes(PDF.HTML.pages { V() }).absoluteTjPositions()
+        let lbold = positions.first { $0.text.contains("LBOLD") }
+        let heading = positions.first { $0.text.contains("HEADING") }
+        try #require(lbold != nil, "LBOLD must appear in content stream")
+        try #require(heading != nil, "HEADING must appear in content stream")
+        // h3 in right cell with vertical-align: top must render near
+        // the top of the row — same absolute y as LBOLD (h3 is slightly
+        // larger so baseline is a few pt below). Pre-fix bug placed
+        // HEADING ~130pt below LBOLD.
+        #expect(abs(lbold!.y - heading!.y) < 25,
+                "h3 absolute y (\(heading!.y)) must align with top of right cell, near LBOLD (\(lbold!.y)) — pre-fix bug placed it ~130pt below")
+        // Right column: HEADING.x must be greater than LBOLD.x by
+        // roughly half the page width (two equal columns from
+        // borderCollapse + width:100%).
+        #expect(heading!.x > lbold!.x + 100,
+                "h3 absolute x (\(heading!.x)) must render in right column, well right of LBOLD (\(lbold!.x))")
     }
 }

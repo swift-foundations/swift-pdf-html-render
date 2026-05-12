@@ -24,9 +24,16 @@ extension PDF.HTML.Context.Table {
 
         /// Element nesting depth within the recorded row.
         ///
-        /// Incremented on `_pushElement` (non-void), decremented on `_popElement`.
-        /// When depth goes below zero, the row's own pop has been reached.
+        /// Incremented on `_pushElement` (non-void), decremented on
+        /// `_popElement` (non-void via `pushedIsVoid` peek). When depth
+        /// goes below zero, the row's own pop has been reached.
         var elementDepth: Int = 0
+
+        /// Stack of `isVoid` flags mirroring pushed elements within the
+        /// recorded row. Used to keep `elementDepth` bookkeeping symmetric:
+        /// void pushes don't increment depth, so their matching pops must
+        /// not decrement it either.
+        var pushedIsVoid: [Bool] = []
 
         /// Grid column count accumulated from cell pushes (accounts for colspan).
         var columnCount: Int = 0
