@@ -64,7 +64,15 @@ extension PDF.HTML.Context {
                 if maxToken > table!.recording!.currentCellMinWidth {
                     table!.recording!.currentCellMinWidth = maxToken
                 }
-                table!.recording!.currentCellMaxWidth = table!.recording!.currentCellMaxWidth + lineWidth
+                // W3C CSS Box Sizing 3 §4.1: max-content equals the width
+                // the box would take on a single logical line. Text runs
+                // accumulate into `currentLineWidth`; line-boundary events
+                // (br, nested tr push, cell pop) commit MAX into
+                // `currentCellMaxWidth` and reset. Prior implementation
+                // summed lineWidth directly into `currentCellMaxWidth`,
+                // which over-counted nested-table content (turned MAX of
+                // rows into SUM of rows).
+                table!.recording!.currentLineWidth = table!.recording!.currentLineWidth + lineWidth
             }
             return
         }
@@ -97,6 +105,15 @@ extension PDF.HTML.Context {
     public mutating func lineBreak() {
         if table?.recording != nil {
             table!.recording!.commands.append(.lineBreak)
+            // Explicit line boundary: commit MAX into currentCellMaxWidth
+            // and reset currentLineWidth (W3C CSS Box Sizing 3 §4.1).
+            if table!.recording!.currentCellColumn != nil {
+                let lw = table!.recording!.currentLineWidth
+                if lw > table!.recording!.currentCellMaxWidth {
+                    table!.recording!.currentCellMaxWidth = lw
+                }
+                table!.recording!.currentLineWidth = .init(0)
+            }
             return
         }
         pdf.flush.inline()
@@ -425,6 +442,19 @@ extension PDF.HTML.Context {
                     context.table!.recording!.currentCellColumn = columnIdx
                     context.table!.recording!.currentCellMinWidth = .init(0)
                     context.table!.recording!.currentCellMaxWidth = .init(0)
+                    context.table!.recording!.currentLineWidth = .init(0)
+                }
+                // Nested-TR boundary: commit pending logical-line width and
+                // reset. W3C CSS Box Sizing 3 §4.1 — max-content of the
+                // outer cell is MAX of nested row widths, not SUM.
+                if context.table!.recording!.elementDepth > 0
+                    && tagName == "tr"
+                    && context.table!.recording!.currentCellColumn != nil {
+                    let lw = context.table!.recording!.currentLineWidth
+                    if lw > context.table!.recording!.currentCellMaxWidth {
+                        context.table!.recording!.currentCellMaxWidth = lw
+                    }
+                    context.table!.recording!.currentLineWidth = .init(0)
                 }
                 context.table!.recording!.elementDepth += 1
             }
@@ -587,6 +617,13 @@ extension PDF.HTML.Context {
                 // per-column dicts.
                 if context.table!.recording!.elementDepth == 0,
                    let col = context.table!.recording!.currentCellColumn {
+                    // Final line-boundary commit: any in-flight
+                    // currentLineWidth is the last logical line.
+                    let lw = context.table!.recording!.currentLineWidth
+                    if lw > context.table!.recording!.currentCellMaxWidth {
+                        context.table!.recording!.currentCellMaxWidth = lw
+                    }
+                    context.table!.recording!.currentLineWidth = .init(0)
                     let r = context.table!.recording!
                     let prevMin = r.columnMinContentWidths[col] ?? .init(0)
                     let prevMax = r.columnMaxContentWidths[col] ?? .init(0)

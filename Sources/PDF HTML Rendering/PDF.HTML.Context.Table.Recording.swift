@@ -66,5 +66,15 @@ extension PDF.HTML.Context.Table {
         var currentCellColumn: Int? = nil
         var currentCellMinWidth: PDF.UserSpace.Width = .init(0)
         var currentCellMaxWidth: PDF.UserSpace.Width = .init(0)
+
+        /// Per-logical-line accumulator for max-content measurement.
+        ///
+        /// W3C CSS Box Sizing 3 §4.1: max-content of a box equals the
+        /// narrowest size the box could take without overflowing its
+        /// contents if no soft wraps occurred — for a cell containing a
+        /// nested table, that is MAX of nested row widths, NOT SUM. Text
+        /// runs append here; line-boundary events (`<br>`, nested `<tr>`
+        /// push, cell pop) take MAX into `currentCellMaxWidth` and reset.
+        var currentLineWidth: PDF.UserSpace.Width = .init(0)
     }
 }
