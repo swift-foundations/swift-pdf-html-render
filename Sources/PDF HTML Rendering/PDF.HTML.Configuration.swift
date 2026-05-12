@@ -17,7 +17,12 @@ extension PDF.HTML {
         /// Paper size
         public var paperSize: PDF.UserSpace.Rectangle
 
-        /// Page margins
+        /// Page margins.
+        ///
+        /// Default 36pt (0.5 inch) aligns with WebKit's print default and
+        /// coenttb-html-to-pdf's `EdgeInsets.standard`, matching W3C UA
+        /// stylesheet expectations for HTML→PDF rendering. Override
+        /// explicitly for tighter or wider margins.
         public var margins: PDF.UserSpace.Insets
 
         // MARK: - Headers & Footers
@@ -125,7 +130,7 @@ extension PDF.HTML {
 
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
-            margins: PDF.UserSpace.Insets = .init(all: 72),
+            margins: PDF.UserSpace.Insets = .init(all: 36),
             header: Header = .init(),
             footer: Footer = .init(),
             documentTitle: String? = nil,

@@ -534,7 +534,13 @@ struct `Baseline Empirical Tests` {
                 Paragraph { "AFTER_PAYMENT_MARKER" }
             }
         }
-        let pages = PDF.HTML.pages { V() }
+        // 72pt margins pin the original page-fill scenario: with 36pt
+        // default margins (post-Path-B), the totals table fits entirely on
+        // page 1 and the mid-row-break invariant is not exercised. The bug
+        // this test locks against is layout-engine-specific and content-
+        // independent — pinning margins preserves the assertion's reach.
+        let config = PDF.HTML.Configuration(margins: .init(all: 72))
+        let pages = PDF.HTML.pages(configuration: config) { V() }
         // Determine which page each marker lands on via per-page tjPositions.
         // The bug: pre-fix, AFTER_PAYMENT_MARKER lands on a new page beyond
         // where TOTALMARKER's row ended; post-fix, it lands on the same
