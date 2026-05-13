@@ -136,7 +136,7 @@ extension PDF.HTML {
             documentTitle: String? = nil,
             documentDate: String? = nil,
             defaultFont: PDF.Font = .times,
-            defaultFontSize: PDF.UserSpace.Size<1> = 12,
+            defaultFontSize: PDF.UserSpace.Size<1> = 16,
             defaultColor: PDF.Color = .black,
             lineHeight: LineHeight = .normal,
             paragraphSpacing: Dimension_Primitives.Scale<1, Double> = 0.5,
