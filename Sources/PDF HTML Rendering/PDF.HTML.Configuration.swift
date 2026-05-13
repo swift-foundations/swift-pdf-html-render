@@ -189,13 +189,15 @@ extension PDF.HTML {
                 // Per ISO 32000-2 Table 121, Leading is the "spacing between baselines
                 // of consecutive lines of text" with a default of 0.
                 //
-                // For Standard 14 fonts where leading is 0, we fall back to 1.15 multiplier
-                // which matches WebKit's typical behavior for Times New Roman and similar fonts.
+                // For Standard 14 fonts where leading is 0, fall back to a
+                // 1.2 multiplier — the value mainstream browsers use for
+                // CSS `line-height: normal` (CSS 2.1 §10.8.1 leaves the
+                // exact value UA-defined; Chrome/Firefox/Safari converge
+                // on ~1.2 for most Standard 14 / Latin fonts).
                 let normalHeight = font.metrics.line.normal.value
                 if font.metrics.leading == .zero {
-                    // No explicit leading - use WebKit-typical 1.15 multiplier
                     let metricsLineHeight = font.metrics.line.height.value
-                    let impliedLineGap = 1.15 - metricsLineHeight
+                    let impliedLineGap = 1.2 - metricsLineHeight
                     return metricsLineHeight + max(0, impliedLineGap)
                 }
                 return normalHeight
