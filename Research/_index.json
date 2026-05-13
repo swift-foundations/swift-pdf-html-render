@@ -49,6 +49,17 @@
       "statusRaw": "RECOMMENDATION",
       "tier": 2,
       "scope": "cross-package"
+    },
+    {
+      "file": "visual-differences-inventory-2026-05-13.md",
+      "displayName": "visual-differences-inventory-2026-05-13.md",
+      "topic": "Empirical visual-differences inventory for factuur 29IOVCDMKT-21 — REF (Quartz/WebKit, 1 page, 595×961pt) vs WIP (institute swift-pdf at HEAD 0039040, 2 pages, A4). Categorizes ~35 observable deltas across FONT / SIZING / POSITIONING / SPACING / LAYOUT / DETAILS / COLOR with bbox + raw-Tj evidence per defect and per-defect user-perceptibility scoring. Identifies 9 root-cause clusters (page-margin propagation, font-size cascade, line-height cascade, narrow-right-column allocator, Factuur meta position, vertical-budget exhaustion, border rendering, wrap-vs-fit, font typeface). Diagnostic-only; pure observation; no fixes proposed.",
+      "date": "2026-05-13",
+      "status": "INVENTORY",
+      "statusDetail": null,
+      "statusRaw": "INVENTORY",
+      "tier": 1,
+      "scope": "cross-package"
     }
   ]
 }
