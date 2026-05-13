@@ -60,6 +60,17 @@
       "statusRaw": "INVENTORY",
       "tier": 1,
       "scope": "cross-package"
+    },
+    {
+      "file": "css-cascade-architectural-gap-2026-05-13.md",
+      "displayName": "css-cascade-architectural-gap-2026-05-13.md",
+      "topic": "CSS cascade architectural gap — institute PDF renderer never reads <style> blocks because (1) HTML.__DocumentProtocol._render at HTML.Document.Protocol.swift:37-42 drops html.head; (2) consumer doesn't wrap invoice in HTML.Document; (3) PDF.HTML.Context.register(style:) is a no-op stub. Seven-component architectural decomposition: head-pass / CSS parser / rule storage / type-selector matching (Phase 1) vs full selector engine + specificity + cascade + inheritance + @media (Phase 2). Phase 1 closes CC3 structurally (html { line-height: 1.5 } applies); CC2 stays correctly via consumer defaultFontSize=14 (the template's @media-only-screen rule SKIPS for PDF/print per Option-C print-media classification, so consumer-side is legitimate UA-customization not a bandaid); CC7-D2 preserved W3C-correct. Phase 2 deferred behind five enumerated trigger conditions.",
+      "date": "2026-05-13",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": 2,
+      "scope": "cross-package"
     }
   ]
 }
