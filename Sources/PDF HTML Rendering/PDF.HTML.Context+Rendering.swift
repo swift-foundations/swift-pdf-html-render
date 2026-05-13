@@ -216,7 +216,13 @@ extension PDF.HTML.Context {
     public mutating func apply(inlineStyle property: Any) -> Bool {
         if table?.recording != nil {
             table!.recording!.commands.append(.inlineStyle(property))
-            Self.captureCellWidthHint(from: property, into: &table!.recording!)
+            // Capture cell-level hints only between cells (recording depth
+            // 1 = inside TR, after one cell popped and before the next
+            // pushes). Otherwise inline-styles inside a cell would leak.
+            if table!.recording!.elementDepth == 1 {
+                Self.captureCellWidthHint(from: property, into: &table!.recording!)
+                Self.captureCellPaddingHint(from: property, into: &table!.recording!)
+            }
             return true
         }
 
@@ -231,6 +237,13 @@ extension PDF.HTML.Context {
         }
 
         var handled = false
+
+        if unwrapped is W3C_CSS_BoxModel.Width {
+            // Mark the next `_pushElement` as receiving an explicit width
+            // declaration. Tables consume this to gate shrink-to-fit
+            // (§17.5.2.2); non-table elements simply clear the flag.
+            pendingExplicitWidth = true
+        }
 
         if let modifier = unwrapped as? any PDF.HTML.Style.Modifier {
             // Inline style mutations to wrap-controlling modes (`whiteSpace`,
@@ -297,6 +310,46 @@ extension PDF.HTML.Context {
         if case .lengthPercentage(.percentage(let p)) = width {
             recording.pendingCellWidthPercent = p.value
         }
+    }
+
+    /// Extract horizontal padding hints (padding-left, padding-right) from
+    /// a recorded inline-style property and accumulate so the next
+    /// `<td>`/`<th>` cell's content metrics include the CSS box-model
+    /// padding (W3C CSS 2.1 §17.5.2.2 cell width includes padding). Only
+    /// px length-percentage values are converted; em/% require font-size
+    /// resolution that isn't available at recording time and fall through
+    /// as 0.
+    private static func captureCellPaddingHint(
+        from property: Any,
+        into recording: inout PDF.HTML.Context.Table.Recording
+    ) {
+        let unwrapped: Any
+        let mirror = Mirror(reflecting: property)
+        if mirror.displayStyle == .optional {
+            guard let first = mirror.children.first else { return }
+            unwrapped = first.value
+        } else {
+            unwrapped = property
+        }
+        if let r = unwrapped as? W3C_CSS_BoxModel.PaddingRight {
+            recording.pendingCellHorizontalPadding += pxValue(of: r)
+        } else if let l = unwrapped as? W3C_CSS_BoxModel.PaddingLeft {
+            recording.pendingCellHorizontalPadding += pxValue(of: l)
+        }
+    }
+
+    private static func pxValue(of right: W3C_CSS_BoxModel.PaddingRight) -> Double {
+        guard case .lengthPercentage(let lp) = right else { return 0 }
+        return pxValue(of: lp)
+    }
+    private static func pxValue(of left: W3C_CSS_BoxModel.PaddingLeft) -> Double {
+        guard case .lengthPercentage(let lp) = left else { return 0 }
+        return pxValue(of: lp)
+    }
+    private static func pxValue(of lp: W3C_CSS_Values.LengthPercentage) -> Double {
+        guard case .length(let length) = lp else { return 0 }
+        if case .length(let v, .px) = length { return v }
+        return 0
     }
 
     // MARK: - Block Structure
@@ -466,6 +519,9 @@ extension PDF.HTML.Context {
                     context.table!.recording!.currentCellMinWidth = .init(0)
                     context.table!.recording!.currentCellMaxWidth = .init(0)
                     context.table!.recording!.currentLineWidth = .init(0)
+                    context.table!.recording!.currentCellPadding =
+                        context.table!.recording!.pendingCellHorizontalPadding
+                    context.table!.recording!.pendingCellHorizontalPadding = 0
                 }
                 // Nested-TR boundary (depth > 1 = TR inside an outer cell's
                 // nested content): commit pending logical-line width and
@@ -505,6 +561,8 @@ extension PDF.HTML.Context {
             )
             context.elementStack.append(voidScope)
             handleVoidElement(tagName, context: &context)
+            // Void elements aren't tables; clear the one-shot flag.
+            context.pendingExplicitWidth = false
             return
         }
 
@@ -615,6 +673,9 @@ extension PDF.HTML.Context {
             // Tag-specific inline setup
             pushInlineElement(tagName, context: &context)
         }
+        // Consume the one-shot explicit-width flag. Tables capture it
+        // inside `pushBlockElement` "table" case before this clears.
+        context.pendingExplicitWidth = false
     }
 
     public static func _popElement(_ context: inout Self, isBlock: Bool) {
@@ -648,6 +709,18 @@ extension PDF.HTML.Context {
                         context.table!.recording!.currentCellMaxWidth = lw
                     }
                     context.table!.recording!.currentLineWidth = .init(0)
+                    // Add captured horizontal padding to cell intrinsic
+                    // metrics (CSS 2.1 §17.5.2.2 cell width includes
+                    // padding).
+                    let pad = context.table!.recording!.currentCellPadding
+                    if pad > 0 {
+                        context.table!.recording!.currentCellMaxWidth =
+                            context.table!.recording!.currentCellMaxWidth
+                                + PDF.UserSpace.Width(pad)
+                        context.table!.recording!.currentCellMinWidth =
+                            context.table!.recording!.currentCellMinWidth
+                                + PDF.UserSpace.Width(pad)
+                    }
                     let r = context.table!.recording!
                     let prevMin = r.columnMinContentWidths[col] ?? .init(0)
                     let prevMax = r.columnMaxContentWidths[col] ?? .init(0)
@@ -858,10 +931,12 @@ extension PDF.HTML.Context {
                 headerBackground: context.configuration.table.headerBackground,
                 alternatingRowColor: context.configuration.table.alternatingRowColor
             )
+            let explicit = context.pendingExplicitWidth
             context.table?.totalRowsRendered = 0
             context.table?.tableStartY = tableStartY
             context.table?.currentFragmentStartY = tableStartY
             context.table?.currentFragmentEndY = tableStartY
+            context.table?.hasExplicitWidth = explicit
             // Round 4.3 R#7: start recording at TABLE push (was at first
             // TR push) so all rows contribute to max-content / min-content
             // measurement per W3C CSS 2.1 §17.5.2.2. Finalization + replay
@@ -1229,28 +1304,69 @@ extension PDF.HTML.Context {
         }
         let avgMeasured = measuredCount > 0 ? measuredSum / Double(measuredCount) : 0.0
 
-        // Compute weights: percent hint + max-content (with avg substitute).
-        var weights: [Double] = []
-        weights.reserveCapacity(n)
-        var weightSum = 0.0
-        for i in 0..<n {
-            let pct = recording.columnWidthWeights[i] ?? uniformPercentHint
-            let measured = recording.columnMaxContentWidths[i]?.underlying ?? 0
-            let content = measured > 0 ? measured : avgMeasured
-            let w = pct + content
-            weights.append(w)
-            weightSum += w
-        }
-
-        // Allocate column widths; apply min-content floor per W3C.
+        // W3C CSS 2.1 §17.5.2.2: a `width: auto` table with no percent
+        // column hints uses shrink-to-fit — each column gets its
+        // max-content; the table's used width is the sum (capped at
+        // bounds.width). The institute's additive `percent + content`
+        // heuristic with uniform 50% baseline over-allocates columns
+        // whose content is small, producing the ~80–200pt over-wide
+        // label columns previously seen in factuur metadata / totals
+        // tables. With R#7 all-row measurement, `columnMaxContentWidths`
+        // now reflects the widest cell in each column (not just the
+        // first row), so shrink-to-fit no longer over-shrinks when a
+        // later row's label is wider than the first row's.
+        let hasPercentHints = !recording.columnWidthWeights.isEmpty
+        let useShrinkToFit = !tableCtx.hasExplicitWidth
+            && !hasPercentHints
+            && measuredCount > 0
         var columnWidths: [PDF.UserSpace.Width] = []
         columnWidths.reserveCapacity(n)
-        for i in 0..<n {
-            var w = totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
-            if let minC = recording.columnMinContentWidths[i], w < minC {
-                w = minC
+        if useShrinkToFit {
+            var rawWidths: [Double] = []
+            var rawSum = 0.0
+            for i in 0..<n {
+                let raw = recording.columnMaxContentWidths[i]?.underlying ?? avgMeasured
+                rawWidths.append(raw)
+                rawSum += raw
             }
-            columnWidths.append(w)
+            if rawSum > 0 && rawSum <= totalWidth.underlying {
+                for raw in rawWidths {
+                    columnWidths.append(.init(raw))
+                }
+            } else {
+                for raw in rawWidths {
+                    let w = totalWidth * Dimension_Primitives.Scale(raw / max(rawSum, .ulpOfOne))
+                    columnWidths.append(w)
+                }
+            }
+        } else {
+            // Additive `percent + content` heuristic (legacy behavior).
+            // Strict §17.5.2.2 in the percent-hint case would starve
+            // adjacent columns to min-content (broke C-E4 in Phase E
+            // 2b.2 attempts a/b); the additive form respects both the
+            // dominance hint and content-heavy adjacent columns.
+            var weights: [Double] = []
+            weights.reserveCapacity(n)
+            var weightSum = 0.0
+            for i in 0..<n {
+                let pct = recording.columnWidthWeights[i] ?? uniformPercentHint
+                let measured = recording.columnMaxContentWidths[i]?.underlying ?? 0
+                let content = measured > 0 ? measured : avgMeasured
+                let w = pct + content
+                weights.append(w)
+                weightSum += w
+            }
+            for i in 0..<n {
+                let w = totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
+                columnWidths.append(w)
+            }
+        }
+        // Apply min-content floor (W3C-required: a column never goes
+        // below its widest unbreakable token).
+        for i in 0..<n {
+            if let minC = recording.columnMinContentWidths[i], columnWidths[i] < minC {
+                columnWidths[i] = minC
+            }
         }
         tableCtx.columnWidths = columnWidths
         tableCtx.columnsInitialized = true

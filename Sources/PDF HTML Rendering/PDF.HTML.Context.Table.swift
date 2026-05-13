@@ -108,7 +108,13 @@ extension PDF.HTML.Context {
         /// Whether columns have been initialized (from first row)
         public var columnsInitialized: Bool = false
 
-        /// Active recording state during first-row column measurement (nil when not recording).
+        /// True when an explicit `width` declaration fired on the table
+        /// immediately before its push. Tables with explicit width fill
+        /// `bounds.width`; tables with `width: auto` use shrink-to-fit per
+        /// CSS 2.1 §17.5.2.2.
+        public var hasExplicitWidth: Bool = false
+
+        /// Active recording state during column measurement (nil when not recording).
         var recording: Recording?
 
         /// Track the maximum cell height in the current row (for multi-line content)

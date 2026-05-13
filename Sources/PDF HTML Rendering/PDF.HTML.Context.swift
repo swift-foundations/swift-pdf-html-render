@@ -54,6 +54,13 @@ extension PDF.HTML {
         public var pendingSideBorderBottom: Element.Scope.PendingSideBorder?
         public var pendingSideBorderLeft: Element.Scope.PendingSideBorder?
 
+        /// True when a `W3C_CSS_BoxModel.Width` modifier fired since the
+        /// last element push. Consumed at the next `_pushElement`: if the
+        /// element is a `<table>`, the table records `hasExplicitWidth =
+        /// true`; otherwise the flag is cleared. Drives the shrink-to-fit
+        /// gate in `finalizeFirstRow` per CSS 2.1 §17.5.2.2.
+        public var pendingExplicitWidth: Bool = false
+
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.

@@ -44,8 +44,14 @@ extension PDF.HTML.Context.Table {
 
         /// Pending per-cell width hint (in percent) buffered from a recorded
         /// `<td>.css.width(.percent(N))` inlineStyle. Consumed at the next
-        /// `_pushElement("td"/"th")` at recording depth 0, then cleared.
+        /// `_pushElement("td"/"th")` at recording depth 1, then cleared.
         var pendingCellWidthPercent: Double?
+
+        /// Pending per-cell horizontal padding (px) buffered from recorded
+        /// inline styles. Applied to `currentCellMaxWidth` and
+        /// `currentCellMinWidth` at cell pop so the cell's intrinsic
+        /// content width reflects the CSS box model (W3C CSS 2.1 §17.5.2.2).
+        var pendingCellHorizontalPadding: Double = 0
 
         /// Column index → width-weight hints collected during recording. Used
         /// by `finalizeFirstRow` to allocate proportional column widths.
@@ -79,6 +85,9 @@ extension PDF.HTML.Context.Table {
         var currentCellColumn: Int? = nil
         var currentCellMinWidth: PDF.UserSpace.Width = .init(0)
         var currentCellMaxWidth: PDF.UserSpace.Width = .init(0)
+        /// Captured horizontal padding (px) of the active cell, applied to
+        /// min/max content metrics at cell pop. Reset on cell push.
+        var currentCellPadding: Double = 0
 
         /// Per-logical-line accumulator for max-content measurement.
         ///
