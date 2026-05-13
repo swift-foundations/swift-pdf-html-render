@@ -134,6 +134,13 @@ extension PDF.HTML {
         /// this scope are silently dropped in Phase 1 — Phase 2 (deferred)
         /// will route title content to `ISO_32000.Document.Info.title`.
         public var insideTitleBlock: Bool = false
+
+        /// Accumulated parsed CSS rules from all `<style>` blocks rendered
+        /// so far. Each `<style>` element's contents are parsed at its
+        /// `_popElement` and appended here in source order. Phase 1's
+        /// `_pushElement` cascade-apply loop iterates this collection to
+        /// match type-selector rules against the pushing element's tag.
+        public var parsedStylesheet: PDF.HTML.CSS.Stylesheet = PDF.HTML.CSS.Stylesheet()
     }
 }
 

@@ -619,7 +619,13 @@ extension PDF.HTML.Context {
         // silently suppressed (Phase 2 will route to Info.title). `<meta>` and
         // `<link>` are void elements and never reach this non-void path; their
         // text content (if any) is impossible per the HTML spec.
-        switch tagName {
+        //
+        // HTML tag names are case-insensitive per HTML §3.2.2 — lowercase
+        // the comparison to be robust against tag("STYLE") / tag("Title")
+        // call sites even though all current institute typed builders emit
+        // lowercase.
+        let loweredTag = tagName.lowercased()
+        switch loweredTag {
         case "style":
             context.insideStyleBlock = true
             context.currentStyleBlockBuffer = ""
@@ -629,8 +635,18 @@ extension PDF.HTML.Context {
             break
         }
 
-        // Apply tag-specific style
+        // Apply tag-specific style (UA-level origin per CSS Cascade §6.4.4).
         HTML.Element.Tag<Never>.applyTagStyle(tagName, context: &context)
+
+        // Apply author-level CSS rules from <style> blocks. UA-level
+        // applyTagStyle has already run; author rules override UA defaults
+        // per CSS Cascade §6.4 (origin/importance). Source-order
+        // resolution: later rules at same selector win because each
+        // dispatched modifier overwrites state. Phase 1: type-selector +
+        // universal matching only; print-media-aware @media filter.
+        // O(rules × elements) lookup — fine for normalize-size stylesheets;
+        // Phase 2 may add indexed-by-tag-name optimization.
+        context.applyParsedCSSRules(forTagName: loweredTag)
 
         // Handle anchor tags: extract href from attributes
         if tagName == "a" {
@@ -783,14 +799,19 @@ extension PDF.HTML.Context {
         guard let scope = context.elementStack.popLast() else { return }
 
         // Phase 1 CSS cascade scaffolding: exit head-element text-interception
-        // scope. `<style>` content drains to `collectedStyleBlocks` for the
-        // CSS parser (subsequent commit). `<title>` clears its flag; the
-        // buffered-and-dropped text is unreachable now (Phase 2 will route
-        // to Info.title via a `pendingTitle: String` field instead).
-        switch scope.tagName {
+        // scope. `<style>` content drains to `collectedStyleBlocks` AND
+        // parses into `parsedStylesheet` for subsequent `_pushElement`
+        // rule-application. `<title>` clears its flag; the buffered-
+        // and-dropped text is unreachable (Phase 2 will route to
+        // `ISO_32000.Document.Info.title` via a `pendingTitle: String`
+        // field instead).
+        switch scope.tagName.lowercased() {
         case "style":
             if context.insideStyleBlock {
-                context.collectedStyleBlocks.append(context.currentStyleBlockBuffer)
+                let buffer = context.currentStyleBlockBuffer
+                context.collectedStyleBlocks.append(buffer)
+                let parsed = PDF.HTML.CSS.Stylesheet.Parser.parse(buffer)
+                context.parsedStylesheet.rules.append(contentsOf: parsed.rules)
                 context.currentStyleBlockBuffer = ""
                 context.insideStyleBlock = false
             }

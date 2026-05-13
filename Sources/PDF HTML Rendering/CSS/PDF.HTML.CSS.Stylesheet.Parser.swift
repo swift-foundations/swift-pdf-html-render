@@ -25,6 +25,7 @@
 // inheritance propagation, @media viewport-feature evaluation.
 
 import PDF_Rendering
+import Standard_Library_Extensions
 
 extension PDF.HTML.CSS.Stylesheet {
     /// Parser for CSS stylesheet text content (typically `<style>` block bodies).
@@ -93,7 +94,7 @@ extension PDF.HTML.CSS.Stylesheet {
                 while index < input.count, peek() != "{" {
                     advance()
                 }
-                let query = String(input[queryStart..<index]).trimmingWhitespace()
+                let query = String(String(input[queryStart..<index]).trimming(where: \.isWhitespace))
                 let classified = Self.classifyMediaQuery(query)
 
                 // Consume '{'
@@ -198,7 +199,7 @@ extension PDF.HTML.CSS.Stylesheet {
             // attribute selectors `[attr="a,b"]` would; treat them all as
             // .unsupported anyway so naive split suffices.
             let parts = raw.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
-            return parts.map { classifySelector($0.trimmingWhitespace()) }
+            return parts.map { classifySelector(String($0.trimming(where: \.isWhitespace))) }
         }
 
         private func classifySelector(_ raw: String) -> PDF.HTML.CSS.Selector {
@@ -265,7 +266,7 @@ extension PDF.HTML.CSS.Stylesheet {
 
             return PDF.HTML.CSS.Declaration(
                 property: property,
-                value: value.trimmingWhitespace()
+                value: String(value.trimming(where: \.isWhitespace))
             )
         }
 
@@ -301,11 +302,11 @@ extension PDF.HTML.CSS.Stylesheet {
         /// Internal-visible so the tests can verify classification logic
         /// without round-tripping through the full parser.
         internal static func classifyMediaQuery(_ query: String) -> PDF.HTML.CSS.MediaContext {
-            let lowered = query.lowercased().trimmingWhitespace()
+            let lowered = String(query.lowercased().trimming(where: \.isWhitespace))
             if lowered.isEmpty { return .bareFeature }
 
             // Split on top-level commas (media-query-list).
-            let parts = lowered.split(separator: ",").map { $0.trimmingWhitespace() }
+            let parts = lowered.split(separator: ",").map { String($0.trimming(where: \.isWhitespace)) }
 
             var hasPrint = false
             var hasScreen = false
@@ -426,27 +427,3 @@ extension PDF.HTML.CSS.Stylesheet {
     }
 }
 
-// MARK: - String helper
-
-private extension String {
-    /// Trim leading/trailing whitespace and newlines.
-    func trimmingWhitespace() -> String {
-        var start = startIndex
-        var end = endIndex
-        while start < end, self[start].isWhitespace {
-            start = self.index(after: start)
-        }
-        while start < end, self[self.index(before: end)].isWhitespace {
-            end = self.index(before: end)
-        }
-        return String(self[start..<end])
-    }
-}
-
-// MARK: - Substring helper
-
-private extension Substring {
-    func trimmingWhitespace() -> String {
-        String(self).trimmingWhitespace()
-    }
-}

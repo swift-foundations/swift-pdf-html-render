@@ -51,6 +51,9 @@ extension Target.Dependency {
     static var propertyPrimitives: Self {
         .product(name: "Property Primitives", package: "swift-property-primitives")
     }
+    static var standardLibraryExtensions: Self {
+        .product(name: "Standard Library Extensions", package: "swift-standard-library-extensions")
+    }
 }
 
 let package = Package(
@@ -77,6 +80,7 @@ let package = Package(
         .package(path: "../../swift-primitives/swift-dictionary-primitives"),
         .package(path: "../../swift-primitives/swift-stack-primitives"),
         .package(path: "../../swift-primitives/swift-property-primitives"),
+        .package(path: "../../swift-primitives/swift-standard-library-extensions"),
     ],
     targets: [
         .target(
@@ -92,6 +96,7 @@ let package = Package(
                 .dictionaryPrimitives,
                 .stackPrimitives,
                 .propertyPrimitives,
+                .standardLibraryExtensions,
             ]
         ),
         .target(
