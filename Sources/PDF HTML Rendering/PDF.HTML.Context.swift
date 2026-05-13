@@ -109,6 +109,31 @@ extension PDF.HTML {
 
         /// Style scope stack for push.style/pop.style state save/restore.
         public var styleScopeStack: [Style.Snapshot] = []
+
+        // MARK: - Head-Element Text Interception (Phase 1 CSS cascade scaffolding)
+
+        /// True while inside a `<style>` element scope (between matching
+        /// `_pushElement`/`_popElement` calls for tagName "style"). `text()`
+        /// calls during this scope append to `currentStyleBlockBuffer` for
+        /// later CSS parsing instead of rendering as visible PDF text.
+        public var insideStyleBlock: Bool = false
+
+        /// Buffer accumulating the current `<style>` element's text content.
+        /// Drained into `collectedStyleBlocks` at `_popElement` for the
+        /// style tag.
+        public var currentStyleBlockBuffer: String = ""
+
+        /// Accumulated `<style>` block contents, one entry per `<style>`
+        /// element rendered through `_render`. Phase 1's CSS parser consumes
+        /// these to extract type-selector rules (subsequent commit). Order
+        /// matches source order, preserving the cascade-source-order
+        /// invariant per CSS Cascade §6.4.4.
+        public var collectedStyleBlocks: [String] = []
+
+        /// True while inside a `<title>` element scope. `text()` calls during
+        /// this scope are silently dropped in Phase 1 — Phase 2 (deferred)
+        /// will route title content to `ISO_32000.Document.Info.title`.
+        public var insideTitleBlock: Bool = false
     }
 }
 

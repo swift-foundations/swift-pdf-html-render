@@ -18,6 +18,21 @@ extension PDF.HTML.Context {
     // MARK: - Text
 
     public mutating func text(_ content: borrowing String) {
+        // Phase 1 CSS cascade scaffolding: head-element text interception.
+        // `<style>` text content is the CSS source — buffer for later parsing
+        // (subsequent commit) instead of rendering as visible PDF text.
+        // `<title>` text is metadata — silently dropped in Phase 1 (Phase 2
+        // will route to `ISO_32000.Document.Info.title`). `<meta>` / `<link>`
+        // are void elements and have no text content (handled by the void
+        // path in `_pushElement`).
+        if insideStyleBlock {
+            currentStyleBlockBuffer += copy content
+            return
+        }
+        if insideTitleBlock {
+            return
+        }
+
         let copy = copy content
 
         if table?.recording != nil {
@@ -599,6 +614,21 @@ extension PDF.HTML.Context {
         scope.pendingBorderLeft = pendingBorderLeft
         context.elementStack.append(scope)
 
+        // Phase 1 CSS cascade scaffolding: enter head-element text-interception
+        // scope. `<style>` text content buffers for parsing; `<title>` text is
+        // silently suppressed (Phase 2 will route to Info.title). `<meta>` and
+        // `<link>` are void elements and never reach this non-void path; their
+        // text content (if any) is impossible per the HTML spec.
+        switch tagName {
+        case "style":
+            context.insideStyleBlock = true
+            context.currentStyleBlockBuffer = ""
+        case "title":
+            context.insideTitleBlock = true
+        default:
+            break
+        }
+
         // Apply tag-specific style
         HTML.Element.Tag<Never>.applyTagStyle(tagName, context: &context)
 
@@ -751,6 +781,24 @@ extension PDF.HTML.Context {
         }
 
         guard let scope = context.elementStack.popLast() else { return }
+
+        // Phase 1 CSS cascade scaffolding: exit head-element text-interception
+        // scope. `<style>` content drains to `collectedStyleBlocks` for the
+        // CSS parser (subsequent commit). `<title>` clears its flag; the
+        // buffered-and-dropped text is unreachable now (Phase 2 will route
+        // to Info.title via a `pendingTitle: String` field instead).
+        switch scope.tagName {
+        case "style":
+            if context.insideStyleBlock {
+                context.collectedStyleBlocks.append(context.currentStyleBlockBuffer)
+                context.currentStyleBlockBuffer = ""
+                context.insideStyleBlock = false
+            }
+        case "title":
+            context.insideTitleBlock = false
+        default:
+            break
+        }
 
         // Void scopes are markers — handleVoidElement made no per-scope
         // state changes at push, so no state to restore at pop.
