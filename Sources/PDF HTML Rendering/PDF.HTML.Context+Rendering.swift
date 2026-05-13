@@ -422,32 +422,56 @@ extension PDF.HTML.Context {
             context.table!.recording!.commands.append(
                 .pushElement(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
             )
+            // Round 4.3 R#7: treat thead/tbody/tfoot as transparent for
+            // recording-depth tracking — they don't add structural depth
+            // between table and tr (CSS 2.1 §17.5: a table row group is a
+            // "transparent" container). Otherwise cells of `<thead><tr>...`
+            // would land at depth==2 (instead of depth==1) and miss
+            // cell-detection.
+            let isTransparent = isVoid
+                || tagName == "thead"
+                || tagName == "tbody"
+                || tagName == "tfoot"
             // Mirror push order in pushedIsVoid so the matching pop can
             // skip its decrement (keeps elementDepth symmetric).
-            context.table!.recording!.pushedIsVoid.append(isVoid)
-            if !isVoid {
-                // Track grid columns at depth 0 (direct cell children of the row)
-                if context.table!.recording!.elementDepth == 0
+            context.table!.recording!.pushedIsVoid.append(isTransparent)
+            if !isTransparent {
+                // Round 4.3 R#7: top-level TR push (depth==0) starts a new
+                // row of THIS table. Reset per-row cell counter.
+                if context.table!.recording!.elementDepth == 0 && tagName == "tr" {
+                    context.table!.recording!.cellsPushedInCurrentRow = 0
+                }
+                // Top-level cell of THIS table = depth == 1, tagName td/th.
+                // (depth==0 = TABLE; depth==1 = TR; cell pushes from TR at
+                // depth==1; nested cells deeper.)
+                if context.table!.recording!.elementDepth == 1
                     && (tagName == "td" || tagName == "th") {
-                    let columnIdx = context.table!.recording!.columnCount
+                    let columnIdx = context.table!.recording!.cellsPushedInCurrentRow
                     if let weight = context.table!.recording!.pendingCellWidthPercent {
                         context.table!.recording!.columnWidthWeights[columnIdx] = weight
                         context.table!.recording!.pendingCellWidthPercent = nil
                     }
-                    context.table!.recording!.columnCount += context.table!.recording!.pendingColspan
+                    let colspan = context.table!.recording!.pendingColspan
                     context.table!.recording!.pendingColspan = 1
-                    // Round 2b.1 (C-1 measurement): mark this cell as the
-                    // active measurement target; reset per-cell accumulators.
-                    // Cell pop will finalize into per-column dicts.
+                    context.table!.recording!.cellsPushedInCurrentRow += colspan
+                    // First row finalizes total `columnCount`; later rows
+                    // just contribute samples to existing columns.
+                    if context.table!.recording!.topLevelRowIndex == 0 {
+                        context.table!.recording!.columnCount = max(
+                            context.table!.recording!.columnCount,
+                            context.table!.recording!.cellsPushedInCurrentRow
+                        )
+                    }
                     context.table!.recording!.currentCellColumn = columnIdx
                     context.table!.recording!.currentCellMinWidth = .init(0)
                     context.table!.recording!.currentCellMaxWidth = .init(0)
                     context.table!.recording!.currentLineWidth = .init(0)
                 }
-                // Nested-TR boundary: commit pending logical-line width and
+                // Nested-TR boundary (depth > 1 = TR inside an outer cell's
+                // nested content): commit pending logical-line width and
                 // reset. W3C CSS Box Sizing 3 §4.1 — max-content of the
                 // outer cell is MAX of nested row widths, not SUM.
-                if context.table!.recording!.elementDepth > 0
+                if context.table!.recording!.elementDepth > 1
                     && tagName == "tr"
                     && context.table!.recording!.currentCellColumn != nil {
                     let lw = context.table!.recording!.currentLineWidth
@@ -605,17 +629,17 @@ extension PDF.HTML.Context {
             }
             context.table!.recording!.elementDepth -= 1
             if context.table!.recording!.elementDepth < 0 {
-                // Row pop reached — finalize column widths and replay
+                // Round 4.3 R#7: table pop reached — finalize column widths
+                // from ALL rows' measurements, then replay all commands.
                 let recording = context.table!.recording!
                 context.table!.recording = nil
                 finalizeFirstRow(recording, context: &context)
-                // Fall through to normal pop logic for the TR
+                // Fall through to normal pop logic for the TABLE.
             } else {
-                // Round 2b.1 (C-1 measurement): cell-pop detection — when
-                // elementDepth decrements to 0, the popping element was at
-                // depth 0 (a td/th cell). Finalize per-cell min/max into
-                // per-column dicts.
-                if context.table!.recording!.elementDepth == 0,
+                // Cell-pop detection: elementDepth was 2 (td/th) before
+                // decrement and is now 1 (back at TR level). Finalize the
+                // popping cell's min/max into per-column dicts via MAX.
+                if context.table!.recording!.elementDepth == 1,
                    let col = context.table!.recording!.currentCellColumn {
                     // Final line-boundary commit: any in-flight
                     // currentLineWidth is the last logical line.
@@ -634,6 +658,19 @@ extension PDF.HTML.Context {
                         context.table!.recording!.columnMaxContentWidths[col] = r.currentCellMaxWidth
                     }
                     context.table!.recording!.currentCellColumn = nil
+                }
+                // Top-level TR pop (depth==0 after decrement): row ended.
+                // Increment row index so subsequent rows stop expanding
+                // columnCount.
+                if context.table!.recording!.elementDepth == 0 {
+                    // Check if we just popped a TR via the pushedIsVoid
+                    // stack peek — but the stack was already popped earlier
+                    // in this function. We use a different heuristic:
+                    // depth==0 after decrement could be a TR pop OR a top
+                    // level non-TR pop. Either way, increment row index
+                    // since topLevelRowIndex is only meaningful when crossing
+                    // a TR.
+                    context.table!.recording!.topLevelRowIndex += 1
                 }
                 context.table!.recording!.commands.append(.popElement(isBlock: isBlock))
                 return
@@ -825,6 +862,13 @@ extension PDF.HTML.Context {
             context.table?.tableStartY = tableStartY
             context.table?.currentFragmentStartY = tableStartY
             context.table?.currentFragmentEndY = tableStartY
+            // Round 4.3 R#7: start recording at TABLE push (was at first
+            // TR push) so all rows contribute to max-content / min-content
+            // measurement per W3C CSS 2.1 §17.5.2.2. Finalization + replay
+            // happen at table pop instead of first-row pop.
+            if !context.table!.columnsInitialized {
+                context.table?.recording = .init(savedY: tableStartY)
+            }
             context.resetMarginCollapsing()
 
             // γ-slot drain: Border-family CSS modifiers that fired before
@@ -882,11 +926,6 @@ extension PDF.HTML.Context {
                     width: tableCtx.bounds.width,
                     height: rowHeight
                 )
-
-                if !tableCtx.columnsInitialized {
-                    // Start recording first-row commands for column measurement
-                    tableCtx.recording = .init(savedY: context.pdf.layout.box.lly)
-                }
 
                 context.table = tableCtx
             }

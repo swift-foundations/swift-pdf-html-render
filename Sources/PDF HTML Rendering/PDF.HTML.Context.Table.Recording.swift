@@ -51,15 +51,28 @@ extension PDF.HTML.Context.Table {
         /// by `finalizeFirstRow` to allocate proportional column widths.
         var columnWidthWeights: [Int: Double] = [:]
 
-        /// Round 2b.1 (C-1 measurement): per-column min/max content widths
-        /// captured during first-row recording. Read by allocator in
-        /// Round 2b.2; ignored in Round 2b.1 (no behavior change invariant).
-        /// min-content (W3C CSS Box Sizing 3 §4.1): widest unbreakable token
-        /// per cell. max-content: sum of token + space widths per cell
-        /// (single-line interpretation per orchestrator design; br handling
-        /// deferred to Round 2b.2).
+        /// Round 4.3 R#7: per-column min/max content widths captured across
+        /// ALL rows of the table (not just first row). The allocator reads
+        /// these in finalize. Each entry is MAX across all rows' cells for
+        /// that column. min-content (W3C CSS Box Sizing 3 §4.1): widest
+        /// unbreakable token per cell. max-content: width that fits all
+        /// content on a single logical line per cell.
         var columnMinContentWidths: [Int: PDF.UserSpace.Width] = [:]
         var columnMaxContentWidths: [Int: PDF.UserSpace.Width] = [:]
+
+        /// Round 4.3 R#7: per-row column index counter. Reset at each
+        /// top-level TR push. Used to derive a cell's column index from
+        /// its push order within the current row. After the first row
+        /// completes, `columnCount` is finalized to its peak value across
+        /// all rows.
+        var cellsPushedInCurrentRow: Int = 0
+
+        /// Round 4.3 R#7: zero-based index of the current top-level row.
+        /// `0` while measuring the first row, `1` while measuring the
+        /// second, etc. Used to distinguish "expanding `columnCount`"
+        /// (first row only) from "using established columnCount" (later
+        /// rows just contribute max-content samples).
+        var topLevelRowIndex: Int = 0
 
         /// Round 2b.1: per-cell accumulators reset on each cell push,
         /// finalized into columnMin/MaxContentWidths on cell pop.
