@@ -118,7 +118,13 @@ extension HTML.Element.Tag {
         // Note: <li> has no default margins per WHATWG HTML Standard
         // The parent <ul>/<ol> provides the 1em margins
         case "table":
-            return (.length(.em(1.0)), .length(.em(1.0)))
+            // WebKit / mainstream-UA default: table has no inherent vertical
+            // margin (browsers rely on adjacent flow content's own margins).
+            // CSS 2.1 §17 does not specify a default; aligning with the
+            // de-facto W3C-evergreen UA stylesheet by returning nil so that
+            // consumer-provided `.css.margin(top:bottom:)` is the sole
+            // source of vertical spacing for tables.
+            return nil
         default:
             return nil
         }
