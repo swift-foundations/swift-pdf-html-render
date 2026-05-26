@@ -3,6 +3,7 @@
 
 import Copy_on_Write
 public import Dictionary_Primitives
+public import Dictionary_Ordered_Primitives
 import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
