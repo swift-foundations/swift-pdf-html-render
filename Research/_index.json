@@ -18,17 +18,6 @@
       "scope": null
     },
     {
-      "file": "audit.md",
-      "displayName": "audit.md",
-      "topic": "Modularization audit (MOD-001–MOD-014) — 1 REVIEW (MOD-008: 58 files)",
-      "date": "2026-04-08",
-      "status": "LEGACY",
-      "statusDetail": null,
-      "statusRaw": "LEGACY",
-      "tier": null,
-      "scope": null
-    },
-    {
       "file": "modifier-dispatch-ordering.md",
       "displayName": "modifier-dispatch-ordering.md",
       "topic": "CSS modifier dispatch ordering + PDF emission ordering — v1.1.0 covers both axes: A1 (dispatch) inventories all 46 modifier conformances, all `_pushElement` push-time READs, all `_popElement`/`_popStyle` pop-time CONSUMES; classifies each modifier by phase set; recommends α₂-flat over α₁ (provably broken). A2 (emission) inventories all 14 render-primitives + emission sites; finds cell borders (E1/E2) latently non-compliant with CSS §17.6 painting order (emitted after content), cell background (E5) missing (dead function). A1+A2 axes orthogonal; A2 fix is a follow-on Research doc gated on A1 Phase 2 landing.",
