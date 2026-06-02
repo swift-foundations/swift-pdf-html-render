@@ -9,7 +9,7 @@ let package = Package(
     name: "render-parity",
     platforms: [.macOS(.v26)],
     dependencies: [
-        .package(path: "../../../swift-pdf"),
+        .package(url: "https://github.com/swift-foundations/swift-pdf.git", branch: "main"),
     ],
     targets: [
         .executableTarget(
