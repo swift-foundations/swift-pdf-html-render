@@ -9,11 +9,11 @@ let package = Package(
     ],
     dependencies: [
         .package(path: ".."),
-        .package(path: "../../swift-testing"),
-        .package(path: "../../swift-tests"),
-        .package(path: "../../swift-html-render"),
-        .package(path: "../../swift-pdf-render"),
-        .package(path: "../../../swift-primitives/swift-test-primitives"),
+        .package(url: "https://github.com/swift-foundations/swift-testing.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-tests.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-html-render.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-pdf-render.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-test-primitives.git", branch: "main"),
     ],
     targets: [
         .testTarget(
