@@ -54,6 +54,24 @@ extension Target.Dependency {
     static var standardLibraryExtensions: Self {
         .product(name: "Standard Library Extensions", package: "swift-standard-library-extensions")
     }
+    static var ownershipMutablePrimitives: Self {
+        .product(name: "Ownership Mutable Primitives", package: "swift-ownership-primitives")
+    }
+    static var sharedPrimitive: Self {
+        .product(name: "Shared Primitive", package: "swift-shared-primitives")
+    }
+    static var hashIndexedPrimitive: Self {
+        .product(name: "Hash Indexed Primitive", package: "swift-hash-table-primitives")
+    }
+    static var hashPrimitives: Self {
+        .product(name: "Hash Primitives", package: "swift-hash-primitives")
+    }
+    static var columnPrimitives: Self {
+        .product(name: "Column Primitives", package: "swift-column-primitives")
+    }
+    static var bufferLinearPrimitive: Self {
+        .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives")
+    }
 }
 
 let package = Package(
@@ -82,6 +100,12 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-standard-library-extensions.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-ownership-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-shared-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-hash-table-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-hash-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
     ],
     targets: [
         .target(
@@ -99,6 +123,12 @@ let package = Package(
                 .stackPrimitives,
                 .propertyPrimitives,
                 .standardLibraryExtensions,
+                .ownershipMutablePrimitives,
+                .sharedPrimitive,
+                .hashIndexedPrimitive,
+                .hashPrimitives,
+                .columnPrimitives,
+                .bufferLinearPrimitive,
             ]
         ),
         .target(

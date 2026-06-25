@@ -4,6 +4,12 @@
 import Copy_on_Write
 public import Dictionary_Primitives
 public import Dictionary_Ordered_Primitives
+public import Shared_Primitive
+public import Hash_Indexed_Primitive
+public import Hash_Primitives
+public import Column_Primitives
+public import Buffer_Linear_Primitive
+public import HTML_Rendering_Core
 import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
@@ -66,7 +72,7 @@ extension PDF.HTML {
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.
         /// Used by table cell rendering to extract colspan/rowspan values.
-        public var attributes: Dictionary<String, String>.Ordered = .init()
+        public var attributes: HTML.Context.Attributes = .init()
 
         // MARK: - Link Tracking
 

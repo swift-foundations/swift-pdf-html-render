@@ -4,6 +4,7 @@
 import HTML_Rendering_Core
 import PDF_Rendering
 import Render_Primitives
+import Ownership_Mutable_Primitives
 
 // MARK: - Entry Points
 

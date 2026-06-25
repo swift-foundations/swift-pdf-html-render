@@ -2,6 +2,7 @@ import HTML_Rendering_Core
 import Layout_Primitives
 import PDF_Rendering
 import Render_Primitives
+public import Ownership_Mutable_Primitives
 
 extension Render.Context {
     /// Creates a rendering context that forwards operations to a PDF HTML context.
