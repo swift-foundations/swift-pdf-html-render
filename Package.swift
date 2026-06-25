@@ -72,6 +72,12 @@ extension Target.Dependency {
     static var bufferLinearPrimitive: Self {
         .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives")
     }
+    static var dictionaryOrderedPrimitive: Self {
+        .product(name: "Dictionary Ordered Primitive", package: "swift-dictionary-ordered-primitives")
+    }
+    static var bytePrimitives: Self {
+        .product(name: "Byte Primitives", package: "swift-byte-primitives")
+    }
 }
 
 let package = Package(
@@ -106,6 +112,7 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-hash-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-byte-primitives.git", branch: "main"),
     ],
     targets: [
         .target(
@@ -120,6 +127,8 @@ let package = Package(
                 .layoutPrimitives,
                 .dictionaryPrimitives,
                 .product(name: "Dictionary Ordered Primitives", package: "swift-dictionary-ordered-primitives"),
+                .dictionaryOrderedPrimitive,
+                .bytePrimitives,
                 .stackPrimitives,
                 .propertyPrimitives,
                 .standardLibraryExtensions,

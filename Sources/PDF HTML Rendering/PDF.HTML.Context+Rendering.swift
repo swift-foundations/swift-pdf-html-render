@@ -6,6 +6,9 @@
 // (for byte output) and PDF.HTML.Context (for PDF pages) via pure
 // static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
 
+import Byte_Primitives
+import Dictionary_Ordered_Primitive
+import Dictionary_Ordered_Primitives
 import HTML_Rendering_Core
 import Layout_Primitives
 import PDF_Rendering
@@ -51,14 +54,14 @@ extension PDF.HTML.Context {
                     color: pdf.style.color
                 )
                 let spaceWidth = pdf.style.font.winAnsi.width(
-                    of: [.ascii.space], atSize: pdf.style.fontSize
+                    of: [Byte(UInt8.ascii.space)], atSize: pdf.style.fontSize
                 )
                 var maxToken: PDF.UserSpace.Width = .init(0)
                 var lineWidth: PDF.UserSpace.Width = .init(0)
                 for run in runs {
                     var tokenStart = 0
                     for (i, byte) in run.bytes.enumerated() {
-                        if byte.ascii.isWhitespace {
+                        if byte.underlying.ascii.isWhitespace {
                             if i > tokenStart {
                                 let tokenBytes = Array(run.bytes[tokenStart..<i])
                                 let w = run.font.winAnsi.width(of: tokenBytes, atSize: run.fontSize)
@@ -196,7 +199,7 @@ extension PDF.HTML.Context {
         if let value {
             attributes[name] = value
         } else {
-            attributes.remove(name)
+            attributes[name] = nil
         }
     }
 
