@@ -14,6 +14,8 @@
 
 import Foundation
 import Testing
+import Byte_Primitive
+import Byte_Primitives_Standard_Library_Integration
 import CSS
 import HTML_Rendering
 import PDF_Rendering
@@ -22,7 +24,7 @@ import PDF_Rendering
 
 // MARK: - Helpers (content-stream byte-level inspection)
 
-extension Array where Element == UInt8 {
+extension Array where Element == Byte {
     /// Count stroke operators (` S\n`) in the content stream. Each
     /// `emit.line` call emits `... m\n... l\n... S\n`; counting `S` gives a
     /// stroke-per-line count.
@@ -74,7 +76,7 @@ extension Array where Element == UInt8 {
     }
 }
 
-private func pageBytes(_ pages: [PDF.Page]) -> [UInt8] {
+private func pageBytes(_ pages: [PDF.Page]) -> [Byte] {
     Array(pages.flatMap { $0.contents }.flatMap { $0.data })
 }
 

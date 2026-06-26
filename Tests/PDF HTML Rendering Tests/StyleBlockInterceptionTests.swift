@@ -12,7 +12,9 @@
 //   5. `insideStyleBlock` / `insideTitleBlock` flags clear correctly on pop.
 
 import Foundation
+import Byte_Primitives_Standard_Library_Integration
 import HTML_Rendering
+import Ownership_Mutable_Primitives
 import Render_Primitives
 import Testing
 
