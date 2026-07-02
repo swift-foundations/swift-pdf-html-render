@@ -1,6 +1,6 @@
 # .github/metadata.yaml
 # Triaged 2026-04-29 — anomaly-fix pass after wave-4 PR-branch triage didn't apply.
-description: "PDF html render for Swift."
+description: "HTML-to-PDF rendering with CSS styling, tables, hyperlinks, and outline bookmarks for Swift."
 topics:
   - foundations
   - pdf
