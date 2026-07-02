@@ -101,7 +101,7 @@ Importing `PDF_HTML_Rendering` re-exports the PDF rendering and HTML rendering-c
 ## Community
 
 <!-- BEGIN: discussion -->
-*Discussion thread will be created at first public flip.*
+*Discussion thread will be created at first public release.*
 <!-- END: discussion -->
 
 ## License
