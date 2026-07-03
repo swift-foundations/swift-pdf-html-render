@@ -14,7 +14,6 @@ import Testing
 /// Generic heading wrapper that applies `.css.pageBreakAfter(.avoid)` to keep headings with following content.
 /// This is the same pattern used in rule-legal documents.
 struct H<let N: Int> {
-    init() {}
 
     @HTML.Builder
     func callAsFunction(
@@ -56,7 +55,7 @@ struct `Outline Generation Tests` {
     @Test
     func `H wrapper headings appear in outline`() throws {
         let result = PDF.HTML.render {
-            H<1>() { "Wrapped Title" }
+            H<1> { "Wrapped Title" }
             Paragraph { "Some content after the wrapped title." }
         }
 
@@ -66,7 +65,10 @@ struct `Outline Generation Tests` {
         }
 
         #expect(result.headings.count >= 1, "Should collect at least 1 heading from H<N> wrapper")
-        #expect(result.headings.contains { $0.text == "Wrapped Title" }, "Should contain 'Wrapped Title'")
+        #expect(
+            result.headings.contains { $0.text == "Wrapped Title" },
+            "Should contain 'Wrapped Title'"
+        )
     }
 
     @Test
@@ -84,8 +86,14 @@ struct `Outline Generation Tests` {
             print("DEBUG TEST: - Level \(h.level): '\(h.text)' page \(h.pageNumber)")
         }
 
-        #expect(result.headings.count >= 1, "Should collect at least 1 heading from Header container")
-        #expect(result.headings.contains { $0.text == "Header Title" }, "Should contain 'Header Title'")
+        #expect(
+            result.headings.count >= 1,
+            "Should collect at least 1 heading from Header container"
+        )
+        #expect(
+            result.headings.contains { $0.text == "Header Title" },
+            "Should contain 'Header Title'"
+        )
     }
 
     @Test
@@ -99,15 +107,15 @@ struct `Outline Generation Tests` {
 
             // Wrapped H3 (like articleI)
             Section {
-                H<3>() { "ARTICLE I" }
-                H<4>() { "NAME" }
+                H<3> { "ARTICLE I" }
+                H<4> { "NAME" }
                 Paragraph { "The name of this corporation is Test Corp." }
             }
 
             // Another wrapped section
             Section {
-                H<3>() { "ARTICLE II" }
-                H<4>() { "PURPOSE" }
+                H<3> { "ARTICLE II" }
+                H<4> { "PURPOSE" }
                 Paragraph { "The purpose of this corporation is testing." }
             }
         }
@@ -119,7 +127,10 @@ struct `Outline Generation Tests` {
 
         // Should have all headings
         #expect(result.headings.count >= 5, "Should collect at least 5 headings")
-        #expect(result.headings.contains { $0.text == "DOCUMENT TITLE" }, "Should contain 'DOCUMENT TITLE'")
+        #expect(
+            result.headings.contains { $0.text == "DOCUMENT TITLE" },
+            "Should contain 'DOCUMENT TITLE'"
+        )
         #expect(result.headings.contains { $0.text == "ARTICLE I" }, "Should contain 'ARTICLE I'")
         #expect(result.headings.contains { $0.text == "ARTICLE II" }, "Should contain 'ARTICLE II'")
         #expect(result.headings.contains { $0.text == "NAME" }, "Should contain 'NAME'")
@@ -138,12 +149,12 @@ struct `Outline Generation Tests` {
             }
 
             Section {
-                H<3>() { "SECTION ONE" }
+                H<3> { "SECTION ONE" }
                 Paragraph { "Content for section one." }
             }
 
             Section {
-                H<3>() { "SECTION TWO" }
+                H<3> { "SECTION TWO" }
                 Paragraph { "Content for section two." }
             }
         }
@@ -188,7 +199,10 @@ struct `Outline Generation Tests` {
             print("DEBUG TEST: - Level \(h.level): '\(h.text)' page \(h.pageNumber)")
         }
 
-        #expect(result.headings.count >= 1, "Should collect at least 1 heading from H1 with BR elements")
+        #expect(
+            result.headings.count >= 1,
+            "Should collect at least 1 heading from H1 with BR elements"
+        )
         // The text should be extracted (even if it's just the first part)
         let hasH1 = result.headings.contains { h in
             h.level == 1 && !h.text.isEmpty
@@ -212,25 +226,26 @@ struct `Outline Generation Tests` {
                     "TEST CORPORATION, INC."
                 }.css.textAlign(.center)
                 Paragraph { "(A Nevada Corporation)" }.css.textAlign(.center)
-                Paragraph { "(Pursuant to Chapter 78 of the Nevada Revised Statutes)" }.css.textAlign(.center)
+                Paragraph { "(Pursuant to Chapter 78 of the Nevada Revised Statutes)" }.css
+                    .textAlign(.center)
             }
 
             // Article sections using H<N> wrapper
             Section {
-                H<3>() { "ARTICLE I" }
-                H<4>() { "NAME" }
+                H<3> { "ARTICLE I" }
+                H<4> { "NAME" }
                 Paragraph { "The name of this corporation is TEST CORPORATION, INC." }
             }
 
             Section {
-                H<3>() { "ARTICLE II" }
-                H<4>() { "REGISTERED AGENT" }
+                H<3> { "ARTICLE II" }
+                H<4> { "REGISTERED AGENT" }
                 Paragraph { "The registered agent is located at 123 Main Street." }
             }
 
             Section {
-                H<3>() { "ARTICLE III" }
-                H<4>() { "PURPOSE" }
+                H<3> { "ARTICLE III" }
+                H<4> { "PURPOSE" }
                 Paragraph { "The purpose is to engage in any lawful activity." }
             }
         }
@@ -249,7 +264,10 @@ struct `Outline Generation Tests` {
             printOutlineItems(outline.items, indent: 0)
 
             // Check for expected items
-            let hasArticlesTitle = containsTitle(outline.items, "ARTICLES OF INCORPORATION OF TEST CORPORATION, INC.")
+            let hasArticlesTitle = containsTitle(
+                outline.items,
+                "ARTICLES OF INCORPORATION OF TEST CORPORATION, INC."
+            )
             let hasArticleI = containsTitle(outline.items, "ARTICLE I")
             let hasArticleII = containsTitle(outline.items, "ARTICLE II")
             let hasArticleIII = containsTitle(outline.items, "ARTICLE III")

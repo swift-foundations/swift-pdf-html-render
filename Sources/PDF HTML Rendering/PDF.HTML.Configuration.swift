@@ -180,7 +180,8 @@ extension PDF.HTML {
         ///   - font: The font being used
         ///   - fontSize: The current font size
         /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
-        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double {
+        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double
+        {
             switch lineHeight {
             case .normal:
                 // CSS "line-height: normal" uses the font's normalLineHeight
@@ -201,22 +202,31 @@ extension PDF.HTML {
                     return metricsLineHeight + max(0, impliedLineGap)
                 }
                 return normalHeight
+
             case .multiple(let factor):
                 return factor
+
             case .lengthPercentage(let lp):
                 // Convert to multiplier based on font size
                 switch lp {
                 case .length(let length):
                     // For length values, calculate as multiple of font size
-                    let points = PDF.UserSpace.Size<1>(length, currentSize: fontSize, baseFontSize: defaultFontSize)
+                    let points = PDF.UserSpace.Size<1>(
+                        length,
+                        currentSize: fontSize,
+                        baseFontSize: defaultFontSize
+                    )
                     return (points.length / fontSize.length).value
+
                 case .percentage(let pct):
                     return pct.value / 100.0
-                case .calc(_):
+
+                case .calc:
                     // calc() can't be evaluated statically - use normal fallback
                     return font.metrics.line.normal.value
                 }
-            case .global(_):
+
+            case .global:
                 // Global values (inherit, initial) - use normal as fallback
                 return font.metrics.line.normal.value
             }

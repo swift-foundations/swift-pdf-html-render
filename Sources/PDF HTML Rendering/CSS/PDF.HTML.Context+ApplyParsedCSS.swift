@@ -32,6 +32,7 @@ extension PDF.HTML.Context {
             switch rule.mediaContext {
             case .unconditional, .printIncludes:
                 break
+
             case .screenOnly, .bareFeature, .other:
                 continue
             }
@@ -41,8 +42,10 @@ extension PDF.HTML.Context {
                 switch selector {
                 case .universal:
                     return true
+
                 case .type(let s):
                     return s == tagName
+
                 case .unsupported:
                     return false
                 }

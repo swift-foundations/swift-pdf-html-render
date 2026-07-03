@@ -10,17 +10,20 @@ extension W3C_CSS_Backgrounds.BorderWidth: PDF.HTML.Style.Context.Modifier {
         case .values(let values):
             let baseFontSize = context.configuration.defaultFontSize
             let currentSize = context.pdf.style.fontSize
-            guard let width = pdfWidth(
-                fromKeyword: values.top,
-                currentSize: currentSize,
-                baseFontSize: baseFontSize
-            ) else { return }
+            guard
+                let width = pdfWidth(
+                    fromKeyword: values.top,
+                    currentSize: currentSize,
+                    baseFontSize: baseFontSize
+                )
+            else { return }
 
             if context.table != nil {
                 context.table?.borderWidth = width
             } else {
                 context.pendingTableBorderWidth = width
             }
+
         case .global:
             break
         }
@@ -36,9 +39,10 @@ private func pdfWidth(
     baseFontSize: PDF.UserSpace.Size<1>
 ) -> PDF.UserSpace.Size<1>? {
     switch keyword {
-    case .thin: return .init(0.75)   // 1px @ 96 DPI
-    case .medium: return .init(2.25) // 3px @ 96 DPI
+    case .thin: return .init(0.75)  // 1px @ 96 DPI
+    case .medium: return .init(2.25)  // 3px @ 96 DPI
     case .thick: return .init(3.75)  // 5px @ 96 DPI
+
     case .length(let length):
         return PDF.UserSpace.Size<1>(
             length,

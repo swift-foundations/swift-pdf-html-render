@@ -1,8 +1,8 @@
 import HTML_Rendering_Core
 import Layout_Primitives
+public import Ownership_Mutable_Primitives
 import PDF_Rendering
 import Render_Primitives
-public import Ownership_Mutable_Primitives
 
 extension Render.Context {
     /// Creates a rendering context that forwards operations to a PDF HTML context.
@@ -24,7 +24,7 @@ extension Render.Context {
         /// Called when a block element opens or explicitly via `checkFit`.
         func resolveSpeculative(minimumRequired: PDF.UserSpace.Height) {
             guard let snapshot = state.value.speculativeSnapshot,
-                  let actions = state.value.speculativeActions
+                let actions = state.value.speculativeActions
             else { return }
 
             // Clear speculative state before replay to prevent re-recording.
@@ -33,7 +33,7 @@ extension Render.Context {
 
             if !state.value.pdf.page.exceeds(adding: minimumRequired) {
                 state.value.avoidPageBreakAfter = false
-                return // Fits — keep speculative content as-is.
+                return  // Fits — keep speculative content as-is.
             }
 
             // Doesn't fit — rollback, page break, replay.
@@ -132,8 +132,23 @@ extension Render.Context {
                         }
                     }
 
-                    record(.push(.element(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)))
-                    PDF.HTML.Context._pushElement(&state.value, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+                    record(
+                        .push(
+                            .element(
+                                tagName: tagName,
+                                isBlock: isBlock,
+                                isVoid: isVoid,
+                                isPreElement: isPreElement
+                            )
+                        )
+                    )
+                    PDF.HTML.Context._pushElement(
+                        &state.value,
+                        tagName: tagName,
+                        isBlock: isBlock,
+                        isVoid: isVoid,
+                        isPreElement: isPreElement
+                    )
                 },
                 style: {
                     record(.push(.style))

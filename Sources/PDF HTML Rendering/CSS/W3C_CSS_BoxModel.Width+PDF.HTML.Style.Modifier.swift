@@ -15,8 +15,10 @@ extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Modifier {
             // init resolves percentages against the font size, which is the
             // correct reference for font-size and line-height but the wrong
             // one for layout-related properties. Handle %-form explicitly.
-            context.constraint.width = context.layout.box.width
+            context.constraint.width =
+                context.layout.box.width
                 * Dimension_Primitives.Scale(percentage.value / 100.0)
+
         case .lengthPercentage(let lp):
             // Length form (px, em, pt, etc.) — relative to current/base font
             // size, which is the correct reference for absolute length units.
@@ -27,12 +29,15 @@ extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Modifier {
                 baseFontSize: configuration.defaultFontSize
             )
             context.constraint.width = size.width
+
         case .auto:
             // Auto width computed during layout
             context.constraint.width = nil
+
         case .maxContent, .minContent, .fitContent, .fitContentLength, .stretch:
             // Intrinsic sizing keywords - layout engine handles these
             context.constraint.width = nil
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

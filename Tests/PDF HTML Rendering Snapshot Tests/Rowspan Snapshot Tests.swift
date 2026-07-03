@@ -3,12 +3,12 @@
 //  swift-pdf-html-rendering
 //
 
+import HTML_Rendering
+import PDF_HTML_Rendering
+import PDF_Rendering
+import Test_Snapshot_Primitives
 import Testing
 import Tests_Inline_Snapshot
-import Test_Snapshot_Primitives
-import HTML_Rendering
-import PDF_Rendering
-import PDF_HTML_Rendering
 
 @Suite
 struct RowspanSnapshotTests {

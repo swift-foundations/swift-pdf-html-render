@@ -26,7 +26,9 @@ struct CSSCascadeApplyTests {
 
     /// Build a context, render the document, return final context state.
     private func render(_ doc: HTML.Document<some HTML.View, some HTML.View>) -> PDF.HTML.Context {
-        let state = Ownership.Mutable(PDF.HTML.prepareContext(configuration: .init(defaultFontSize: 14)))
+        let state = Ownership.Mutable(
+            PDF.HTML.prepareContext(configuration: .init(defaultFontSize: 14))
+        )
         var renderCtx = Render.Context.pdfHTML(state: state)
         renderCtx.render(doc)
         _ = PDF.HTML.finalizeRendering(context: &state.value)
@@ -64,8 +66,14 @@ struct CSSCascadeApplyTests {
         // UA institute typography.smallScale would produce 14 × 0.83 = 11.62pt.
         let hasAuthor = pageString.contains("11.2 Tf") || pageString.contains("11.20 Tf")
         let hasUA = pageString.contains("11.62 Tf")
-        #expect(hasAuthor, "Author CSS (11.2pt absolute) must win — got bytes: \(pageString.prefix(200))")
-        #expect(!hasUA, "UA institute typography.smallScale (11.62pt) must NOT appear when author CSS overrides")
+        #expect(
+            hasAuthor,
+            "Author CSS (11.2pt absolute) must win — got bytes: \(pageString.prefix(200))"
+        )
+        #expect(
+            !hasUA,
+            "UA institute typography.smallScale (11.62pt) must NOT appear when author CSS overrides"
+        )
     }
 
     // MARK: - 2. Source-Order Resolution (CSS Cascade §6.4.4)
@@ -119,17 +127,22 @@ struct CSSCascadeApplyTests {
             HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
         } head: {
             HTML.Element.Tag(tag: "style") {
-                HTML.Text("""
-                @media only screen and (max-width: 831px) {
-                    div { font-size: 999px }
-                }
-                """)
+                HTML.Text(
+                    """
+                    @media only screen and (max-width: 831px) {
+                        div { font-size: 999px }
+                    }
+                    """
+                )
             }
         }
         let ctx = render(doc)
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(!pageString.contains("999 Tf"), "screen-only @media rule MUST be skipped for PDF/print")
+        #expect(
+            !pageString.contains("999 Tf"),
+            "screen-only @media rule MUST be skipped for PDF/print"
+        )
     }
 
     @Test
@@ -145,8 +158,10 @@ struct CSSCascadeApplyTests {
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
         // 24px → 18pt (CSS px = 1/96 in, pt = 1/72 in → factor 72/96 = 0.75).
-        #expect(pageString.contains("18 Tf") || pageString.contains("18.0 Tf"),
-                "print @media rule MUST apply for PDF — got bytes: \(pageString.prefix(200))")
+        #expect(
+            pageString.contains("18 Tf") || pageString.contains("18.0 Tf"),
+            "print @media rule MUST apply for PDF — got bytes: \(pageString.prefix(200))"
+        )
     }
 
     @Test
@@ -161,8 +176,10 @@ struct CSSCascadeApplyTests {
         let ctx = render(doc)
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(!pageString.contains("999 Tf"),
-                "bare-feature @media (Phase 1 disposition: no viewport ⇒ no match) MUST skip")
+        #expect(
+            !pageString.contains("999 Tf"),
+            "bare-feature @media (Phase 1 disposition: no viewport ⇒ no match) MUST skip"
+        )
     }
 
     // MARK: - 4. Case-Insensitivity
@@ -182,8 +199,10 @@ struct CSSCascadeApplyTests {
         let ctx = render(doc)
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(pageString.contains("15 Tf") || pageString.contains("15.0 Tf"),
-                "case-insensitive selector match required (HTML §3.2.2, CSS Syntax §3.1) — got: \(pageString.prefix(200))")
+        #expect(
+            pageString.contains("15 Tf") || pageString.contains("15.0 Tf"),
+            "case-insensitive selector match required (HTML §3.2.2, CSS Syntax §3.1) — got: \(pageString.prefix(200))"
+        )
     }
 
     @Test
@@ -218,8 +237,10 @@ struct CSSCascadeApplyTests {
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
         // 18px → 13.5pt at 72dpi/96dpi CSS conversion
-        #expect(pageString.contains("13.5 Tf") || pageString.contains("13.50 Tf"),
-                "universal selector MUST match (CSS Selectors §3.2). Stream excerpt: \(pageString.prefix(300))")
+        #expect(
+            pageString.contains("13.5 Tf") || pageString.contains("13.50 Tf"),
+            "universal selector MUST match (CSS Selectors §3.2). Stream excerpt: \(pageString.prefix(300))"
+        )
     }
 
     // MARK: - 6. Unsupported Selector Matches Nothing
@@ -236,8 +257,10 @@ struct CSSCascadeApplyTests {
         let ctx = render(doc)
         let pageBytes = Array(ctx.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(!pageString.contains("999 Tf"),
-                "class selector MUST match nothing in Phase 1 (CSS Selectors §3.1)")
+        #expect(
+            !pageString.contains("999 Tf"),
+            "class selector MUST match nothing in Phase 1 (CSS Selectors §3.1)"
+        )
     }
 
     @Test

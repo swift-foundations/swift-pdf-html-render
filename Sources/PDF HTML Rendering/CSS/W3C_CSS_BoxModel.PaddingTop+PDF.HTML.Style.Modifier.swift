@@ -15,6 +15,7 @@ extension W3C_CSS_BoxModel.PaddingTop: PDF.HTML.Style.Modifier {
                 baseFontSize: configuration.defaultFontSize
             )
             context.padding.top = size.height
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

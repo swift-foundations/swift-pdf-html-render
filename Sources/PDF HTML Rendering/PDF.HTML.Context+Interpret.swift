@@ -8,37 +8,55 @@ extension PDF.HTML.Context {
     public mutating func interpret(_ action: Render_Primitives.Render.Action) {
         switch action {
         case .text(let content): text(content)
+
         case .break(let kind):
             switch kind {
             case .line: lineBreak()
             case .thematic: thematicBreak()
             case .page: pageBreak()
             }
+
         case .image(let source, let alt): image(source: source, alt: alt)
         case .attribute(let name, let value): set(attribute: name, value)
         case .class(let name): add(class: name)
         case .raw(let bytes): write(raw: bytes)
+
         case .style(let declaration, let atRule, let selector, let pseudo):
             _ = register(style: declaration, atRule: atRule, selector: selector, pseudo: pseudo)
+
         case .push(let push):
             switch push {
             case .block(let role, let style):
                 Self._pushBlock(&self, role: role, style: style)
+
             case .inline(let role, let style):
                 Self._pushInline(&self, role: role, style: style)
+
             case .list(let kind, let start):
                 Self._pushList(&self, kind: kind, start: start)
+
             case .item:
                 Self._pushItem(&self)
+
             case .link(let destination):
                 Self._pushLink(&self, destination: destination)
+
             case .attributes:
                 Self._pushAttributes(&self)
+
             case .element(let tagName, let isBlock, let isVoid, let isPreElement):
-                Self._pushElement(&self, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+                Self._pushElement(
+                    &self,
+                    tagName: tagName,
+                    isBlock: isBlock,
+                    isVoid: isVoid,
+                    isPreElement: isPreElement
+                )
+
             case .style:
                 Self._pushStyle(&self)
             }
+
         case .pop(let pop):
             switch pop {
             case .block: Self._popBlock(&self)

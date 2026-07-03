@@ -25,6 +25,7 @@ extension W3C_CSS_Text.LineHeight: PDF.HTML.Style.Modifier {
             switch lp {
             case .percentage(let percentage):
                 context.style.lineHeight = Dimension_Primitives.Scale(percentage.value / 100.0)
+
             case .length:
                 // Absolute lengths (e.g., `line-height: 24pt`) require a
                 // length-to-ratio conversion against the current font
@@ -33,6 +34,7 @@ extension W3C_CSS_Text.LineHeight: PDF.HTML.Style.Modifier {
                 // pending that infrastructure. Uncommon in practice —
                 // CSS authors prefer unit-less multipliers and percentages.
                 break
+
             case .calc:
                 // `calc()` cannot be evaluated statically — preserve
                 // current value.

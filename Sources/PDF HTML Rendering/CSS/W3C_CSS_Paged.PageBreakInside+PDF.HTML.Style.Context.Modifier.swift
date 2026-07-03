@@ -13,6 +13,7 @@ extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.Style.Context.Modifier {
         case .avoid:
             // Prevent element from splitting across pages
             context.avoidPageBreakInside = true
+
         case .auto, .global:
             // Default behavior - let layout decide
             break

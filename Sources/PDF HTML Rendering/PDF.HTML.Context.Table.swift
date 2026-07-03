@@ -1,9 +1,9 @@
 // PDF.HTML.Context.Table.swift
 // Table layout context and state management
 
+import Dictionary_Primitives
 import HTML_Rendering_Core
 import Layout_Primitives
-import Dictionary_Primitives
 import PDF_Rendering
 import Render_Primitives
 
@@ -254,7 +254,9 @@ extension PDF.HTML.Context {
         /// Uses `totalRowsRendered` as the row index since that tracks the actual
         /// row number across the entire table (currentRow is reset per row rendering).
         public mutating func advanceToNextAvailableColumn() {
-            while currentColumn < columnCount && spans.isOccupied(row: totalRowsRendered, column: currentColumn) {
+            while currentColumn < columnCount
+                && spans.isOccupied(row: totalRowsRendered, column: currentColumn)
+            {
                 currentColumn += 1
             }
         }

@@ -444,7 +444,9 @@ struct `Box Model with Text Flow Tests` {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
-                    Paragraph { "This is a longer paragraph that should wrap differently when padding is applied because the content area is reduced by the padding values on the left and right sides." }
+                    Paragraph {
+                        "This is a longer paragraph that should wrap differently when padding is applied because the content area is reduced by the padding values on the left and right sides."
+                    }
                 }
                 .css.padding(.px(50))
             }
@@ -463,7 +465,9 @@ struct `Box Model with Text Flow Tests` {
         struct TestView: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
-                    Paragraph { "This is content that will wrap more aggressively due to the narrow width constraint applied to its container." }
+                    Paragraph {
+                        "This is content that will wrap more aggressively due to the narrow width constraint applied to its container."
+                    }
                 }
                 .css.width(.px(150))
             }

@@ -23,10 +23,10 @@ struct CSSStylesheetParserTests {
     @Test
     func `comments are stripped before parsing rules`() {
         let css = """
-        /* leading comment */
-        html { line-height: 1.5; /* inline comment */ }
-        /* trailing comment */
-        """
+            /* leading comment */
+            html { line-height: 1.5; /* inline comment */ }
+            /* trailing comment */
+            """
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(css)
         #expect(sheet.rules.count == 1)
         #expect(sheet.rules.first?.selectors == [.type("html")])
@@ -63,10 +63,12 @@ struct CSSStylesheetParserTests {
             "code, pre, tt, kbd, samp { font-family: monospace }"
         )
         let sels = sheet.rules.first?.selectors ?? []
-        #expect(sels == [
-            .type("code"), .type("pre"), .type("tt"),
-            .type("kbd"), .type("samp")
-        ])
+        #expect(
+            sels == [
+                .type("code"), .type("pre"), .type("tt"),
+                .type("kbd"), .type("samp"),
+            ]
+        )
     }
 
     @Test
@@ -127,14 +129,16 @@ struct CSSStylesheetParserTests {
 
     @Test
     func `multi-property declaration block parses`() {
-        let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse("""
+        let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(
+            """
             body {
                 font-family: sans-serif;
                 font-size: 14px;
                 color: #333;
                 line-height: 1.5;
             }
-            """)
+            """
+        )
         let decls = sheet.rules.first?.declarations ?? []
         #expect(decls.count == 4)
         #expect(decls[0].property == "font-family")
@@ -283,7 +287,7 @@ struct CSSStylesheetParserTests {
 
     @Test
     func `unterminated rule doesn't crash`() {
-        let css = "html { line-height: 1.5"   // missing `}`
+        let css = "html { line-height: 1.5"  // missing `}`
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(css)
         // Parser exhausts input gracefully; may or may not produce a partial rule.
         // The contract is: NO CRASH.

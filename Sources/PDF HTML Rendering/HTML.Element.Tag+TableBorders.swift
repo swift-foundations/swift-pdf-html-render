@@ -122,6 +122,7 @@ extension HTML.Element.Tag {
                 color: color,
                 width: third
             )
+
         default:
             context.pdf.emit.line(from: from, to: to, color: color, width: width)
         }
@@ -154,6 +155,7 @@ extension HTML.Element.Tag {
                 color: color,
                 width: third
             )
+
         default:
             context.pdf.emit.line(from: from, to: to, color: color, width: width)
         }

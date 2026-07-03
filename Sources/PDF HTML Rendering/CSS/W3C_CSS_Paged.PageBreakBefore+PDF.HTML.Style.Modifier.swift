@@ -11,11 +11,14 @@ extension W3C_CSS_Paged.PageBreakBefore: PDF.HTML.Style.Modifier {
             // Skip if current page has no content (matches browser behavior)
             guard !context.page.isEmpty else { break }
             context.page.new()
+
         case .auto, .avoid:
             break
+
         case .left, .right:
             guard !context.page.isEmpty else { break }
             context.page.new()
+
         case .global:
             break
         }

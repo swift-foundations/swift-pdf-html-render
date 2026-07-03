@@ -22,6 +22,7 @@ internal func pdfBorderWidth(
             currentSize: currentSize,
             baseFontSize: baseFontSize
         )
+
     case .global:
         return nil
     }
@@ -33,9 +34,10 @@ internal func pdfBorderWidth(
     baseFontSize: PDF.UserSpace.Size<1>
 ) -> PDF.UserSpace.Size<1>? {
     switch keyword {
-    case .thin: return .init(0.75)   // 1px @ 96 DPI
-    case .medium: return .init(2.25) // 3px @ 96 DPI
+    case .thin: return .init(0.75)  // 1px @ 96 DPI
+    case .medium: return .init(2.25)  // 3px @ 96 DPI
     case .thick: return .init(3.75)  // 5px @ 96 DPI
+
     case .length(let length):
         return PDF.UserSpace.Size<1>(
             length,

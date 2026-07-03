@@ -2,9 +2,10 @@
 // Verify iterative _Tuple rendering eliminates stack overflow
 // from deeply nested buildPartialBlock binary trees.
 
-import Testing
 import HTML_Rendering
 import PDF_Rendering
+import Testing
+
 @testable import PDF_HTML_Rendering_Test_Support
 
 @Suite

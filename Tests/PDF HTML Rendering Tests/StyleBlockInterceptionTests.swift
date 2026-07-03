@@ -11,8 +11,8 @@
 //   4. Body text content renders normally (no regression).
 //   5. `insideStyleBlock` / `insideTitleBlock` flags clear correctly on pop.
 
-import Foundation
 import Byte_Primitives_Standard_Library_Integration
+import Foundation
 import HTML_Rendering
 import Ownership_Mutable_Primitives
 import Render_Primitives
@@ -46,8 +46,14 @@ struct StyleBlockInterceptionTests {
         // PDF content streams should NOT contain CSS text
         let pageBytes = Array(state.value.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(!pageString.contains("line-height"), "CSS text must not appear in PDF content stream")
-        #expect(!pageString.contains("html {"), "CSS rule syntax must not appear in PDF content stream")
+        #expect(
+            !pageString.contains("line-height"),
+            "CSS text must not appear in PDF content stream"
+        )
+        #expect(
+            !pageString.contains("html {"),
+            "CSS rule syntax must not appear in PDF content stream"
+        )
 
         // Body content WAS rendered (sanity)
         #expect(pageString.contains("BODY_CONTENT_MARKER"))
@@ -70,7 +76,10 @@ struct StyleBlockInterceptionTests {
 
         let pageBytes = Array(state.value.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
-        #expect(!pageString.contains("INVISIBLE_TITLE"), "title text must not appear in PDF content stream")
+        #expect(
+            !pageString.contains("INVISIBLE_TITLE"),
+            "title text must not appear in PDF content stream"
+        )
         #expect(pageString.contains("VISIBLE_BODY"))
     }
 

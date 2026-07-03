@@ -33,6 +33,7 @@ extension W3C_CSS_Backgrounds.Border: PDF.HTML.Style.Context.Modifier {
                 if let w = effectiveWidth { context.pendingTableBorderWidth = w }
                 if let c = pdfColor { context.pendingTableBorderColor = c }
             }
+
         case .global:
             break
         }

@@ -12,13 +12,13 @@
 //  5. State-stack pop-ordering bug between sibling tables (γ-5 trigger v
 //     reproducer; disabled until Phase B fix lands).
 
-import Foundation
-import Testing
 import Byte_Primitive
 import Byte_Primitives_Standard_Library_Integration
 import CSS
+import Foundation
 import HTML_Rendering
 import PDF_Rendering
+import Testing
 
 @testable import PDF_HTML_Rendering
 
@@ -54,14 +54,23 @@ extension Array where Element == Byte {
     fileprivate func absoluteTjPositions() -> [(x: Double, y: Double, text: String)] {
         let s = String(decoding: self, as: UTF8.self)
         var out: [(Double, Double, String)] = []
-        var x = 0.0, y = 0.0
+        var x = 0.0
+        var y = 0.0
         var inBT = false
         let tdRe = /^\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s+Td\s*$/
         let tjRe = /^\s*\(([^)]*)\)\s*Tj\s*$/
         for rawLine in s.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
-            if line == "BT" { inBT = true; x = 0; y = 0; continue }
-            if line == "ET" { inBT = false; continue }
+            if line == "BT" {
+                inBT = true
+                x = 0
+                y = 0
+                continue
+            }
+            if line == "ET" {
+                inBT = false
+                continue
+            }
             guard inBT else { continue }
             if let m = try? tdRe.wholeMatch(in: rawLine) {
                 x += Double(m.output.1) ?? 0
@@ -114,8 +123,10 @@ struct `Baseline Empirical Tests` {
         // smaller (text near bottom of cell). Middle-aligned would also be
         // smaller. The threshold of 740 is conservative — actual top-aligned
         // value is ~757; bottom-aligned for a one-row table would be ~720.
-        #expect(pos!.y > 740,
-                "Cell content baseline Y should be near top of page (top-aligned default); got y=\(pos!.y)")
+        #expect(
+            pos!.y > 740,
+            "Cell content baseline Y should be near top of page (top-aligned default); got y=\(pos!.y)"
+        )
     }
 
     // 2. A.1' column-width allocator honors <td>.width(.percent(N))
@@ -139,8 +150,10 @@ struct `Baseline Empirical Tests` {
         let positions = bytes.tjPositions()
         let leftPos = positions.first { $0.text.contains("LEFT") }
         let rightPos = positions.first { $0.text.contains("RIGHT") }
-        try #require(leftPos != nil && rightPos != nil,
-                     "Both LEFT and RIGHT should appear in content stream")
+        try #require(
+            leftPos != nil && rightPos != nil,
+            "Both LEFT and RIGHT should appear in content stream"
+        )
         // Renderer emits LEFT via absolute `Tm` (`76 744 Tm`) followed by a
         // RELATIVE `Td` for RIGHT (`relX 0 Td`) inside the same BT/ET block.
         // So RIGHT's captured x is a relative offset from LEFT's origin —
@@ -152,8 +165,10 @@ struct `Baseline Empirical Tests` {
         // ≈ 301pt, so RIGHT's relative offset is ≈ 300.
         //
         // Assert relative offset > 270pt: clearly past equal-width position.
-        #expect(rightPos!.x > 270,
-                "RIGHT column's relative x-offset from LEFT (\(rightPos!.x)) should exceed 270pt under A.1' weighted allocation; equal-width would give ~226pt")
+        #expect(
+            rightPos!.x > 270,
+            "RIGHT column's relative x-offset from LEFT (\(rightPos!.x)) should exceed 270pt under A.1' weighted allocation; equal-width would give ~226pt"
+        )
     }
 
     // 3. Default border-collapse mode IS collapse
@@ -181,8 +196,10 @@ struct `Baseline Empirical Tests` {
         }
         let bytes = pageBytes(PDF.HTML.pages { TestView() })
         let strokes = bytes.countStrokes()
-        #expect(strokes < 14,
-                "Default border-collapse mode should emit fewer strokes than .separate (16+); got \(strokes)")
+        #expect(
+            strokes < 14,
+            "Default border-collapse mode should emit fewer strokes than .separate (16+); got \(strokes)"
+        )
     }
 
     // 4. Configuration.table.border.width = 0 produces NO border strokes
@@ -211,8 +228,10 @@ struct `Baseline Empirical Tests` {
         config.table.border.width = 0
         let bytes = pageBytes(PDF.HTML.pages(configuration: config) { TestView() })
         let strokes = bytes.countStrokes()
-        #expect(strokes == 0,
-                "Setting table.border.width = 0 should suppress all border strokes; got \(strokes)")
+        #expect(
+            strokes == 0,
+            "Setting table.border.width = 0 should suppress all border strokes; got \(strokes)"
+        )
     }
 
     // 6. Discriminating test for H1 (cell-layout primitive missing) vs H2
@@ -246,8 +265,10 @@ struct `Baseline Empirical Tests` {
         let positions = bytes.tjPositions()
         let alpha = positions.first { $0.text.contains("ALPHA") }
         let beta = positions.first { $0.text.contains("BETA") }
-        try #require(alpha != nil && beta != nil,
-                     "Both ALPHA and BETA should appear in content stream")
+        try #require(
+            alpha != nil && beta != nil,
+            "Both ALPHA and BETA should appear in content stream"
+        )
         // Renderer emits ALPHA via absolute Tm, BETA via relative Td.
         // BETA's captured x is the offset from ALPHA's text origin (≈ LEFT
         // column width minus cellPadding). For 60/40 split on a4 content
@@ -256,8 +277,10 @@ struct `Baseline Empirical Tests` {
         // making BETA's relative x ≈ 0.
         //
         // Discriminating threshold: BETA.x > 50pt = clearly horizontal layout.
-        #expect(beta!.x > 50,
-                "Discriminating test: BETA's relative x-offset from ALPHA (\(beta!.x)) should be > 50pt if cells are side-by-side (case A → H2 confirmed); near 0 if vertically stacked (case B → H1 confirmed). ALPHA pos = (\(alpha!.x), \(alpha!.y)); BETA pos = (\(beta!.x), \(beta!.y)).")
+        #expect(
+            beta!.x > 50,
+            "Discriminating test: BETA's relative x-offset from ALPHA (\(beta!.x)) should be > 50pt if cells are side-by-side (case A → H2 confirmed); near 0 if vertically stacked (case B → H1 confirmed). ALPHA pos = (\(alpha!.x), \(alpha!.y)); BETA pos = (\(beta!.x), \(beta!.y))."
+        )
     }
 
     // 7. CSS `white-space: nowrap` suppresses line-wrap on overflow (A.4)
@@ -294,10 +317,14 @@ struct `Baseline Empirical Tests` {
         let nowrapBytes = pageBytes(PDF.HTML.pages { WideText(nowrap: true) })
         let normalLineBreaks = normalBytes.tjPositions().filter { $0.y < 0 }.count
         let nowrapLineBreaks = nowrapBytes.tjPositions().filter { $0.y < 0 }.count
-        #expect(normalLineBreaks > 0,
-                "Long text under .normal should wrap (at least one Td with y < 0); got \(normalLineBreaks)")
-        #expect(nowrapLineBreaks == 0,
-                "Long text under .nowrap should NOT wrap (no Td with y < 0); got \(nowrapLineBreaks)")
+        #expect(
+            normalLineBreaks > 0,
+            "Long text under .normal should wrap (at least one Td with y < 0); got \(normalLineBreaks)"
+        )
+        #expect(
+            nowrapLineBreaks == 0,
+            "Long text under .nowrap should NOT wrap (no Td with y < 0); got \(nowrapLineBreaks)"
+        )
     }
 
     // 5. State-stack pop-ordering bug reproducer (γ-5 trigger v)
@@ -359,8 +386,10 @@ struct `Baseline Empirical Tests` {
         // Without the fix: RIGHT.x ≈ 8pt (table collapsed to ~11pt wide).
         // With the fix: RIGHT.x should match A.1' regression (~300pt for
         // 67%/33% split of full a4 content width of 451pt).
-        #expect(right!.x > 270,
-                "Outer `<table>.css.width(.percent(100))` must NOT collapse the table to ~11pt; got RIGHT.x=\(right!.x)")
+        #expect(
+            right!.x > 270,
+            "Outer `<table>.css.width(.percent(100))` must NOT collapse the table to ~11pt; got RIGHT.x=\(right!.x)"
+        )
     }
 
     @Test
@@ -387,12 +416,18 @@ struct `Baseline Empirical Tests` {
         let b2 = positions.first { $0.text.contains("B2") }
         try #require(b1 != nil, "Sibling 1: B1 should appear in content stream")
         try #require(b2 != nil, "Sibling 2: B2 should appear in content stream")
-        #expect(b1!.x > 50,
-                "Sibling 1 (no leakage source): B1 x-offset \(b1!.x) should exceed 50pt — confirms isolated column layout works")
-        #expect(b2!.x > 50,
-                "Sibling 2 (leakage target): B2 x-offset \(b2!.x) should exceed 50pt — if state-stack leaks, Table 2's width hints don't reach its allocator and B2 collapses near 0")
-        #expect(abs(b1!.x - b2!.x) < 5,
-                "Sibling tables 1 & 2 with identical width hints should yield identical column allocations; got B1.x=\(b1!.x), B2.x=\(b2!.x)")
+        #expect(
+            b1!.x > 50,
+            "Sibling 1 (no leakage source): B1 x-offset \(b1!.x) should exceed 50pt — confirms isolated column layout works"
+        )
+        #expect(
+            b2!.x > 50,
+            "Sibling 2 (leakage target): B2 x-offset \(b2!.x) should exceed 50pt — if state-stack leaks, Table 2's width hints don't reach its allocator and B2 collapses near 0"
+        )
+        #expect(
+            abs(b1!.x - b2!.x) < 5,
+            "Sibling tables 1 & 2 with identical width hints should yield identical column allocations; got B1.x=\(b1!.x), B2.x=\(b2!.x)"
+        )
     }
 
     /// Regression test for the void-element push/pop asymmetry bug
@@ -426,7 +461,12 @@ struct `Baseline Empirical Tests` {
                             HTML.Element.Tag<Never>(tag: "br")
                             "L4"
                             HTML.Element.Tag<Never>(tag: "br")
-                            Table { TableRow { TableDataCell { "" }; TableDataCell { "" } } }
+                            Table {
+                                TableRow {
+                                    TableDataCell { "" }
+                                    TableDataCell { "" }
+                                }
+                            }
                         }.css.verticalAlign(.top).width(.percent(100))
                         TableDataCell {
                             HTML.Element.Tag(tag: "h3") { "HEADING" }
@@ -449,13 +489,17 @@ struct `Baseline Empirical Tests` {
         // the top of the row — same absolute y as LBOLD (h3 is slightly
         // larger so baseline is a few pt below). Pre-fix bug placed
         // HEADING ~130pt below LBOLD.
-        #expect(abs(lbold!.y - heading!.y) < 25,
-                "h3 absolute y (\(heading!.y)) must align with top of right cell, near LBOLD (\(lbold!.y)) — pre-fix bug placed it ~130pt below")
+        #expect(
+            abs(lbold!.y - heading!.y) < 25,
+            "h3 absolute y (\(heading!.y)) must align with top of right cell, near LBOLD (\(lbold!.y)) — pre-fix bug placed it ~130pt below"
+        )
         // Right column: HEADING.x must be greater than LBOLD.x by
         // roughly half the page width (two equal columns from
         // borderCollapse + width:100%).
-        #expect(heading!.x > lbold!.x + 100,
-                "h3 absolute x (\(heading!.x)) must render in right column, well right of LBOLD (\(lbold!.x))")
+        #expect(
+            heading!.x > lbold!.x + 100,
+            "h3 absolute x (\(heading!.x)) must render in right column, well right of LBOLD (\(lbold!.x))"
+        )
     }
 
     /// C-11 reproducer (Phase D, 2026-05-12): nested-table mid-row page-break
@@ -488,34 +532,118 @@ struct `Baseline Empirical Tests` {
                 // the totals table to partially break (2 of 3 inner rows fit
                 // on page 1; 3rd row TOTALMARKER falls to page 2).
                 Table {
-                    TableRow { TableDataCell { "F01" }; TableDataCell { "v01" } }
-                    TableRow { TableDataCell { "F02" }; TableDataCell { "v02" } }
-                    TableRow { TableDataCell { "F03" }; TableDataCell { "v03" } }
-                    TableRow { TableDataCell { "F04" }; TableDataCell { "v04" } }
-                    TableRow { TableDataCell { "F05" }; TableDataCell { "v05" } }
-                    TableRow { TableDataCell { "F06" }; TableDataCell { "v06" } }
-                    TableRow { TableDataCell { "F07" }; TableDataCell { "v07" } }
-                    TableRow { TableDataCell { "F08" }; TableDataCell { "v08" } }
-                    TableRow { TableDataCell { "F09" }; TableDataCell { "v09" } }
-                    TableRow { TableDataCell { "F10" }; TableDataCell { "v10" } }
-                    TableRow { TableDataCell { "F11" }; TableDataCell { "v11" } }
-                    TableRow { TableDataCell { "F12" }; TableDataCell { "v12" } }
-                    TableRow { TableDataCell { "F13" }; TableDataCell { "v13" } }
-                    TableRow { TableDataCell { "F14" }; TableDataCell { "v14" } }
-                    TableRow { TableDataCell { "F15" }; TableDataCell { "v15" } }
-                    TableRow { TableDataCell { "F16" }; TableDataCell { "v16" } }
-                    TableRow { TableDataCell { "F17" }; TableDataCell { "v17" } }
-                    TableRow { TableDataCell { "F18" }; TableDataCell { "v18" } }
-                    TableRow { TableDataCell { "F19" }; TableDataCell { "v19" } }
-                    TableRow { TableDataCell { "F20" }; TableDataCell { "v20" } }
-                    TableRow { TableDataCell { "F21" }; TableDataCell { "v21" } }
-                    TableRow { TableDataCell { "F22" }; TableDataCell { "v22" } }
-                    TableRow { TableDataCell { "F23" }; TableDataCell { "v23" } }
-                    TableRow { TableDataCell { "F24" }; TableDataCell { "v24" } }
-                    TableRow { TableDataCell { "F25" }; TableDataCell { "v25" } }
-                    TableRow { TableDataCell { "F26" }; TableDataCell { "v26" } }
-                    TableRow { TableDataCell { "F27" }; TableDataCell { "v27" } }
-                    TableRow { TableDataCell { "F28" }; TableDataCell { "v28" } }
+                    TableRow {
+                        TableDataCell { "F01" }
+                        TableDataCell { "v01" }
+                    }
+                    TableRow {
+                        TableDataCell { "F02" }
+                        TableDataCell { "v02" }
+                    }
+                    TableRow {
+                        TableDataCell { "F03" }
+                        TableDataCell { "v03" }
+                    }
+                    TableRow {
+                        TableDataCell { "F04" }
+                        TableDataCell { "v04" }
+                    }
+                    TableRow {
+                        TableDataCell { "F05" }
+                        TableDataCell { "v05" }
+                    }
+                    TableRow {
+                        TableDataCell { "F06" }
+                        TableDataCell { "v06" }
+                    }
+                    TableRow {
+                        TableDataCell { "F07" }
+                        TableDataCell { "v07" }
+                    }
+                    TableRow {
+                        TableDataCell { "F08" }
+                        TableDataCell { "v08" }
+                    }
+                    TableRow {
+                        TableDataCell { "F09" }
+                        TableDataCell { "v09" }
+                    }
+                    TableRow {
+                        TableDataCell { "F10" }
+                        TableDataCell { "v10" }
+                    }
+                    TableRow {
+                        TableDataCell { "F11" }
+                        TableDataCell { "v11" }
+                    }
+                    TableRow {
+                        TableDataCell { "F12" }
+                        TableDataCell { "v12" }
+                    }
+                    TableRow {
+                        TableDataCell { "F13" }
+                        TableDataCell { "v13" }
+                    }
+                    TableRow {
+                        TableDataCell { "F14" }
+                        TableDataCell { "v14" }
+                    }
+                    TableRow {
+                        TableDataCell { "F15" }
+                        TableDataCell { "v15" }
+                    }
+                    TableRow {
+                        TableDataCell { "F16" }
+                        TableDataCell { "v16" }
+                    }
+                    TableRow {
+                        TableDataCell { "F17" }
+                        TableDataCell { "v17" }
+                    }
+                    TableRow {
+                        TableDataCell { "F18" }
+                        TableDataCell { "v18" }
+                    }
+                    TableRow {
+                        TableDataCell { "F19" }
+                        TableDataCell { "v19" }
+                    }
+                    TableRow {
+                        TableDataCell { "F20" }
+                        TableDataCell { "v20" }
+                    }
+                    TableRow {
+                        TableDataCell { "F21" }
+                        TableDataCell { "v21" }
+                    }
+                    TableRow {
+                        TableDataCell { "F22" }
+                        TableDataCell { "v22" }
+                    }
+                    TableRow {
+                        TableDataCell { "F23" }
+                        TableDataCell { "v23" }
+                    }
+                    TableRow {
+                        TableDataCell { "F24" }
+                        TableDataCell { "v24" }
+                    }
+                    TableRow {
+                        TableDataCell { "F25" }
+                        TableDataCell { "v25" }
+                    }
+                    TableRow {
+                        TableDataCell { "F26" }
+                        TableDataCell { "v26" }
+                    }
+                    TableRow {
+                        TableDataCell { "F27" }
+                        TableDataCell { "v27" }
+                    }
+                    TableRow {
+                        TableDataCell { "F28" }
+                        TableDataCell { "v28" }
+                    }
                 }
                 HTML.Element.Tag<Never>(tag: "hr")
                 // The totals table — outer 2-cell with nested 3-row inner.
@@ -524,9 +652,18 @@ struct `Baseline Empirical Tests` {
                         TableDataCell { HTML.Empty() }.css.width(.percent(100))
                         TableDataCell {
                             Table {
-                                TableRow { TableDataCell { "Bedrag" }; TableDataCell { "€ 6000" } }
-                                TableRow { TableDataCell { "BTW" }; TableDataCell { "€ 1260" } }
-                                TableRow { TableDataCell { "TOTALMARKER" }; TableDataCell { "€ 7260" } }
+                                TableRow {
+                                    TableDataCell { "Bedrag" }
+                                    TableDataCell { "€ 6000" }
+                                }
+                                TableRow {
+                                    TableDataCell { "BTW" }
+                                    TableDataCell { "€ 1260" }
+                                }
+                                TableRow {
+                                    TableDataCell { "TOTALMARKER" }
+                                    TableDataCell { "€ 7260" }
+                                }
                             }
                         }
                     }
@@ -561,8 +698,10 @@ struct `Baseline Empirical Tests` {
         }
         try #require(totalPage != nil, "TOTALMARKER missing")
         try #require(afterPage != nil, "AFTER_PAYMENT_MARKER missing")
-        #expect(afterPage! == totalPage!,
-                "C-11: AFTER_PAYMENT_MARKER (page \(afterPage!)) must land on the same page where TOTALMARKER (page \(totalPage!)) ended; pre-fix bug forced it to a new page via stale rowStartY in popTableRow")
+        #expect(
+            afterPage! == totalPage!,
+            "C-11: AFTER_PAYMENT_MARKER (page \(afterPage!)) must land on the same page where TOTALMARKER (page \(totalPage!)) ended; pre-fix bug forced it to a new page via stale rowStartY in popTableRow"
+        )
     }
 
     /// Regression test for the `constraint.width` scope-leak (Phase B.3,
@@ -601,14 +740,18 @@ struct `Baseline Empirical Tests` {
         // A4 width = 595.276pt. Pre-fix bug placed RIGHT at x ≈ 719
         // (cell llx + leaked outer constraint.width = 376 + 451 = 827,
         // minus right-align trim).
-        #expect(right!.x < 595,
-                "RIGHT absolute x (\(right!.x)) must be on-page — pre-fix bug rendered descendants past A4 right edge due to constraint.width leak from outer .css.width(.percent(100)) ancestor")
+        #expect(
+            right!.x < 595,
+            "RIGHT absolute x (\(right!.x)) must be on-page — pre-fix bug rendered descendants past A4 right edge due to constraint.width leak from outer .css.width(.percent(100)) ancestor"
+        )
         // Also assert RIGHT is in the actual right column (not collapsed
         // back to the left edge): it must be well right of the LEFT cell.
         let left = positions.first { $0.text.contains("LEFT") }
         try #require(left != nil, "LEFT must appear in content stream")
-        #expect(right!.x > left!.x + 100,
-                "RIGHT (\(right!.x)) must render in right column, well right of LEFT (\(left!.x))")
+        #expect(
+            right!.x > left!.x + 100,
+            "RIGHT (\(right!.x)) must render in right column, well right of LEFT (\(left!.x))"
+        )
     }
 
     /// C-E1 reproducer (Phase E, 2026-05-12): nested 2-col table cells
@@ -678,18 +821,28 @@ struct `Baseline Empirical Tests` {
         try #require(label2 != nil, "LABEL2 must appear in content stream")
         try #require(value2 != nil, "VALUE2 must appear in content stream")
         // Row 1: side-by-side
-        #expect(abs(label1!.y - value1!.y) < 2,
-                "C-E1 row 1: LABEL1.y (\(label1!.y)) and VALUE1.y (\(value1!.y)) must share the same baseline (Δy < 2pt). If Δy is large, the bug stacks cells vertically inside nested tables.")
-        #expect(value1!.x > label1!.x + 30,
-                "C-E1 row 1: VALUE1.x (\(value1!.x)) must be well right of LABEL1.x (\(label1!.x)) — clear horizontal layout (Δx > 30pt). If Δx ~ 0, cells collapsed to a single column.")
+        #expect(
+            abs(label1!.y - value1!.y) < 2,
+            "C-E1 row 1: LABEL1.y (\(label1!.y)) and VALUE1.y (\(value1!.y)) must share the same baseline (Δy < 2pt). If Δy is large, the bug stacks cells vertically inside nested tables."
+        )
+        #expect(
+            value1!.x > label1!.x + 30,
+            "C-E1 row 1: VALUE1.x (\(value1!.x)) must be well right of LABEL1.x (\(label1!.x)) — clear horizontal layout (Δx > 30pt). If Δx ~ 0, cells collapsed to a single column."
+        )
         // Row 2: side-by-side
-        #expect(abs(label2!.y - value2!.y) < 2,
-                "C-E1 row 2: LABEL2.y (\(label2!.y)) and VALUE2.y (\(value2!.y)) must share the same baseline (Δy < 2pt).")
-        #expect(value2!.x > label2!.x + 30,
-                "C-E1 row 2: VALUE2.x (\(value2!.x)) must be well right of LABEL2.x (\(label2!.x)) — Δx > 30pt.")
+        #expect(
+            abs(label2!.y - value2!.y) < 2,
+            "C-E1 row 2: LABEL2.y (\(label2!.y)) and VALUE2.y (\(value2!.y)) must share the same baseline (Δy < 2pt)."
+        )
+        #expect(
+            value2!.x > label2!.x + 30,
+            "C-E1 row 2: VALUE2.x (\(value2!.x)) must be well right of LABEL2.x (\(label2!.x)) — Δx > 30pt."
+        )
         // Inner rows stack vertically (row 1 above row 2)
-        #expect(label1!.y > label2!.y,
-                "C-E1 inner-row ordering: row 1 baseline (\(label1!.y)) must be above row 2 baseline (\(label2!.y)).")
+        #expect(
+            label1!.y > label2!.y,
+            "C-E1 inner-row ordering: row 1 baseline (\(label1!.y)) must be above row 2 baseline (\(label2!.y))."
+        )
     }
 
     /// C-E2 reproducer (Phase E, 2026-05-12): row-height anomaly in
@@ -737,18 +890,30 @@ struct `Baseline Empirical Tests` {
                             Table {
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "L1" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "alpha beta gamma delta" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "alpha beta gamma delta" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "L2" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "no-spaces-here" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "no-spaces-here" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "L3" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "still-no-spaces" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "still-no-spaces" }
+                                    }
                                 }
                             }
                             .css.borderCollapse(.collapse)
@@ -772,8 +937,10 @@ struct `Baseline Empirical Tests` {
         let gap23 = abs(l2!.y - l3!.y)
         // Diagnostic output: print exact gaps so the failure message shows
         // empirical evidence of the anomaly directly.
-        #expect(abs(gap12 - gap23) < 3,
-                "C-E2: row 1→2 gap (\(gap12)) should equal row 2→3 gap (\(gap23)) — both rows have single-line visible content. Δ > 3pt indicates value-with-whitespace inflates row height (factuur-21 anomaly reproduced). Pos: L1=(\(l1!.x),\(l1!.y)) L2=(\(l2!.x),\(l2!.y)) L3=(\(l3!.x),\(l3!.y)).")
+        #expect(
+            abs(gap12 - gap23) < 3,
+            "C-E2: row 1→2 gap (\(gap12)) should equal row 2→3 gap (\(gap23)) — both rows have single-line visible content. Δ > 3pt indicates value-with-whitespace inflates row height (factuur-21 anomaly reproduced). Pos: L1=(\(l1!.x),\(l1!.y)) L2=(\(l2!.x),\(l2!.y)) L3=(\(l3!.x),\(l3!.y))."
+        )
     }
 
     /// C-E3 reproducer (Phase E, 2026-05-12): Variant adding Letter.Sender's
@@ -820,22 +987,36 @@ struct `Baseline Empirical Tests` {
                                 // Metadata rows
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "value one two three" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "value one two three" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "nospaces-here" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "nospaces-here" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "anothernospaces" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "anothernospaces" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
                                 }
                             }
@@ -860,10 +1041,14 @@ struct `Baseline Empirical Tests` {
         let gap34 = abs(m3!.y - m4!.y)
         // All metadata rows have single-line visible content. Gaps should be uniform.
         // The factuur-21 anomaly: gap12 is anomalously large vs gap23 / gap34.
-        #expect(abs(gap12 - gap23) < 3,
-                "C-E3: row 1→2 gap (\(gap12)) vs row 2→3 gap (\(gap23)). Δ > 3 means the first metadata row inherits extra height — anomaly reproduced. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y)).")
-        #expect(abs(gap23 - gap34) < 3,
-                "C-E3: row 2→3 gap (\(gap23)) vs row 3→4 gap (\(gap34)) should match.")
+        #expect(
+            abs(gap12 - gap23) < 3,
+            "C-E3: row 1→2 gap (\(gap12)) vs row 2→3 gap (\(gap23)). Δ > 3 means the first metadata row inherits extra height — anomaly reproduced. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y))."
+        )
+        #expect(
+            abs(gap23 - gap34) < 3,
+            "C-E3: row 2→3 gap (\(gap23)) vs row 3→4 gap (\(gap34)) should match."
+        )
     }
 
     /// C-E4 reproducer (Phase E, 2026-05-12): exact replica of Letter.Header
@@ -908,22 +1093,34 @@ struct `Baseline Empirical Tests` {
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "v one two three" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "v one two three" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "nospaces" } }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "anothernospaces" } }
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
+                                    TableDataCell {
+                                        HTML.Element.Tag(tag: "small") { "anothernospaces" }
+                                    }
                                 }
                                 TableRow {
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
-                                        .css.textAlign(.right).verticalAlign(.top).padding(right: .px(10))
+                                        .css.textAlign(.right).verticalAlign(.top).padding(
+                                            right: .px(10)
+                                        )
                                     TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
                                 }
                             }
@@ -946,10 +1143,14 @@ struct `Baseline Empirical Tests` {
         let gap12 = abs(m1!.y - m2!.y)
         let gap23 = abs(m2!.y - m3!.y)
         let gap34 = abs(m3!.y - m4!.y)
-        #expect(abs(gap12 - gap23) < 3,
-                "C-E4: row M1→M2 gap (\(gap12)) vs M2→M3 gap (\(gap23)). Δ > 3 means factuur-21 anomaly reproduced in synthetic Letter.Header+Letter.Sender shape. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y)).")
-        #expect(abs(gap23 - gap34) < 3,
-                "C-E4: row M2→M3 gap (\(gap23)) vs M3→M4 gap (\(gap34)) should match.")
+        #expect(
+            abs(gap12 - gap23) < 3,
+            "C-E4: row M1→M2 gap (\(gap12)) vs M2→M3 gap (\(gap23)). Δ > 3 means factuur-21 anomaly reproduced in synthetic Letter.Header+Letter.Sender shape. M1=(\(m1!.x),\(m1!.y)) M2=(\(m2!.x),\(m2!.y)) M3=(\(m3!.x),\(m3!.y)) M4=(\(m4!.x),\(m4!.y))."
+        )
+        #expect(
+            abs(gap23 - gap34) < 3,
+            "C-E4: row M2→M3 gap (\(gap23)) vs M3→M4 gap (\(gap34)) should match."
+        )
     }
 
     /// C-E5 reproducer (Phase E Round 3, 2026-05-12): paragraph wrap
@@ -976,8 +1177,10 @@ struct `Baseline Empirical Tests` {
         }
         let bytes = pageBytes(PDF.HTML.pages { V() })
         let lineBreaks = bytes.tjPositions().filter { $0.y < 0 }.count
-        #expect(lineBreaks >= 2,
-                "Paragraph with nowrap child in middle must still wrap at line boundaries; got \(lineBreaks) line-breaks (Tj with y<0). The nowrap child's mode mutation should be scoped to the child, not leak to the whole paragraph.")
+        #expect(
+            lineBreaks >= 2,
+            "Paragraph with nowrap child in middle must still wrap at line boundaries; got \(lineBreaks) line-breaks (Tj with y<0). The nowrap child's mode mutation should be scoped to the child, not leak to the whole paragraph."
+        )
     }
 
     /// Regression test for CSS Backgrounds 3 §3 border-bottom on a TR scope.
@@ -1012,8 +1215,10 @@ struct `Baseline Empirical Tests` {
         // `\nS\n` separator pattern.
         let s = String(decoding: bytes + [0x0A], as: UTF8.self)
         let strokes = s.components(separatedBy: "\nS\n").count - 1
-        #expect(strokes == 1,
-                "border-bottom on TR should emit exactly one horizontal stroke at the row's bottom edge; got \(strokes) strokes")
+        #expect(
+            strokes == 1,
+            "border-bottom on TR should emit exactly one horizontal stroke at the row's bottom edge; got \(strokes) strokes"
+        )
     }
 
     /// Regression test for CSS Backgrounds 3 §3.5 `border-style: double`.
@@ -1041,7 +1246,9 @@ struct `Baseline Empirical Tests` {
         // `\nS\n` separator pattern.
         let s = String(decoding: bytes + [0x0A], as: UTF8.self)
         let strokes = s.components(separatedBy: "\nS\n").count - 1
-        #expect(strokes == 2,
-                "border-style: double should emit two parallel strokes (line + gap + line); got \(strokes)")
+        #expect(
+            strokes == 2,
+            "border-style: double should emit two parallel strokes (line + gap + line); got \(strokes)"
+        )
     }
 }

@@ -28,9 +28,15 @@ extension PDF.HTML.Context.Table.Recording {
         case inlineStyle(Any)
 
         // Structure
-        case pushBlock(role: Render_Primitives.Render.Semantic.Block?, style: Render_Primitives.Render.Style)
+        case pushBlock(
+            role: Render_Primitives.Render.Semantic.Block?,
+            style: Render_Primitives.Render.Style
+        )
         case popBlock
-        case pushInline(role: Render_Primitives.Render.Semantic.Inline?, style: Render_Primitives.Render.Style)
+        case pushInline(
+            role: Render_Primitives.Render.Semantic.Inline?,
+            style: Render_Primitives.Render.Style
+        )
         case popInline
         case pushList(kind: Render_Primitives.Render.Semantic.List, start: Int?)
         case popList

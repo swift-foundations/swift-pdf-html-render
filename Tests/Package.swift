@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "testing",
     platforms: [
-        .macOS(.v26),
+        .macOS(.v26)
     ],
     dependencies: [
         .package(path: ".."),
@@ -13,7 +13,10 @@ let package = Package(
         .package(url: "https://github.com/swift-foundations/swift-tests.git", branch: "main"),
         .package(url: "https://github.com/swift-foundations/swift-html-render.git", branch: "main"),
         .package(url: "https://github.com/swift-foundations/swift-pdf-render.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-test-primitives.git", branch: "main"),
+        .package(
+            url: "https://github.com/swift-primitives/swift-test-primitives.git",
+            branch: "main"
+        ),
     ],
     targets: [
         .testTarget(

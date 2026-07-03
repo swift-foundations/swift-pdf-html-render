@@ -1,9 +1,10 @@
 // Table Performance Tests.swift
 // Performance benchmarks for HTML table rendering
 
-import Testing
 import HTML_Rendering
 import PDF_Rendering
+import Testing
+
 @testable import PDF_HTML_Rendering
 
 extension PDF {

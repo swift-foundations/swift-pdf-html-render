@@ -3,8 +3,8 @@
 // Per CSS Backgrounds 3 §3, border-bottom is a longhand sibling of the
 // border shorthand and applies only to the element's bottom edge.
 
-public import PDF_Rendering
 public import CSS_HTML_Rendering
+public import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Values
 
@@ -18,16 +18,18 @@ extension W3C_CSS_Backgrounds.BorderBottom: PDF.HTML.Style.Context.Modifier {
         let baseFontSize = context.configuration.defaultFontSize
         let currentSize = context.pdf.style.fontSize
 
-        guard let width = properties.width.flatMap({
-            pdfBorderWidth(
-                from: $0,
-                currentSize: currentSize,
-                baseFontSize: baseFontSize
-            )
-        }), width != PDF.UserSpace.Size<1>(0) else { return }
+        guard
+            let width = properties.width.flatMap({
+                pdfBorderWidth(
+                    from: $0,
+                    currentSize: currentSize,
+                    baseFontSize: baseFontSize
+                )
+            }), width != PDF.UserSpace.Size<1>(0)
+        else { return }
 
         guard let cssColor = properties.color,
-              let pdfColor = PDF.Color(cssColor)
+            let pdfColor = PDF.Color(cssColor)
         else { return }
 
         context.pendingSideBorderBottom = .init(
@@ -45,8 +47,7 @@ extension W3C_CSS_Backgrounds.BorderBottom: PDF.HTML.Style.Context.Modifier {
 /// conformance on the generic `RawProperty<P>` doesn't violate Swift's
 /// "no more than one conditional conformance" rule.
 extension RawProperty: PDF.HTML.Style.Context.Modifier
-    where PropertyType: BorderSideProperty
-{
+where PropertyType: BorderSideProperty {
     public func apply(to context: inout PDF.HTML.Context) {
         let parts = parseBorderShorthand(self.value)
         PropertyType.applyParsedShorthand(

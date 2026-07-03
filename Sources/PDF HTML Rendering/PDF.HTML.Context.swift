@@ -1,16 +1,16 @@
 // PDF.HTML.Context.swift
 // Combined rendering context for HTML-to-PDF conversion
 
+public import Buffer_Linear_Primitive
+public import Column_Primitives
 import Copy_on_Write
-public import Dictionary_Primitives
 public import Dictionary_Ordered_Primitives
-public import Shared_Primitive
+public import Dictionary_Primitives
+public import HTML_Rendering_Core
 public import Hash_Indexed_Primitive
 public import Hash_Primitives
-public import Column_Primitives
-public import Buffer_Linear_Primitive
-public import HTML_Rendering_Core
 import Render_Primitives
+public import Shared_Primitive
 
 // MARK: - Context combining PDF.Context and Configuration
 
@@ -34,7 +34,7 @@ extension PDF.HTML {
         public private(set) var configuration: PDF.HTML.Configuration
 
         /// Active table layout context (nil when not in a table)
-        public var table: Context.Table?
+        public var table: Self.Table?
 
         // MARK: - Post-Push Layout Slots (γ-slots)
 

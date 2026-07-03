@@ -18,18 +18,25 @@ extension PDF.UserSpace.Size where N == 1 {
         switch absoluteSize {
         case .xxSmall:
             self = baseFontSize * 0.6
+
         case .xSmall:
             self = baseFontSize * 0.75
+
         case .small:
             self = baseFontSize * 0.89
+
         case .medium:
             self = baseFontSize
+
         case .large:
             self = baseFontSize * 1.2
+
         case .xLarge:
             self = baseFontSize * 1.5
+
         case .xxLarge:
             self = baseFontSize * 2.0
+
         case .xxxLarge:
             self = baseFontSize * 3.0
         }
@@ -49,6 +56,7 @@ extension PDF.UserSpace.Size where N == 1 {
         switch relativeSize {
         case .smaller:
             self = currentSize / 1.2
+
         case .larger:
             self = currentSize * 1.2
         }
@@ -70,10 +78,12 @@ extension PDF.UserSpace.Size where N == 1 {
         switch lengthPercentage {
         case .length(let length):
             self = Self(length, currentSize: currentSize, baseFontSize: baseFontSize)
+
         case .percentage(let percentage):
             // Percentage of current font size
             self = currentSize * Dimension_Primitives.Scale(percentage.value / 100.0)
-        case .calc(_):
+
+        case .calc:
             // calc() expressions can't be evaluated statically
             self = currentSize
         }
@@ -97,56 +107,75 @@ extension PDF.UserSpace.Size where N == 1 {
             switch unit {
             case .pt:
                 self = Self(value)
+
             case .px:
                 // 96 DPI: 1px = 72/96 pt = 0.75pt
                 self = Self(value * 0.75)
+
             case .em:
                 self = currentSize * Dimension_Primitives.Scale(value)
+
             case .rem:
                 self = baseFontSize * Dimension_Primitives.Scale(value)
+
             case .in:
                 self = Self(value * 72.0)
+
             case .cm:
                 self = Self(value * 28.3465)
+
             case .mm:
                 self = Self(value * 2.83465)
+
             case .pc:
                 // 1 pica = 12 points
                 self = Self(value * 12.0)
+
             case .ex:
                 // Approximate ex as 0.5em
                 self = currentSize * Dimension_Primitives.Scale(value * 0.5)
+
             case .ch:
                 // Approximate ch as 0.5em
                 self = currentSize * Dimension_Primitives.Scale(value * 0.5)
+
             case .lh:
                 // Line height - approximate as 1.2em
                 self = currentSize * Dimension_Primitives.Scale(value * 1.2)
+
             case .vw, .vh, .vmin, .vmax:
                 // Viewport units not meaningful for PDF font size
                 self = currentSize
+
             case .fr:
                 // Grid units not meaningful for font size
                 self = currentSize
+
             case .q:
                 // 1q = 0.25mm = 0.709pt
                 self = Self(value * 0.70866)
+
             case .cap:
                 // Cap height - approximate as 0.7em
                 self = currentSize * Dimension_Primitives.Scale(value * 0.7)
+
             case .ic:
                 // Ideographic character - approximate as 1em
                 self = currentSize * Dimension_Primitives.Scale(value)
+
             case .rlh:
                 // Root line height - approximate as 1.2 * base
                 self = baseFontSize * Dimension_Primitives.Scale(value * 1.2)
             }
+
         case .keyword:
             // Keywords like auto don't apply to font-size
             self = currentSize
-        case .calc(_):
+
+        case .calc:
             // calc() can't be evaluated statically
             self = currentSize
+
         case .global:
             self = currentSize
         }

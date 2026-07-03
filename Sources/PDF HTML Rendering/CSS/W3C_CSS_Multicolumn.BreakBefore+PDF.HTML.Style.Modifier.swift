@@ -14,6 +14,7 @@ extension W3C_CSS_Multicolumn.BreakBefore: PDF.HTML.Style.Modifier {
         case .always, .all, .page:
             guard !context.page.isEmpty else { break }
             context.page.new()
+
         case .left, .right, .recto, .verso:
             guard !context.page.isEmpty else { break }
             context.page.new()

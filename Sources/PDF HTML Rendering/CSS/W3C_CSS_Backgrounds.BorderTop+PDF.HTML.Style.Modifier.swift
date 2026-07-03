@@ -15,16 +15,18 @@ extension W3C_CSS_Backgrounds.BorderTop: PDF.HTML.Style.Context.Modifier {
         let baseFontSize = context.configuration.defaultFontSize
         let currentSize = context.pdf.style.fontSize
 
-        guard let width = properties.width.flatMap({
-            pdfBorderWidth(
-                from: $0,
-                currentSize: currentSize,
-                baseFontSize: baseFontSize
-            )
-        }), width != PDF.UserSpace.Size<1>(0) else { return }
+        guard
+            let width = properties.width.flatMap({
+                pdfBorderWidth(
+                    from: $0,
+                    currentSize: currentSize,
+                    baseFontSize: baseFontSize
+                )
+            }), width != PDF.UserSpace.Size<1>(0)
+        else { return }
 
         guard let cssColor = properties.color,
-              let pdfColor = PDF.Color(cssColor)
+            let pdfColor = PDF.Color(cssColor)
         else { return }
 
         context.pendingSideBorderTop = .init(

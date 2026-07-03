@@ -2,23 +2,23 @@
 // Public entry points for HTML to PDF rendering
 
 import HTML_Rendering_Core
+import Ownership_Mutable_Primitives
 import PDF_Rendering
 import Render_Primitives
-import Ownership_Mutable_Primitives
 
 // MARK: - Entry Points
 
 extension PDF.HTML {
-//    /// Render HTML content to PDF pages.
-//    public static func pages<H: Render_Primitives.Render.View>(
-//        configuration: PDF.HTML.Configuration = .init(),
-//        @HTML.Builder html: () -> H
-//    ) -> [PDF.Page] {
-//        let state = Ownership.Mutable(prepareContext(configuration: configuration))
-//        var renderCtx = Render_Primitives.Render.Context.pdfHTML(state: state)
-//        renderCtx.render(html())
-//        return finalizeRendering(context: &state.value).pages
-//    }
+    //    /// Render HTML content to PDF pages.
+    //    public static func pages<H: Render_Primitives.Render.View>(
+    //        configuration: PDF.HTML.Configuration = .init(),
+    //        @HTML.Builder html: () -> H
+    //    ) -> [PDF.Page] {
+    //        let state = Ownership.Mutable(prepareContext(configuration: configuration))
+    //        var renderCtx = Render_Primitives.Render.Context.pdfHTML(state: state)
+    //        renderCtx.render(html())
+    //        return finalizeRendering(context: &state.value).pages
+    //    }
 
     /// Render HTML content to PDF pages with collected metadata.
     public static func render<H: Render_Primitives.Render.View>(
@@ -54,8 +54,12 @@ extension PDF.HTML {
     >(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder content: () -> Content,
-        @HTML.Builder header: @escaping (Page.Info) -> Header = { _ in Render_Primitives.Render.Empty() },
-        @HTML.Builder footer: @escaping (Page.Info) -> Footer = { _ in Render_Primitives.Render.Empty() }
+        @HTML.Builder header: @escaping (Page.Info) -> Header = { _ in
+            Render_Primitives.Render.Empty()
+        },
+        @HTML.Builder footer: @escaping (Page.Info) -> Footer = { _ in
+            Render_Primitives.Render.Empty()
+        }
     ) -> [PDF.Page] {
         // Adjust margins to account for header/footer space
         let adjustedMargins = PDF.UserSpace.Insets(
@@ -98,13 +102,16 @@ extension PDF.HTML {
                 margins: PDF.UserSpace.Insets(
                     top: configuration.margins.top,
                     leading: configuration.margins.leading,
-                    bottom: configuration.paperSize.height - configuration.margins.top - configuration.header.height,
+                    bottom: configuration.paperSize.height - configuration.margins.top
+                        - configuration.header.height,
                     trailing: configuration.margins.trailing
                 )
             )
             headerContext.style = pass1State.value.pdf.style
 
-            let headerState = Ownership.Mutable(PDF.HTML.Context(pdf: headerContext, configuration: configuration))
+            let headerState = Ownership.Mutable(
+                Self.Context(pdf: headerContext, configuration: configuration)
+            )
             var headerRenderCtx = Render_Primitives.Render.Context.pdfHTML(state: headerState)
             headerRenderCtx.render(header(pageInfo))
             headerState.value.pdf.flush.inline()
@@ -113,7 +120,8 @@ extension PDF.HTML {
             var footerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
                 margins: PDF.UserSpace.Insets(
-                    top: configuration.paperSize.height - configuration.margins.bottom - configuration.footer.height,
+                    top: configuration.paperSize.height - configuration.margins.bottom
+                        - configuration.footer.height,
                     leading: configuration.margins.leading,
                     bottom: configuration.margins.bottom,
                     trailing: configuration.margins.trailing
@@ -121,7 +129,9 @@ extension PDF.HTML {
             )
             footerContext.style = pass1State.value.pdf.style
 
-            let footerState = Ownership.Mutable(PDF.HTML.Context(pdf: footerContext, configuration: configuration))
+            let footerState = Ownership.Mutable(
+                Self.Context(pdf: footerContext, configuration: configuration)
+            )
             var footerRenderCtx = Render_Primitives.Render.Context.pdfHTML(state: footerState)
             footerRenderCtx.render(footer(pageInfo))
             footerState.value.pdf.flush.inline()

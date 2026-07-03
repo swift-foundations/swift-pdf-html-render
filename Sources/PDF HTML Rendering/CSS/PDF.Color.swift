@@ -1,7 +1,6 @@
 // PDF.Color.swift
 // CSS color to PDF color conversion
 
-
 extension PDF.Color {
     /// Create PDF color from CSS color value
     ///

@@ -9,18 +9,25 @@ extension W3C_CSS_Fonts.FontSize: PDF.HTML.Style.Modifier {
         let currentSize = context.style.fontSize
         switch self {
         case .absoluteSize(let size):
-            context.style.fontSize = PDF.UserSpace.Size<1>(size, baseFontSize: configuration.defaultFontSize)
+            context.style.fontSize = PDF.UserSpace.Size<1>(
+                size,
+                baseFontSize: configuration.defaultFontSize
+            )
+
         case .relativeSize(let size):
             context.style.fontSize = PDF.UserSpace.Size<1>(size, currentSize: currentSize)
+
         case .lengthPercentage(let lp):
             context.style.fontSize = PDF.UserSpace.Size<1>(
                 lp,
                 currentSize: currentSize,
                 baseFontSize: configuration.defaultFontSize
             )
+
         case .math:
             // Math font size - use default
             break
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

@@ -20,13 +20,15 @@ extension W3C_CSS_Backgrounds.BorderLeft: PDF.HTML.Style.Context.Modifier {
         let baseFontSize = context.configuration.defaultFontSize
         let currentSize = context.pdf.style.fontSize
 
-        guard let width = widthKeyword.flatMap({
-            pdfBorderWidth(
-                fromKeyword: $0,
-                currentSize: currentSize,
-                baseFontSize: baseFontSize
-            )
-        }), width != PDF.UserSpace.Size<1>(0) else { return }
+        guard
+            let width = widthKeyword.flatMap({
+                pdfBorderWidth(
+                    fromKeyword: $0,
+                    currentSize: currentSize,
+                    baseFontSize: baseFontSize
+                )
+            }), width != PDF.UserSpace.Size<1>(0)
+        else { return }
 
         guard let cssColor, let pdfColor = PDF.Color(cssColor) else { return }
 

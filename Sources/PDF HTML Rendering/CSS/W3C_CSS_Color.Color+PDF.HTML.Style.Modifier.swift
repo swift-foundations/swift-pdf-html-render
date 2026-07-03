@@ -10,6 +10,7 @@ extension W3C_CSS_Color.Color: PDF.HTML.Style.Modifier {
         switch self {
         case .color(let color):
             context.style.color = PDF.Color(color) ?? context.style.color
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

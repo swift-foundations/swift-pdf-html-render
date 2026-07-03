@@ -19,18 +19,23 @@ extension W3C_CSS_Text.WhiteSpace: PDF.HTML.Style.Modifier {
         case .normal:
             context.mode.preserveWhitespace = false
             context.mode.noWrap = false
+
         case .nowrap:
             context.mode.preserveWhitespace = false
             context.mode.noWrap = true
+
         case .pre:
             context.mode.preserveWhitespace = true
             context.mode.noWrap = true
+
         case .preWrap, .breakSpaces:
             context.mode.preserveWhitespace = true
             context.mode.noWrap = false
+
         case .preLine:
             context.mode.preserveWhitespace = false
             context.mode.noWrap = false
+
         case .global:
             break
         }

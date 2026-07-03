@@ -24,11 +24,13 @@ extension PDF.HTML {
         pdfContext.style.font = configuration.defaultFont
         pdfContext.style.fontSize = configuration.defaultFontSize
         pdfContext.style.color = configuration.defaultColor
-        pdfContext.style.lineHeight = Dimension_Primitives.Scale(configuration.resolveLineHeight(
-            for: configuration.defaultFont,
-            fontSize: configuration.defaultFontSize
-        ))
-        return PDF.HTML.Context(pdf: pdfContext, configuration: configuration)
+        pdfContext.style.lineHeight = Dimension_Primitives.Scale(
+            configuration.resolveLineHeight(
+                for: configuration.defaultFont,
+                fontSize: configuration.defaultFontSize
+            )
+        )
+        return Self.Context(pdf: pdfContext, configuration: configuration)
     }
 
     /// Finalize rendering: flush deferred content, resolve internal links, return result.

@@ -54,7 +54,8 @@ extension PDF.HTML.Context {
                     color: pdf.style.color
                 )
                 let spaceWidth = pdf.style.font.winAnsi.width(
-                    of: [Byte(UInt8.ascii.space)], atSize: pdf.style.fontSize
+                    of: [Byte(UInt8.ascii.space)],
+                    atSize: pdf.style.fontSize
                 )
                 var maxToken: PDF.UserSpace.Width = .init(0)
                 var lineWidth: PDF.UserSpace.Width = .init(0)
@@ -456,20 +457,22 @@ extension PDF.HTML.Context {
 
     public static func _pushAttributes(_ context: inout Self) {
         if record(.pushAttributes, context: &context) { return }
-        context.elementStack.append(Element.Scope(
-            tagName: "_attributes",
-            isBlock: false,
-            style: context.pdf.style,
-            llx: context.pdf.layout.box.llx,
-            urx: context.pdf.layout.box.urx,
-            preserveWhitespace: context.pdf.mode.preserveWhitespace,
-            noWrap: context.pdf.mode.noWrap,
-            linkURL: context.link.currentURL,
-            internalLinkId: context.link.currentInternalId,
-            savedTable: nil,
-            savedPendingMargin: context.pendingBottomMargin,
-            isVoid: false
-        ))
+        context.elementStack.append(
+            Element.Scope(
+                tagName: "_attributes",
+                isBlock: false,
+                style: context.pdf.style,
+                llx: context.pdf.layout.box.llx,
+                urx: context.pdf.layout.box.urx,
+                preserveWhitespace: context.pdf.mode.preserveWhitespace,
+                noWrap: context.pdf.mode.noWrap,
+                linkURL: context.link.currentURL,
+                internalLinkId: context.link.currentInternalId,
+                savedTable: nil,
+                savedPendingMargin: context.pendingBottomMargin,
+                isVoid: false
+            )
+        )
     }
 
     public static func _popAttributes(_ context: inout Self) {
@@ -491,7 +494,12 @@ extension PDF.HTML.Context {
         // Recording mode: capture commands for first-row column measurement
         if context.table?.recording != nil {
             context.table!.recording!.commands.append(
-                .pushElement(tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+                .pushElement(
+                    tagName: tagName,
+                    isBlock: isBlock,
+                    isVoid: isVoid,
+                    isPreElement: isPreElement
+                )
             )
             // Round 4.3 R#7: treat thead/tbody/tfoot as transparent for
             // recording-depth tracking — they don't add structural depth
@@ -499,7 +507,8 @@ extension PDF.HTML.Context {
             // "transparent" container). Otherwise cells of `<thead><tr>...`
             // would land at depth==2 (instead of depth==1) and miss
             // cell-detection.
-            let isTransparent = isVoid
+            let isTransparent =
+                isVoid
                 || tagName == "thead"
                 || tagName == "tbody"
                 || tagName == "tfoot"
@@ -516,7 +525,8 @@ extension PDF.HTML.Context {
                 // (depth==0 = TABLE; depth==1 = TR; cell pushes from TR at
                 // depth==1; nested cells deeper.)
                 if context.table!.recording!.elementDepth == 1
-                    && (tagName == "td" || tagName == "th") {
+                    && (tagName == "td" || tagName == "th")
+                {
                     let columnIdx = context.table!.recording!.cellsPushedInCurrentRow
                     if let weight = context.table!.recording!.pendingCellWidthPercent {
                         context.table!.recording!.columnWidthWeights[columnIdx] = weight
@@ -547,7 +557,8 @@ extension PDF.HTML.Context {
                 // outer cell is MAX of nested row widths, not SUM.
                 if context.table!.recording!.elementDepth > 1
                     && tagName == "tr"
-                    && context.table!.recording!.currentCellColumn != nil {
+                    && context.table!.recording!.currentCellColumn != nil
+                {
                     let lw = context.table!.recording!.currentLineWidth
                     if lw > context.table!.recording!.currentCellMaxWidth {
                         context.table!.recording!.currentCellMaxWidth = lw
@@ -632,8 +643,10 @@ extension PDF.HTML.Context {
         case "style":
             context.insideStyleBlock = true
             context.currentStyleBlockBuffer = ""
+
         case "title":
             context.insideTitleBlock = true
+
         default:
             break
         }
@@ -666,7 +679,7 @@ extension PDF.HTML.Context {
         if let elementId = context.attributes["id"], !elementId.isEmpty {
             let pageNumber = context.pdf.completedPages.count + 1
             let yPosition = context.pdf.layout.box.lly
-            context.link.destinations[elementId] = PDF.HTML.Context.Link.Destination(
+            context.link.destinations[elementId] = Self.Link.Destination(
                 pageNumber: pageNumber,
                 yPosition: yPosition
             )
@@ -686,14 +699,16 @@ extension PDF.HTML.Context {
             // skipping the tag default here avoids double-applying the same
             // margin (the prior code emitted user + default).
             let isNestedList = (tagName == "ul" || tagName == "ol") && context.pdf.list.depth > 0
-            let userOverrodeMargin = context.pdf.margin.top != nil
+            let userOverrodeMargin =
+                context.pdf.margin.top != nil
                 || context.pdf.margin.bottom != nil
             if !isNestedList,
-               !userOverrodeMargin,
-               let margins = HTML.Element.Tag<Never>.blockMargins(
-                   for: tagName,
-                   configuration: context.configuration
-               ) {
+                !userOverrodeMargin,
+                let margins = HTML.Element.Tag<Never>.blockMargins(
+                    for: tagName,
+                    configuration: context.configuration
+                )
+            {
                 let currentSize = context.pdf.style.fontSize
                 let marginTop = PDF.UserSpace.Size<1>(
                     margins.top,
@@ -750,7 +765,8 @@ extension PDF.HTML.Context {
                 // decrement and is now 1 (back at TR level). Finalize the
                 // popping cell's min/max into per-column dicts via MAX.
                 if context.table!.recording!.elementDepth == 1,
-                   let col = context.table!.recording!.currentCellColumn {
+                    let col = context.table!.recording!.currentCellColumn
+                {
                     // Final line-boundary commit: any in-flight
                     // currentLineWidth is the last logical line.
                     let lw = context.table!.recording!.currentLineWidth
@@ -765,19 +781,21 @@ extension PDF.HTML.Context {
                     if pad > 0 {
                         context.table!.recording!.currentCellMaxWidth =
                             context.table!.recording!.currentCellMaxWidth
-                                + PDF.UserSpace.Width(pad)
+                            + PDF.UserSpace.Width(pad)
                         context.table!.recording!.currentCellMinWidth =
                             context.table!.recording!.currentCellMinWidth
-                                + PDF.UserSpace.Width(pad)
+                            + PDF.UserSpace.Width(pad)
                     }
                     let r = context.table!.recording!
                     let prevMin = r.columnMinContentWidths[col] ?? .init(0)
                     let prevMax = r.columnMaxContentWidths[col] ?? .init(0)
                     if r.currentCellMinWidth > prevMin {
-                        context.table!.recording!.columnMinContentWidths[col] = r.currentCellMinWidth
+                        context.table!.recording!.columnMinContentWidths[col] =
+                            r.currentCellMinWidth
                     }
                     if r.currentCellMaxWidth > prevMax {
-                        context.table!.recording!.columnMaxContentWidths[col] = r.currentCellMaxWidth
+                        context.table!.recording!.columnMaxContentWidths[col] =
+                            r.currentCellMaxWidth
                     }
                     context.table!.recording!.currentCellColumn = nil
                 }
@@ -818,8 +836,10 @@ extension PDF.HTML.Context {
                 context.currentStyleBlockBuffer = ""
                 context.insideStyleBlock = false
             }
+
         case "title":
             context.insideTitleBlock = false
+
         default:
             break
         }
@@ -951,11 +971,14 @@ extension PDF.HTML.Context {
             } else {
                 context.pdf.flush.inline()
             }
+
         case "hr":
             if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
-            let spacing = (context.configuration.defaultFontSize * context.configuration.horizontalGapEm).height
+            let spacing =
+                (context.configuration.defaultFontSize * context.configuration.horizontalGapEm)
+                .height
             context.pdf.advance(spacing)
             let layoutBox = context.pdf.layout.box
             context.pdf.emit.line(
@@ -965,6 +988,7 @@ extension PDF.HTML.Context {
                 width: .init(1)
             )
             context.pdf.advance(spacing)
+
         default:
             break
         }
@@ -993,7 +1017,7 @@ extension PDF.HTML.Context {
                 width: availableWidth,
                 height: defaultRowHeight
             )
-            context.table = PDF.HTML.Context.Table(
+            context.table = Self.Table(
                 bounds: tableBounds,
                 columnWidths: [],
                 rowHeights: [],
@@ -1037,7 +1061,7 @@ extension PDF.HTML.Context {
             }
 
         case "tbody", "tfoot":
-            break // Pass-through
+            break  // Pass-through
 
         case "tr":
             if var tableCtx = context.table {
@@ -1109,8 +1133,10 @@ extension PDF.HTML.Context {
                     let contentHeight = tableCtx.bounds.height - cellPadding.height * 2
                     // Save layout box (restored in popElement)
                     context.pdf.layout.box = PDF.UserSpace.Rectangle(
-                        x: contentX, y: contentY,
-                        width: contentWidth, height: contentHeight
+                        x: contentX,
+                        y: contentY,
+                        width: contentWidth,
+                        height: contentHeight
                     )
                     if tagName == "th" {
                         context.pdf.style.font = context.pdf.style.font.bold
@@ -1128,20 +1154,22 @@ extension PDF.HTML.Context {
                 context.pendingBottomMargin = .init(0)
                 // Store the saved margin in the element stack's last entry
                 if let last = context.elementStack.popLast() {
-                    context.elementStack.append(Element.Scope(
-                        tagName: last.tagName,
-                        isBlock: last.isBlock,
-                        style: last.style,
-                        llx: last.llx,
-                        urx: last.urx,
-                        preserveWhitespace: last.preserveWhitespace,
-                        noWrap: last.noWrap,
-                        linkURL: last.linkURL,
-                        internalLinkId: last.internalLinkId,
-                        savedTable: last.savedTable,
-                        savedPendingMargin: savedPendingMargin,
-                        isVoid: last.isVoid
-                    ))
+                    context.elementStack.append(
+                        Element.Scope(
+                            tagName: last.tagName,
+                            isBlock: last.isBlock,
+                            style: last.style,
+                            llx: last.llx,
+                            urx: last.urx,
+                            preserveWhitespace: last.preserveWhitespace,
+                            noWrap: last.noWrap,
+                            linkURL: last.linkURL,
+                            internalLinkId: last.internalLinkId,
+                            savedTable: last.savedTable,
+                            savedPendingMargin: savedPendingMargin,
+                            isVoid: last.isVoid
+                        )
+                    )
                 }
             }
 
@@ -1152,14 +1180,18 @@ extension PDF.HTML.Context {
             switch marker {
             case .text(let bytes, let font):
                 markerWidth = font.winAnsi.width(of: bytes, atSize: context.pdf.style.fontSize)
+
             case .strokedCircle(let circle, _):
                 markerWidth = circle.diameter.width
+
             case .filledCircle(let circle):
                 markerWidth = circle.diameter.width
+
             case .filledSquare(let rect):
                 markerWidth = rect.width
             }
-            let markerGap = (context.pdf.style.fontSize * context.configuration.horizontalGapEm).width
+            let markerGap = (context.pdf.style.fontSize * context.configuration.horizontalGapEm)
+                .width
             let markerX = context.pdf.layout.box.llx - markerWidth - markerGap
             context.pdf.list.marker = (marker: marker, x: markerX)
 
@@ -1221,15 +1253,21 @@ extension PDF.HTML.Context {
         default:
             // Finalize heading if popping a heading element
             if let heading = context.section.activeHeading,
-               HTML.Element.Tag<Never>.headingLevel(for: scope.tagName) != nil {
-                let text = String(heading.text.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " }).reversed())
+                HTML.Element.Tag<Never>.headingLevel(for: scope.tagName) != nil
+            {
+                let text = String(
+                    heading.text.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " })
+                        .reversed()
+                )
                 if !text.isEmpty {
-                    context.section.headings.append(.init(
-                        level: heading.level,
-                        text: text,
-                        pageNumber: heading.pageNumber,
-                        yPosition: heading.yPosition
-                    ))
+                    context.section.headings.append(
+                        .init(
+                            level: heading.level,
+                            text: text,
+                            pageNumber: heading.pageNumber,
+                            yPosition: heading.yPosition
+                        )
+                    )
                     if heading.level <= 3 {
                         context.section.currentTitle = text
                         context.section.pageTitles[heading.pageNumber] = text
@@ -1388,7 +1426,8 @@ extension PDF.HTML.Context {
         // first row), so shrink-to-fit no longer over-shrinks when a
         // later row's label is wider than the first row's.
         let hasPercentHints = !recording.columnWidthWeights.isEmpty
-        let useShrinkToFit = !tableCtx.hasExplicitWidth
+        let useShrinkToFit =
+            !tableCtx.hasExplicitWidth
             && !hasPercentHints
             && measuredCount > 0
         var columnWidths: [PDF.UserSpace.Width] = []
@@ -1429,7 +1468,8 @@ extension PDF.HTML.Context {
                 weightSum += w
             }
             for i in 0..<n {
-                let w = totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
+                let w =
+                    totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
                 columnWidths.append(w)
             }
         }
@@ -1466,52 +1506,82 @@ extension PDF.HTML.Context {
             switch command {
             case .text(let content):
                 context.text(content)
+
             case .lineBreak:
                 context.lineBreak()
+
             case .thematicBreak:
                 context.thematicBreak()
+
             case .image(let source, let alt):
                 context.image(source: source, alt: alt)
+
             case .pageBreak:
                 context.pageBreak()
+
             case .setAttribute(let name, let value):
                 context.set(attribute: name, value)
+
             case .addClass(let name):
                 context.add(class: name)
+
             case .writeRaw(let bytes):
                 context.write(raw: bytes)
+
             case .inlineStyle(let property):
                 _ = context.apply(inlineStyle: property)
+
             case .pushBlock(let role, let style):
                 _pushBlock(&context, role: role, style: style)
+
             case .popBlock:
                 _popBlock(&context)
+
             case .pushInline(let role, let style):
                 _pushInline(&context, role: role, style: style)
+
             case .popInline:
                 _popInline(&context)
+
             case .pushList(let kind, let start):
                 _pushList(&context, kind: kind, start: start)
+
             case .popList:
                 _popList(&context)
+
             case .pushItem:
                 _pushItem(&context)
+
             case .popItem:
                 _popItem(&context)
+
             case .pushLink(let destination):
                 _pushLink(&context, destination: destination)
+
             case .popLink:
                 _popLink(&context)
+
             case .pushAttributes:
                 _pushAttributes(&context)
+
             case .popAttributes:
                 _popAttributes(&context)
+
             case .pushElement(let tagName, let isBlock, let isVoid, let isPreElement):
-                _pushElement(&context, tagName: tagName, isBlock: isBlock, isVoid: isVoid, isPreElement: isPreElement)
+                _pushElement(
+                    &context,
+                    tagName: tagName,
+                    isBlock: isBlock,
+                    isVoid: isVoid,
+                    isPreElement: isPreElement
+                )
+
             case .popElement(let isBlock):
                 _popElement(&context, isBlock: isBlock)
+
             case .pushStyle:
                 _pushStyle(&context)
+
             case .popStyle:
                 _popStyle(&context)
             }
@@ -1534,7 +1604,8 @@ extension PDF.HTML.Context {
         }
 
         let minRowHeight = context.pdf.style.line.height + tableCtx.cell.padding.height * 2
-        let actualRowHeight = tableCtx.maxCellHeightInCurrentRow > minRowHeight
+        let actualRowHeight =
+            tableCtx.maxCellHeightInCurrentRow > minRowHeight
             ? tableCtx.maxCellHeightInCurrentRow
             : minRowHeight
 
@@ -1590,7 +1661,8 @@ extension PDF.HTML.Context {
         let borderWidth = tableCtx.borderWidth.width
         for col in 0..<tableCtx.columnCount {
             if let span = tableCtx.spans.span(atRow: currentRow, column: col),
-               col == span.originColumn {
+                col == span.originColumn
+            {
                 // Draw left border for the spanning cell's column at this row's height
                 let cellX = tableCtx.xForColumn(col)
                 context.pdf.emit.line(
@@ -1652,7 +1724,8 @@ extension PDF.HTML.Context {
         // Compute actual cell content height (content Y advance + bottom padding)
         let cellContentHeight: PDF.UserSpace.Height
         if let tableCtx = context.table {
-            cellContentHeight = (context.pdf.layout.box.lly - tableCtx.bounds.lly)
+            cellContentHeight =
+                (context.pdf.layout.box.lly - tableCtx.bounds.lly)
                 .retag(Extent.Y<UserSpace>.self) + tableCtx.cell.padding.height
         } else {
             cellContentHeight = .init(0)
@@ -1664,17 +1737,19 @@ extension PDF.HTML.Context {
                 tc.maxCellHeightInCurrentRow = cellContentHeight
             }
 
-            tc.pendingCellBorders.append(.init(
-                column: tc.currentColumn,
-                colspan: colspan,
-                rowspan: rowspan,
-                isHeader: isHeader,
-                textAlignment: textAlignment,
-                pendingBorderTop: scope.pendingBorderTop,
-                pendingBorderRight: scope.pendingBorderRight,
-                pendingBorderBottom: scope.pendingBorderBottom,
-                pendingBorderLeft: scope.pendingBorderLeft
-            ))
+            tc.pendingCellBorders.append(
+                .init(
+                    column: tc.currentColumn,
+                    colspan: colspan,
+                    rowspan: rowspan,
+                    isHeader: isHeader,
+                    textAlignment: textAlignment,
+                    pendingBorderTop: scope.pendingBorderTop,
+                    pendingBorderRight: scope.pendingBorderRight,
+                    pendingBorderBottom: scope.pendingBorderBottom,
+                    pendingBorderLeft: scope.pendingBorderLeft
+                )
+            )
             tc.currentColumn += colspan
         }
     }

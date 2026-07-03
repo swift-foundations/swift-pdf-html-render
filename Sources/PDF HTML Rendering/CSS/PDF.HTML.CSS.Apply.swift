@@ -48,10 +48,13 @@ extension PDF.HTML.CSS {
             switch declaration.property {
             case "line-height":
                 applyLineHeight(declaration.value, to: &context, configuration: configuration)
+
             case "font-size":
                 applyFontSize(declaration.value, to: &context, configuration: configuration)
+
             case "font-weight":
                 applyFontWeight(declaration.value, to: &context, configuration: configuration)
+
             default:
                 // Out-of-envelope. Phase 2 may expand.
                 break
@@ -113,15 +116,16 @@ extension PDF.HTML.CSS {
             // Absolute-size / relative-size keywords
             switch trimmed {
             case "xx-small": return .xxSmall
-            case "x-small":  return .xSmall
-            case "small":    return .small
-            case "medium":   return .medium
-            case "large":    return .large
-            case "x-large":  return .xLarge
+            case "x-small": return .xSmall
+            case "small": return .small
+            case "medium": return .medium
+            case "large": return .large
+            case "x-large": return .xLarge
             case "xx-large": return .xxLarge
-            case "xxx-large":return .xxxLarge
-            case "smaller":  return .smaller
-            case "larger":   return .larger
+            case "xxx-large": return .xxxLarge
+            case "smaller": return .smaller
+            case "larger": return .larger
+
             default:
                 break
             }
@@ -166,10 +170,11 @@ extension PDF.HTML.CSS {
             let trimmed = String(value.trimming(where: \.isWhitespace))
             let modifier: W3C_CSS_Fonts.FontWeight?
             switch trimmed {
-            case "normal":  modifier = .normal
-            case "bold":    modifier = .bold
-            case "bolder":  modifier = .bolder
+            case "normal": modifier = .normal
+            case "bold": modifier = .bold
+            case "bolder": modifier = .bolder
             case "lighter": modifier = .lighter
+
             default:
                 if let n = Int(trimmed) {
                     modifier = .number(n)

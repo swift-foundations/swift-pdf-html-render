@@ -10,13 +10,17 @@ extension W3C_CSS_Text.TextAlign: PDF.HTML.Style.Modifier {
         switch self {
         case .left, .start:
             context.style.textAlign = .leading
+
         case .center:
             context.style.textAlign = .center
+
         case .right, .end:
             context.style.textAlign = .trailing
+
         case .justify:
             // Justify not fully supported - fall back to leading
             context.style.textAlign = .leading
+
         default:
             break
         }

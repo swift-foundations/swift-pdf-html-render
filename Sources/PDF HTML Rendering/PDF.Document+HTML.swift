@@ -51,7 +51,8 @@ extension PDF.Document {
         )
 
         // Only include viewer if it differs from defaults
-        let viewerOrNil: ISO_32000.Viewer? = configuration.viewer == .init()
+        let viewerOrNil: ISO_32000.Viewer? =
+            configuration.viewer == .init()
             ? nil
             : viewer
 

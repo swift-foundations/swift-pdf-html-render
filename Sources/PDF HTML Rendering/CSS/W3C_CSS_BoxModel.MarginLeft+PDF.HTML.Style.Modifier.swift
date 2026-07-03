@@ -15,9 +15,11 @@ extension W3C_CSS_BoxModel.MarginLeft: PDF.HTML.Style.Modifier {
                 baseFontSize: configuration.defaultFontSize
             )
             context.margin.left = size.width
+
         case .auto:
             // Auto margins handled during layout
             context.margin.left = nil
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

@@ -8,9 +8,11 @@ extension W3C_CSS_Fonts.FontStyle: PDF.HTML.Style.Modifier {
         switch self {
         case .italic, .oblique, .obliqueAngle:
             context.style.font = context.style.font.italic
+
         case .normal:
             // Normal style - no change needed (italic is additive)
             break
+
         case .global:
             // Inherit/initial/unset - no change for PDF
             break

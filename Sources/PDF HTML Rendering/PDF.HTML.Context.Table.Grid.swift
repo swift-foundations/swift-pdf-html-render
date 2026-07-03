@@ -56,7 +56,9 @@ extension PDF.HTML.Context.Table {
             for r in originRow..<requiredRows {
                 // Extend row to required column count if needed (single allocation)
                 if grid[r].count < columnCount {
-                    grid[r].append(contentsOf: Array(repeating: nil, count: columnCount - grid[r].count))
+                    grid[r].append(
+                        contentsOf: Array(repeating: nil, count: columnCount - grid[r].count)
+                    )
                 }
 
                 for c in originColumn..<(originColumn + colspan) {

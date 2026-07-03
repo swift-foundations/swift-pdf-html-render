@@ -83,7 +83,7 @@ extension W3C_CSS_Backgrounds.BorderLeft: BorderSideProperty {
         } else {
             widthKeyword = nil
         }
-        W3C_CSS_Backgrounds.BorderLeft.properties(
+        Self.properties(
             width: widthKeyword,
             style: style,
             color: color
@@ -135,8 +135,16 @@ private func tokenizeBorderShorthand(_ value: String) -> [String] {
     var current = ""
     var depth = 0
     for ch in value {
-        if ch == "(" { depth += 1; current.append(ch); continue }
-        if ch == ")" { depth -= 1; current.append(ch); continue }
+        if ch == "(" {
+            depth += 1
+            current.append(ch)
+            continue
+        }
+        if ch == ")" {
+            depth -= 1
+            current.append(ch)
+            continue
+        }
         if depth == 0, ch.isWhitespace {
             if !current.isEmpty {
                 result.append(current)
@@ -157,6 +165,7 @@ private func parseBorderWidthToken(_ s: String) -> W3C_CSS_Backgrounds.BorderWid
     switch s {
     case "thin", "medium", "thick":
         return parseBorderWidthKeyword(s).map { W3C_CSS_Backgrounds.BorderWidth($0) }
+
     default:
         if let length = parseLengthToken(s) {
             return W3C_CSS_Backgrounds.BorderWidth(.length(length))
@@ -204,18 +213,22 @@ private func parseColorToken(_ s: String) -> W3C_CSS_Values.Color? {
     }
     if s.hasPrefix("rgb(") || s.hasPrefix("rgba(") {
         let inside = s.drop(while: { $0 != "(" }).dropFirst().dropLast()
-        let parts = inside.split(separator: ",").map { $0.trimming(where: { $0.isWhitespace && !$0.isNewline }) }
+        let parts = inside.split(separator: ",").map {
+            $0.trimming(where: { $0.isWhitespace && !$0.isNewline })
+        }
         if parts.count == 3,
-           let r = Int(parts[0]),
-           let g = Int(parts[1]),
-           let b = Int(parts[2]) {
+            let r = Int(parts[0]),
+            let g = Int(parts[1]),
+            let b = Int(parts[2])
+        {
             return .rgb(r, g, b)
         }
         if parts.count == 4,
-           let r = Int(parts[0]),
-           let g = Int(parts[1]),
-           let b = Int(parts[2]),
-           let a = Double(parts[3]) {
+            let r = Int(parts[0]),
+            let g = Int(parts[1]),
+            let b = Int(parts[2]),
+            let a = Double(parts[3])
+        {
             return .rgba(r, g, b, a)
         }
         return nil

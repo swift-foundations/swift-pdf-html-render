@@ -39,7 +39,7 @@ extension PDF.HTML.CSS.Stylesheet {
         ///   text of one `<style>` element).
         /// - Returns: Stylesheet with rules in source order.
         public static func parse(_ source: String) -> PDF.HTML.CSS.Stylesheet {
-            var parser = Parser(source: source)
+            var parser = Self(source: source)
             return parser.parseStylesheet()
         }
 
@@ -94,7 +94,9 @@ extension PDF.HTML.CSS.Stylesheet {
                 while index < input.count, peek() != "{" {
                     advance()
                 }
-                let query = String(String(input[queryStart..<index]).trimming(where: \.isWhitespace))
+                let query = String(
+                    String(input[queryStart..<index]).trimming(where: \.isWhitespace)
+                )
                 let classified = Self.classifyMediaQuery(query)
 
                 // Consume '{'
@@ -177,7 +179,7 @@ extension PDF.HTML.CSS.Stylesheet {
             let selectorList = parseSelectorList(
                 String(input[selectorStart..<index])
             )
-            advance() // consume '{'
+            advance()  // consume '{'
 
             let declarations = parseDeclarations()
 
@@ -249,7 +251,8 @@ extension PDF.HTML.CSS.Stylesheet {
             // Property name: identifier (letters, digits, hyphens).
             let nameStart = index
             while index < input.count, let c = peek(),
-                  c.isLetter || c.isNumber || c == "-" {
+                c.isLetter || c.isNumber || c == "-"
+            {
                 advance()
             }
             let property = String(input[nameStart..<index]).lowercased()
@@ -306,7 +309,9 @@ extension PDF.HTML.CSS.Stylesheet {
             if lowered.isEmpty { return .bareFeature }
 
             // Split on top-level commas (media-query-list).
-            let parts = lowered.split(separator: ",").map { String($0.trimming(where: \.isWhitespace)) }
+            let parts = lowered.split(separator: ",").map {
+                String($0.trimming(where: \.isWhitespace))
+            }
 
             var hasPrint = false
             var hasScreen = false
@@ -318,12 +323,16 @@ extension PDF.HTML.CSS.Stylesheet {
                 switch extractMediaType(part) {
                 case "print":
                     hasPrint = true
+
                 case "screen":
                     hasScreen = true
+
                 case "all":
                     hasAll = true
+
                 case nil:
                     hasBareFeature = true
+
                 case .some(let other):
                     _ = other
                     hasOther = true
@@ -426,4 +435,3 @@ extension PDF.HTML.CSS.Stylesheet {
         }
     }
 }
-

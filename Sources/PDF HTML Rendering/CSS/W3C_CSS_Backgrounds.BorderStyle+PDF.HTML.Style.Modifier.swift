@@ -6,7 +6,7 @@ import PDF_Standard
 
 extension W3C_CSS_Backgrounds.BorderStyle: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
-        guard let topStyle = topStyle else { return }
+        guard let topStyle else { return }
 
         // Per CSS, `none` and `hidden` produce no visible border —
         // collapse the effective width to zero. All other line styles
@@ -27,10 +27,11 @@ extension W3C_CSS_Backgrounds.BorderStyle: PDF.HTML.Style.Context.Modifier {
     private var topStyle: W3C_CSS_Values.LineStyle? {
         switch self {
         case .all(let style),
-             .vertical_horizontal(let style, _),
-             .top_horizontal_bottom(let style, _, _),
-             .top_right_bottom_left(let style, _, _, _):
+            .vertical_horizontal(let style, _),
+            .top_horizontal_bottom(let style, _, _),
+            .top_right_bottom_left(let style, _, _, _):
             return style
+
         case .global:
             return nil
         }
