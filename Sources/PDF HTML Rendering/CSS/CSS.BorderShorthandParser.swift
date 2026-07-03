@@ -10,9 +10,9 @@
 // and the conditional RawProperty conformances that hand off to the typed
 // modifiers.
 
-import Foundation
 public import PDF_Rendering
 import PDF_Standard
+import Standard_Library_Extensions
 
 /// Marker protocol for per-side border longhand properties. Provides a
 /// uniform entry point for the `RawProperty<P>` conditional conformance
@@ -204,7 +204,7 @@ private func parseColorToken(_ s: String) -> W3C_CSS_Values.Color? {
     }
     if s.hasPrefix("rgb(") || s.hasPrefix("rgba(") {
         let inside = s.drop(while: { $0 != "(" }).dropFirst().dropLast()
-        let parts = inside.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let parts = inside.split(separator: ",").map { $0.trimming(where: { $0.isWhitespace && !$0.isNewline }) }
         if parts.count == 3,
            let r = Int(parts[0]),
            let g = Int(parts[1]),
