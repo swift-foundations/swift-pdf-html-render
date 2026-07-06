@@ -4,13 +4,13 @@
 import Render_Primitives
 
 extension PDF.HTML.Context.Table.Recording {
-    /// A single rendering operation recorded during first-row measurement.
     // WHY: Category D — structural Sendable workaround.
     // WHY: `inlineStyle(Any)` case stores CSS property values that are value
     // WHY: types but not formally Sendable. `Any` existential blocks inference.
     // WHY: No caller invariant to uphold — data is pure value bytes.
     // WHEN TO REMOVE: When the Any case is replaced with typed CSS properties.
     // TRACKING: unsafe-audit-findings.md Category D; SP-7.
+    /// A single rendering operation recorded during first-row measurement.
     enum Command: @unchecked Sendable {
         // Content
         case text(String)

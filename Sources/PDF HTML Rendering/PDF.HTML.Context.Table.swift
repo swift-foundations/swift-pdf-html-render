@@ -54,7 +54,7 @@ extension PDF.HTML.Context {
             cumulative.reserveCapacity(columnWidths.count + 1)
             var sum: PDF.UserSpace.Width = .zero
             for width in columnWidths {
-                sum = sum + width
+                sum += width
                 cumulative.append(sum)
             }
             _cumulativeColumnWidths = cumulative
@@ -66,7 +66,7 @@ extension PDF.HTML.Context {
             cumulative.reserveCapacity(rowHeights.count + 1)
             var sum: PDF.UserSpace.Height = .zero
             for height in rowHeights {
-                sum = sum + height
+                sum += height
                 cumulative.append(sum)
             }
             _cumulativeRowHeights = cumulative

@@ -69,21 +69,22 @@ extension HTML.Element.Tag {
             context.pdf.style.fontSize =
                 currentSize * context.configuration.typography.subscriptScale
             // Subscript drops below baseline
-            context.pdf.style.verticalOffset =
-                context.pdf.style.verticalOffset
-                - (currentSize * context.configuration.typography.subscriptOffset).height
+            context.pdf.style.verticalOffset -=
+                (currentSize * context.configuration.typography.subscriptOffset).height
 
         case "sup":
             let currentSize = context.pdf.style.fontSize
             context.pdf.style.fontSize =
                 currentSize * context.configuration.typography.superscriptScale
             // Superscript rises above baseline
-            context.pdf.style.verticalOffset =
-                context.pdf.style.verticalOffset
-                + (currentSize * context.configuration.typography.superscriptOffset).height
+            context.pdf.style.verticalOffset +=
+                (currentSize * context.configuration.typography.superscriptOffset).height
 
         // Small - WebKit default is smaller
         case "small":
+            // reason: no Size<1> *= Double compound-assignment overload; a = a * b is the
+            // only expressible form (SIMD generic *= mis-resolution)
+            // swiftlint:disable:next shorthand_operator
             context.pdf.style.fontSize =
                 context.pdf.style.fontSize * context.configuration.typography.smallScale
 
@@ -96,12 +97,12 @@ extension HTML.Element.Tag {
         // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
             let indent = context.configuration.indent.blockquote
-            context.pdf.layout.box.llx = context.pdf.layout.box.llx + indent
+            context.pdf.layout.box.llx += indent
 
         case "figure":
             let margin = context.configuration.indent.figure
-            context.pdf.layout.box.llx = context.pdf.layout.box.llx + margin
-            context.pdf.layout.box.urx = context.pdf.layout.box.urx - margin
+            context.pdf.layout.box.llx += margin
+            context.pdf.layout.box.urx -= margin
 
         // Citation, definition, and variable (all italic in WebKit)
         case "cite", "dfn", "var":

@@ -67,9 +67,9 @@ extension PDF.HTML.Context {
                                 let tokenBytes = Array(run.bytes[tokenStart..<i])
                                 let w = run.font.winAnsi.width(of: tokenBytes, atSize: run.fontSize)
                                 if w > maxToken { maxToken = w }
-                                lineWidth = lineWidth + w
+                                lineWidth += w
                             }
-                            lineWidth = lineWidth + spaceWidth
+                            lineWidth += spaceWidth
                             tokenStart = i + 1
                         }
                     }
@@ -77,7 +77,7 @@ extension PDF.HTML.Context {
                         let tokenBytes = Array(run.bytes[tokenStart...])
                         let w = run.font.winAnsi.width(of: tokenBytes, atSize: run.fontSize)
                         if w > maxToken { maxToken = w }
-                        lineWidth = lineWidth + w
+                        lineWidth += w
                     }
                 }
                 if maxToken > table!.recording!.currentCellMinWidth {
@@ -91,7 +91,7 @@ extension PDF.HTML.Context {
                 // summed lineWidth directly into `currentCellMaxWidth`,
                 // which over-counted nested-table content (turned MAX of
                 // rows into SUM of rows).
-                table!.recording!.currentLineWidth = table!.recording!.currentLineWidth + lineWidth
+                table!.recording!.currentLineWidth += lineWidth
             }
             return
         }
@@ -264,17 +264,26 @@ extension PDF.HTML.Context {
             pendingExplicitWidth = true
         }
 
+        // swiftlint:disable:next workaround_marker_present
         // WORKAROUND: spell these existentials through the canonical root
         //             (ISO_32000) — the `PDF` typealias puts TypeAliasType
         //             sugar in the written type, and the Windows (+Asserts)
         //             debug-info mangler asserts forming a CanType from it
         //             (isActuallyCanonicalOrNull, AST/Type.h:421; fires on
         //             6.3.3 AND 6.4-dev).
+        // WHY: the crash is specific to the sugared `PDF.HTML.Style.Modifier`
+        //      typealias spelling; the canonical-root spelling below sidesteps
+        //      it without changing behavior.
         // TRACKING: swift-institute/Issues —
         //           swift-issue-noncanonical-existential-windows-debuginfo-ice;
         //           swiftlang/swift#86202.
         // WHEN TO REMOVE: when swift-pdf's windows-existential-repro.yml
         //                 cross-package variant goes CLEAN on the CI toolchain.
+        // reason: `unwrapped` is an untyped CSS property value (`Any`); this
+        // dynamic downcast dispatches to whichever concrete Style.Modifier
+        // conformer it holds — heterogeneity is load-bearing, `some` cannot
+        // express a runtime-checked downcast target.
+        // swiftlint:disable:next no_any_protocol_existential
         if let modifier = unwrapped as? any ISO_32000.HTML.Style.Modifier {
             // Inline style mutations to wrap-controlling modes (`whiteSpace`,
             // `whiteSpaceCollapse`) are NOT scoped to a paired pop in
@@ -291,8 +300,22 @@ extension PDF.HTML.Context {
             handled = true
         }
 
+        // swiftlint:disable:next workaround_marker_present
         // WORKAROUND: canonical-root spelling — see the comment on the
         //             Style.Modifier downcast above.
+        // WHY: same Windows (+Asserts) debug-info mangler assertion described
+        //      above; this is the paired downcast for the context-scoped
+        //      modifier protocol.
+        // TRACKING: swift-institute/Issues —
+        //           swift-issue-noncanonical-existential-windows-debuginfo-ice;
+        //           swiftlang/swift#86202.
+        // WHEN TO REMOVE: when swift-pdf's windows-existential-repro.yml
+        //                 cross-package variant goes CLEAN on the CI toolchain.
+        // reason: `unwrapped` is an untyped CSS property value (`Any`); this
+        // dynamic downcast dispatches to whichever concrete Context.Modifier
+        // conformer it holds — heterogeneity is load-bearing, `some` cannot
+        // express a runtime-checked downcast target.
+        // swiftlint:disable:next no_any_protocol_existential
         if let htmlModifier = unwrapped as? any ISO_32000.HTML.Style.Context.Modifier {
             htmlModifier.apply(to: &self)
             handled = true
@@ -792,12 +815,10 @@ extension PDF.HTML.Context {
                     // padding).
                     let pad = context.table!.recording!.currentCellPadding
                     if pad > 0 {
-                        context.table!.recording!.currentCellMaxWidth =
-                            context.table!.recording!.currentCellMaxWidth
-                            + PDF.UserSpace.Width(pad)
-                        context.table!.recording!.currentCellMinWidth =
-                            context.table!.recording!.currentCellMinWidth
-                            + PDF.UserSpace.Width(pad)
+                        context.table!.recording!.currentCellMaxWidth +=
+                            PDF.UserSpace.Width(pad)
+                        context.table!.recording!.currentCellMinWidth +=
+                            PDF.UserSpace.Width(pad)
                     }
                     let r = context.table!.recording!
                     let prevMin = r.columnMinContentWidths[col] ?? .init(0)
@@ -931,19 +952,19 @@ extension PDF.HTML.Context {
             pdf.advance(marginTop)
         }
         if let marginLeft = pdf.margin.left {
-            pdf.layout.box.llx = pdf.layout.box.llx + marginLeft
+            pdf.layout.box.llx += marginLeft
         }
         if let marginRight = pdf.margin.right {
-            pdf.layout.box.urx = pdf.layout.box.urx - marginRight
+            pdf.layout.box.urx -= marginRight
         }
         if let paddingTop = pdf.padding.top, paddingTop > .zero {
             pdf.advance(paddingTop)
         }
         if let paddingLeft = pdf.padding.left {
-            pdf.layout.box.llx = pdf.layout.box.llx + paddingLeft
+            pdf.layout.box.llx += paddingLeft
         }
         if let paddingRight = pdf.padding.right {
-            pdf.layout.box.urx = pdf.layout.box.urx - paddingRight
+            pdf.layout.box.urx -= paddingRight
         }
         if let explicitWidth = pdf.constraint.width {
             pdf.layout.box.urx = pdf.layout.box.llx + explicitWidth
@@ -1162,7 +1183,7 @@ extension PDF.HTML.Context {
             if let listType = HTML.Element.Tag<Never>.listType(for: tagName) {
                 context.pdf.push(list: listType)
                 let indent = context.configuration.indent.list
-                context.pdf.layout.box.llx = context.pdf.layout.box.llx + indent
+                context.pdf.layout.box.llx += indent
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = .init(0)
                 // Store the saved margin in the element stack's last entry

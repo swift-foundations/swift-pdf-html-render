@@ -110,8 +110,7 @@ struct CSSCascadeApplyTests {
         // finalize. Instead verify via the parsed stylesheet count:
         #expect(ctx2.parsedStylesheet.rules.count == 2)
         let lastLineHeight = ctx2.parsedStylesheet.rules
-            .filter { $0.selectors.contains(.type("div")) }
-            .last?
+            .last(where: { $0.selectors.contains(.type("div")) })?
             .declarations
             .last(where: { $0.property == "line-height" })?
             .value

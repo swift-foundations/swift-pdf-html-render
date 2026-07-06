@@ -9,8 +9,8 @@ public import Dictionary_Primitives
 public import HTML_Rendering_Core
 public import Hash_Indexed_Primitive
 public import Hash_Primitives
-import Render_Primitives
 public import Ownership_Shared_Primitive
+import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
 
@@ -33,8 +33,14 @@ extension PDF.HTML {
         /// The immutable rendering configuration
         public private(set) var configuration: PDF.HTML.Configuration
 
+        // reason: @CoW copies this stored property into the macro-generated Storage
+        // class, where Self re-binds to the class and Self.Table fails to resolve
+        // (macro-copied-declaration false-positive; third prefer_self FP class after
+        // where-clause and conformance positions).
+        // swiftlint:disable prefer_self_in_static_references
         /// Active table layout context (nil when not in a table)
         public var table: Context.Table?
+        // swiftlint:enable prefer_self_in_static_references
 
         // MARK: - Post-Push Layout Slots (γ-slots)
 

@@ -4,17 +4,17 @@
 import PDF_Rendering
 
 extension PDF.HTML.Context.Table {
+    // WHY: Category D — structural Sendable workaround.
+    // WHY: Contains [Command] where Command has `inlineStyle(Any)` case.
+    // WHY: Recording is temporary and does not cross concurrency boundaries.
+    // WHEN TO REMOVE: When Command drops the Any existential case.
+    // TRACKING: unsafe-audit-findings.md Category D; SP-7.
     /// Records rendering commands during first-row traversal for column measurement.
     ///
     /// In push/pop architecture, the view tree is traversed exactly once.
     /// To measure column count before positioning cells, the first row's
     /// commands are recorded (not executed), column widths are computed,
     /// then the commands are replayed with correct layout.
-    // WHY: Category D — structural Sendable workaround.
-    // WHY: Contains [Command] where Command has `inlineStyle(Any)` case.
-    // WHY: Recording is temporary and does not cross concurrency boundaries.
-    // WHEN TO REMOVE: When Command drops the Any existential case.
-    // TRACKING: unsafe-audit-findings.md Category D; SP-7.
     struct Recording: @unchecked Sendable {
         /// Recorded commands to replay after column widths are computed.
         var commands: [Command] = []

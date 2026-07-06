@@ -15,6 +15,7 @@ extension W3C_CSS_Backgrounds.BackgroundColor: PDF.HTML.Style.Modifier {
                     switch pdfColor {
                     case .gray(let g): .gray(g)
                     case .rgb(let r, let g, let b): .rgb(red: r, green: g, blue: b)
+
                     case .cmyk(let c, let m, let y, let k):
                         .cmyk(cyan: c, magenta: m, yellow: y, black: k)
                     }
