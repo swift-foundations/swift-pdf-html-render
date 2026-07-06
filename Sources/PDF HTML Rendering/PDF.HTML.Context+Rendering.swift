@@ -264,7 +264,18 @@ extension PDF.HTML.Context {
             pendingExplicitWidth = true
         }
 
-        if let modifier = unwrapped as? any PDF.HTML.Style.Modifier {
+        // WORKAROUND: spell these existentials through the canonical root
+        //             (ISO_32000) — the `PDF` typealias puts TypeAliasType
+        //             sugar in the written type, and the Windows (+Asserts)
+        //             debug-info mangler asserts forming a CanType from it
+        //             (isActuallyCanonicalOrNull, AST/Type.h:421; fires on
+        //             6.3.3 AND 6.4-dev).
+        // TRACKING: swift-institute/Issues —
+        //           swift-issue-noncanonical-existential-windows-debuginfo-ice;
+        //           swiftlang/swift#86202.
+        // WHEN TO REMOVE: when swift-pdf's windows-existential-repro.yml
+        //                 cross-package variant goes CLEAN on the CI toolchain.
+        if let modifier = unwrapped as? any ISO_32000.HTML.Style.Modifier {
             // Inline style mutations to wrap-controlling modes (`whiteSpace`,
             // `whiteSpaceCollapse`) are NOT scoped to a paired pop in
             // swift-html's serialization of `HTML.Text("X").css.X` — the
@@ -280,7 +291,9 @@ extension PDF.HTML.Context {
             handled = true
         }
 
-        if let htmlModifier = unwrapped as? any PDF.HTML.Style.Context.Modifier {
+        // WORKAROUND: canonical-root spelling — see the comment on the
+        //             Style.Modifier downcast above.
+        if let htmlModifier = unwrapped as? any ISO_32000.HTML.Style.Context.Modifier {
             htmlModifier.apply(to: &self)
             handled = true
         }
