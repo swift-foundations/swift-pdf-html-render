@@ -161,8 +161,8 @@ struct `Outline Generation Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to /tmp for visual inspection
-        let url = URL(fileURLWithPath: "/tmp/outline-test.pdf")
+        // Write to the temp directory for visual inspection
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("outline-test.pdf")
         try Data(bytes).write(to: url)
         print("DEBUG TEST: PDF written to: \(url.path)")
 
@@ -252,8 +252,10 @@ struct `Outline Generation Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to /tmp for visual inspection
-        let url = URL(fileURLWithPath: "/tmp/articles-of-incorporation-test.pdf")
+        // Write to the temp directory for visual inspection
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "articles-of-incorporation-test.pdf"
+        )
         try Data(bytes).write(to: url)
         print("DEBUG TEST: PDF written to: \(url.path)")
 
@@ -334,7 +336,9 @@ struct `Single vs Multiple H1 Diagnostic Tests` {
             }
         }
 
-        let url = URL(fileURLWithPath: "/tmp/single-h1-parent-test.pdf")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "single-h1-parent-test.pdf"
+        )
         try Data([UInt8](doc)).write(to: url)
         print("Single H1 PDF written to: \(url.path)")
 
@@ -378,7 +382,9 @@ struct `Single vs Multiple H1 Diagnostic Tests` {
             }
         }
 
-        let url = URL(fileURLWithPath: "/tmp/multiple-h1-parents-test.pdf")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "multiple-h1-parents-test.pdf"
+        )
         try Data([UInt8](doc)).write(to: url)
         print("Multiple H1 PDF written to: \(url.path)")
 

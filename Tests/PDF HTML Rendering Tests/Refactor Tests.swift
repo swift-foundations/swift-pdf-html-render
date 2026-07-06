@@ -313,8 +313,10 @@ struct `Comprehensive PDF.HTML.View Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to /tmp for visual inspection
-        let url = URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test.pdf")
+        // Write to the temp directory for visual inspection
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "html-to-pdf-refactor-test.pdf"
+        )
         try Data(bytes).write(to: url)
         print("PDF written to: \(url.path)")
 
@@ -343,8 +345,10 @@ struct `Comprehensive PDF.HTML.View Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to /tmp for visual inspection
-        let url = URL(fileURLWithPath: "/tmp/nested-outline-test.pdf")
+        // Write to the temp directory for visual inspection
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "nested-outline-test.pdf"
+        )
         try Data(bytes).write(to: url)
         print("PDF with nested outline written to: \(url.path)")
 
@@ -533,7 +537,8 @@ private struct TechnicalSpecificationView: HTML.View {
 //        } operation: {
 //            _ = try await pdf.render(
 //                html: ComplexView(),
-//                to: URL(fileURLWithPath: "/tmp/html-to-pdf-refactor-test-webkit.pdf")
+//                to: FileManager.default.temporaryDirectory
+//                    .appendingPathComponent("html-to-pdf-refactor-test-webkit.pdf")
 //            )
 //        }
 //    }
