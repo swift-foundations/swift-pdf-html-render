@@ -34,7 +34,7 @@ extension PDF.HTML {
         public private(set) var configuration: PDF.HTML.Configuration
 
         /// Active table layout context (nil when not in a table)
-        public var table: Self.Table?
+        public var table: Context.Table?
 
         // MARK: - Post-Push Layout Slots (γ-slots)
 
