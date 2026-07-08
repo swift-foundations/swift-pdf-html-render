@@ -48,30 +48,6 @@ extension PDF.HTML.Context {
         /// `cumulativeRowHeights[i]` = sum of rowHeights[0..<i]
         private var _cumulativeRowHeights: [PDF.UserSpace.Height] = [.zero]
 
-        /// Recompute cumulative column widths from current columnWidths
-        private mutating func _recomputeCumulativeColumnWidths() {
-            var cumulative: [PDF.UserSpace.Width] = [.zero]
-            cumulative.reserveCapacity(columnWidths.count + 1)
-            var sum: PDF.UserSpace.Width = .zero
-            for width in columnWidths {
-                sum += width
-                cumulative.append(sum)
-            }
-            _cumulativeColumnWidths = cumulative
-        }
-
-        /// Recompute cumulative row heights from current rowHeights
-        private mutating func _recomputeCumulativeRowHeights() {
-            var cumulative: [PDF.UserSpace.Height] = [.zero]
-            cumulative.reserveCapacity(rowHeights.count + 1)
-            var sum: PDF.UserSpace.Height = .zero
-            for height in rowHeights {
-                sum += height
-                cumulative.append(sum)
-            }
-            _cumulativeRowHeights = cumulative
-        }
-
         // MARK: - Span Tracking
 
         /// Grid tracking cells occupied by rowspan/colspan
@@ -187,78 +163,106 @@ extension PDF.HTML.Context {
             _recomputeCumulativeColumnWidths()
             _recomputeCumulativeRowHeights()
         }
+    }
+}
 
-        // MARK: - Column Access
+extension PDF.HTML.Context.Table {
+    // MARK: - Cumulative Width/Height Recompute
 
-        /// Number of columns in the table
-        public var columnCount: Int { columnWidths.count }
-
-        /// Number of rows in the table
-        public var rowCount: Int { rowHeights.count }
-
-        /// Get X position for a given column
-        public func xForColumn(_ column: Int) -> PDF.UserSpace.X {
-            let offset = widthForColumns(0, count: column)
-            return bounds.llx + offset
+    /// Recompute cumulative column widths from current columnWidths
+    private mutating func _recomputeCumulativeColumnWidths() {
+        var cumulative: [PDF.UserSpace.Width] = [.zero]
+        cumulative.reserveCapacity(columnWidths.count + 1)
+        var sum: PDF.UserSpace.Width = .zero
+        for width in columnWidths {
+            sum += width
+            cumulative.append(sum)
         }
+        _cumulativeColumnWidths = cumulative
+    }
 
-        /// Get Y position for a given row
-        public func yForRow(_ row: Int) -> PDF.UserSpace.Y {
-            let offset = heightForRows(0, count: row)
-            return bounds.lly + offset
+    /// Recompute cumulative row heights from current rowHeights
+    private mutating func _recomputeCumulativeRowHeights() {
+        var cumulative: [PDF.UserSpace.Height] = [.zero]
+        cumulative.reserveCapacity(rowHeights.count + 1)
+        var sum: PDF.UserSpace.Height = .zero
+        for height in rowHeights {
+            sum += height
+            cumulative.append(sum)
         }
+        _cumulativeRowHeights = cumulative
+    }
 
-        /// Calculate total width for a range of columns (for colspan)
-        /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
-        public func widthForColumns(_ startColumn: Int, count: Int) -> PDF.UserSpace.Width {
-            let endColumn = min(startColumn + count, columnWidths.count)
-            guard endColumn > startColumn else { return .zero }
-            // cumulative[i] = sum of widths[0..<i]
-            // so widths[start..<end] = cumulative[end] - cumulative[start]
-            return _cumulativeColumnWidths[endColumn] - _cumulativeColumnWidths[startColumn]
-        }
+    // MARK: - Column Access
 
-        /// Calculate total height for a range of rows (for rowspan)
-        /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
-        public func heightForRows(_ startRow: Int, count: Int) -> PDF.UserSpace.Height {
-            let endRow = min(startRow + count, rowHeights.count)
-            guard endRow > startRow else { return .zero }
-            // cumulative[i] = sum of heights[0..<i]
-            // so heights[start..<end] = cumulative[end] - cumulative[start]
-            return _cumulativeRowHeights[endRow] - _cumulativeRowHeights[startRow]
-        }
+    /// Number of columns in the table
+    public var columnCount: Int { columnWidths.count }
 
-        // MARK: - Cell Accessor
+    /// Number of rows in the table
+    public var rowCount: Int { rowHeights.count }
 
-        /// Access to cell operations
-        ///
-        /// Provides access to cell padding and positioned cell bounds/content.
-        ///
-        /// ## Usage
-        ///
-        /// ```swift
-        /// // Access padding directly
-        /// let padding = tableCtx.cell.padding
-        ///
-        /// // Access positioned cell bounds
-        /// let cellBounds = tableCtx.cell(row: 0, column: 1).bounds
-        /// let contentBounds = tableCtx.cell(row: 0, column: 1).content
-        /// let spanning = tableCtx.cell(row: 0, column: 1, colspan: 2).content
-        /// ```
-        public var cell: Cell {
-            Cell(table: self, row: nil, column: nil, colspan: 1, rowspan: 1)
-        }
+    /// Get X position for a given column
+    public func xForColumn(_ column: Int) -> PDF.UserSpace.X {
+        let offset = widthForColumns(0, count: column)
+        return bounds.llx + offset
+    }
 
-        /// Find the next available column in the current row (skipping spanned cells)
-        ///
-        /// Uses `totalRowsRendered` as the row index since that tracks the actual
-        /// row number across the entire table (currentRow is reset per row rendering).
-        public mutating func advanceToNextAvailableColumn() {
-            while currentColumn < columnCount
-                && spans.isOccupied(row: totalRowsRendered, column: currentColumn)
-            {
-                currentColumn += 1
-            }
+    /// Get Y position for a given row
+    public func yForRow(_ row: Int) -> PDF.UserSpace.Y {
+        let offset = heightForRows(0, count: row)
+        return bounds.lly + offset
+    }
+
+    /// Calculate total width for a range of columns (for colspan)
+    /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
+    public func widthForColumns(_ startColumn: Int, count: Int) -> PDF.UserSpace.Width {
+        let endColumn = min(startColumn + count, columnWidths.count)
+        guard endColumn > startColumn else { return .zero }
+        // cumulative[i] = sum of widths[0..<i]
+        // so widths[start..<end] = cumulative[end] - cumulative[start]
+        return _cumulativeColumnWidths[endColumn] - _cumulativeColumnWidths[startColumn]
+    }
+
+    /// Calculate total height for a range of rows (for rowspan)
+    /// Optimized: Uses cumulative array for O(1) lookup instead of O(n) reduce
+    public func heightForRows(_ startRow: Int, count: Int) -> PDF.UserSpace.Height {
+        let endRow = min(startRow + count, rowHeights.count)
+        guard endRow > startRow else { return .zero }
+        // cumulative[i] = sum of heights[0..<i]
+        // so heights[start..<end] = cumulative[end] - cumulative[start]
+        return _cumulativeRowHeights[endRow] - _cumulativeRowHeights[startRow]
+    }
+
+    // MARK: - Cell Accessor
+
+    /// Access to cell operations
+    ///
+    /// Provides access to cell padding and positioned cell bounds/content.
+    ///
+    /// ## Usage
+    ///
+    /// ```swift
+    /// // Access padding directly
+    /// let padding = tableCtx.cell.padding
+    ///
+    /// // Access positioned cell bounds
+    /// let cellBounds = tableCtx.cell(row: 0, column: 1).bounds
+    /// let contentBounds = tableCtx.cell(row: 0, column: 1).content
+    /// let spanning = tableCtx.cell(row: 0, column: 1, colspan: 2).content
+    /// ```
+    public var cell: Cell {
+        Cell(table: self, row: nil, column: nil, colspan: 1, rowspan: 1)
+    }
+
+    /// Find the next available column in the current row (skipping spanned cells)
+    ///
+    /// Uses `totalRowsRendered` as the row index since that tracks the actual
+    /// row number across the entire table (currentRow is reset per row rendering).
+    public mutating func advanceToNextAvailableColumn() {
+        while currentColumn < columnCount
+            && spans.isOccupied(row: totalRowsRendered, column: currentColumn)
+        {
+            currentColumn += 1
         }
     }
 }

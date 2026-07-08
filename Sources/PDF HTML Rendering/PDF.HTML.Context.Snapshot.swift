@@ -14,11 +14,13 @@ extension PDF.HTML.Context {
         public init(from context: PDF.Context) {
             self.style = context.style
         }
+    }
+}
 
-        public func restore(to context: inout PDF.Context) {
-            context.style = style
-            // NOTE: Do NOT restore layout.box - the deferred content should
-            // render at the current position, not the original position
-        }
+extension PDF.HTML.Context.Snapshot {
+    public func restore(to context: inout PDF.Context) {
+        context.style = style
+        // NOTE: Do NOT restore layout.box - the deferred content should
+        // render at the current position, not the original position
     }
 }

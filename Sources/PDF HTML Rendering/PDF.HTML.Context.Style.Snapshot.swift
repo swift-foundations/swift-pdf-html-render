@@ -30,15 +30,17 @@ extension PDF.HTML.Context.Style {
             self.avoidPageBreakAfter = context.avoidPageBreakAfter
             self.avoidPageBreakInside = context.avoidPageBreakInside
         }
+    }
+}
 
-        func restore(to context: inout PDF.HTML.Context) {
-            context.pdf.style = style
-            context.pdf.margin = margin
-            context.pdf.padding = padding
-            context.pdf.constraint = constraint
-            // Y position advances through content — only restore X bounds
-            context.pdf.layout.box.llx = layoutBoxLLX
-            context.pdf.layout.box.urx = layoutBoxURX
-        }
+extension PDF.HTML.Context.Style.Snapshot {
+    func restore(to context: inout PDF.HTML.Context) {
+        context.pdf.style = style
+        context.pdf.margin = margin
+        context.pdf.padding = padding
+        context.pdf.constraint = constraint
+        // Y position advances through content — only restore X bounds
+        context.pdf.layout.box.llx = layoutBoxLLX
+        context.pdf.layout.box.urx = layoutBoxURX
     }
 }

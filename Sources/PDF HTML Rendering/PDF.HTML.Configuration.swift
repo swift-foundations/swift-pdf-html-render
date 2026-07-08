@@ -107,25 +107,6 @@ extension PDF.HTML {
         /// PDF viewer preferences
         public var viewer: Viewer
 
-        // MARK: - Computed
-
-        /// Media box (same as paper size, for use with PDF.Context)
-        public var mediaBox: PDF.UserSpace.Rectangle {
-            paperSize
-        }
-
-        /// Content area (paper size minus margins) as a Rectangle
-        ///
-        /// Access `.width` and `.height` for dimensions.
-        public var content: PDF.UserSpace.Rectangle {
-            PDF.UserSpace.Rectangle(
-                x: .zero + margins.leading,
-                y: .zero + margins.top,
-                width: paperSize.width - margins.horizontal,
-                height: paperSize.height - margins.vertical
-            )
-        }
-
         // MARK: - Init
 
         public init(
@@ -171,94 +152,115 @@ extension PDF.HTML {
             self.annotation = annotation
             self.viewer = viewer
         }
+    }
+}
 
-        // MARK: - Line Height Resolution
+extension PDF.HTML.Configuration {
+    // MARK: - Computed
 
-        /// Resolve line height to a concrete multiplier for PDF rendering.
-        ///
-        /// - Parameters:
-        ///   - font: The font being used
-        ///   - fontSize: The current font size
-        /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
-        public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double
-        {
-            switch lineHeight {
-            case .normal:
-                // CSS "line-height: normal" uses the font's normalLineHeight
-                // which is (ascender - descender + leading) / unitsPerEm
-                //
-                // Per ISO 32000-2 Table 121, Leading is the "spacing between baselines
-                // of consecutive lines of text" with a default of 0.
-                //
-                // For Standard 14 fonts where leading is 0, fall back to a
-                // 1.2 multiplier — the value mainstream browsers use for
-                // CSS `line-height: normal` (CSS 2.1 §10.8.1 leaves the
-                // exact value UA-defined; Chrome/Firefox/Safari converge
-                // on ~1.2 for most Standard 14 / Latin fonts).
-                let normalHeight = font.metrics.line.normal.value
-                if font.metrics.leading == .zero {
-                    let metricsLineHeight = font.metrics.line.height.value
-                    let impliedLineGap = 1.2 - metricsLineHeight
-                    return metricsLineHeight + max(0, impliedLineGap)
-                }
-                return normalHeight
+    /// Media box (same as paper size, for use with PDF.Context)
+    public var mediaBox: PDF.UserSpace.Rectangle {
+        paperSize
+    }
 
-            case .multiple(let factor):
-                return factor
+    /// Content area (paper size minus margins) as a Rectangle
+    ///
+    /// Access `.width` and `.height` for dimensions.
+    public var content: PDF.UserSpace.Rectangle {
+        PDF.UserSpace.Rectangle(
+            x: .zero + margins.leading,
+            y: .zero + margins.top,
+            width: paperSize.width - margins.horizontal,
+            height: paperSize.height - margins.vertical
+        )
+    }
 
-            case .lengthPercentage(let lp):
-                // Convert to multiplier based on font size
-                switch lp {
-                case .length(let length):
-                    // For length values, calculate as multiple of font size
-                    let points = PDF.UserSpace.Size<1>(
-                        length,
-                        currentSize: fontSize,
-                        baseFontSize: defaultFontSize
-                    )
-                    return (points.length / fontSize.length).value
+    // MARK: - Line Height Resolution
 
-                case .percentage(let pct):
-                    return pct.value / 100.0
+    /// Resolve line height to a concrete multiplier for PDF rendering.
+    ///
+    /// - Parameters:
+    ///   - font: The font being used
+    ///   - fontSize: The current font size
+    /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
+    public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double
+    {
+        switch lineHeight {
+        case .normal:
+            // CSS "line-height: normal" uses the font's normalLineHeight
+            // which is (ascender - descender + leading) / unitsPerEm
+            //
+            // Per ISO 32000-2 Table 121, Leading is the "spacing between baselines
+            // of consecutive lines of text" with a default of 0.
+            //
+            // For Standard 14 fonts where leading is 0, fall back to a
+            // 1.2 multiplier — the value mainstream browsers use for
+            // CSS `line-height: normal` (CSS 2.1 §10.8.1 leaves the
+            // exact value UA-defined; Chrome/Firefox/Safari converge
+            // on ~1.2 for most Standard 14 / Latin fonts).
+            let normalHeight = font.metrics.line.normal.value
+            if font.metrics.leading == .zero {
+                let metricsLineHeight = font.metrics.line.height.value
+                let impliedLineGap = 1.2 - metricsLineHeight
+                return metricsLineHeight + max(0, impliedLineGap)
+            }
+            return normalHeight
 
-                case .calc:
-                    // calc() can't be evaluated statically - use normal fallback
-                    return font.metrics.line.normal.value
-                }
+        case .multiple(let factor):
+            return factor
 
-            case .global:
-                // Global values (inherit, initial) - use normal as fallback
+        case .lengthPercentage(let lp):
+            // Convert to multiplier based on font size
+            switch lp {
+            case .length(let length):
+                // For length values, calculate as multiple of font size
+                let points = PDF.UserSpace.Size<1>(
+                    length,
+                    currentSize: fontSize,
+                    baseFontSize: defaultFontSize
+                )
+                return (points.length / fontSize.length).value
+
+            case .percentage(let pct):
+                return pct.value / 100.0
+
+            case .calc:
+                // calc() can't be evaluated statically - use normal fallback
                 return font.metrics.line.normal.value
             }
+
+        case .global:
+            // Global values (inherit, initial) - use normal as fallback
+            return font.metrics.line.normal.value
         }
+    }
 
-        // MARK: - Heading Sizes
+    // MARK: - Heading Sizes
 
-        /// Font size for heading level (1-6)
-        public func headingSize(level: Int) -> PDF.UserSpace.Size<1> {
-            switch level {
-            case 1: return defaultFontSize * 2.0
-            case 2: return defaultFontSize * 1.5
-            case 3: return defaultFontSize * 1.17
-            case 4: return defaultFontSize * 1.0
-            case 5: return defaultFontSize * 0.83
-            case 6: return defaultFontSize * 0.67
-            default: return defaultFontSize
-            }
+    /// Font size for heading level (1-6)
+    public func headingSize(level: Int) -> PDF.UserSpace.Size<1> {
+        switch level {
+        case 1: return defaultFontSize * 2.0
+        case 2: return defaultFontSize * 1.5
+        case 3: return defaultFontSize * 1.17
+        case 4: return defaultFontSize * 1.0
+        case 5: return defaultFontSize * 0.83
+        case 6: return defaultFontSize * 0.67
+        default: return defaultFontSize
         }
+    }
 
-        /// Margin multiplier (em-based) for heading level (1-6)
-        /// Based on WebKit user-agent stylesheet defaults
-        public func headingMarginEm(for tag: String) -> Dimension_Primitives.Scale<1, Double> {
-            switch tag {
-            case "h1": return 0.67
-            case "h2": return 0.83
-            case "h3": return 1.0
-            case "h4": return 1.33
-            case "h5": return 1.67
-            case "h6": return 2.33
-            default: return 1.0
-            }
+    /// Margin multiplier (em-based) for heading level (1-6)
+    /// Based on WebKit user-agent stylesheet defaults
+    public func headingMarginEm(for tag: String) -> Dimension_Primitives.Scale<1, Double> {
+        switch tag {
+        case "h1": return 0.67
+        case "h2": return 0.83
+        case "h3": return 1.0
+        case "h4": return 1.33
+        case "h5": return 1.67
+        case "h6": return 2.33
+        default: return 1.0
         }
     }
 }
