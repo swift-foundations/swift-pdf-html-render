@@ -20,9 +20,9 @@ extension W3C_CSS_Backgrounds.BorderColor: PDF.HTML.Style.Context.Modifier {
     private var topColor: W3C_CSS_Values.Color? {
         switch self {
         case .all(let color),
-            .vertical_horizontal(let color, _),
-            .top_horizontal_bottom(let color, _, _),
-            .top_right_bottom_left(let color, _, _, _):
+            .verticalHorizontal(let color, _),
+            .topHorizontalBottom(let color, _, _),
+            .topRightBottomLeft(let color, _, _, _):
             return color
 
         case .global:

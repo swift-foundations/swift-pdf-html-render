@@ -27,9 +27,9 @@ extension W3C_CSS_Backgrounds.BorderStyle: PDF.HTML.Style.Context.Modifier {
     private var topStyle: W3C_CSS_Values.LineStyle? {
         switch self {
         case .all(let style),
-            .vertical_horizontal(let style, _),
-            .top_horizontal_bottom(let style, _, _),
-            .top_right_bottom_left(let style, _, _, _):
+            .verticalHorizontal(let style, _),
+            .topHorizontalBottom(let style, _, _),
+            .topRightBottomLeft(let style, _, _, _):
             return style
 
         case .global:
