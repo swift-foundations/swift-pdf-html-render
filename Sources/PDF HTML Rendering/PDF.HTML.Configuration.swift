@@ -183,8 +183,7 @@ extension PDF.HTML.Configuration {
     ///   - font: The font being used
     ///   - fontSize: The current font size
     /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
-    public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double
-    {
+    public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double {
         switch lineHeight {
         case .normal:
             // CSS "line-height: normal" uses the font's normalLineHeight
