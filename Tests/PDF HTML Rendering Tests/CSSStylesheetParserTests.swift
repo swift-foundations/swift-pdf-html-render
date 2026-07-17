@@ -16,7 +16,7 @@ import Testing
 @testable import PDF_HTML_Rendering
 
 @Suite
-struct CSSStylesheetParserTests {
+struct `CSSStylesheet Parser Tests` {
 
     // MARK: - Tokenizer / Comment Handling
 

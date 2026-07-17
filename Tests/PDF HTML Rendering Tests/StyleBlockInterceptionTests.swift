@@ -21,7 +21,7 @@ import Testing
 @testable import PDF_HTML_Rendering
 
 @Suite
-struct StyleBlockInterceptionTests {
+struct `Style Block Interception Tests` {
 
     @Test
     func `style text captures to collectedStyleBlocks; not rendered as visible text`() {

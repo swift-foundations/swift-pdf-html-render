@@ -11,7 +11,7 @@ import Testing
 import Tests_Inline_Snapshot
 
 @Suite
-struct OutlineSnapshotTests {
+struct `Outline Snapshot Tests` {
     @Suite struct Snapshot {}
 }
 

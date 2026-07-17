@@ -20,7 +20,7 @@ import Testing
 @testable import PDF_HTML_Rendering
 
 @Suite
-struct CSSCascadeApplyTests {
+struct `CSSCascade Apply Tests` {
 
     // MARK: - Helpers
 

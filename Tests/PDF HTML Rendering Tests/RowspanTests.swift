@@ -9,7 +9,7 @@ import Testing
 @testable import PDF_HTML_Rendering
 
 @Suite
-struct RowspanTests {
+struct `Rowspan Tests` {
 
     /// Minimal test case for rowspan content positioning bug.
     ///

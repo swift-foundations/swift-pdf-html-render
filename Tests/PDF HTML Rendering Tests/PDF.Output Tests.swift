@@ -9,9 +9,9 @@ import Testing
 @testable import PDF_HTML_Rendering
 
 @Suite
-struct PDFOutputTests {
+struct `PDFOutput Tests` {
     @Test
-    func writesBasicHTMLToPDF() throws {
+    func `Writes Basic HTMLTo PDF`() throws {
         struct SampleDocument: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -64,7 +64,7 @@ struct PDFOutputTests {
     }
 
     @Test
-    func writesTableToPDF() throws {
+    func `Writes Table To PDF`() throws {
         struct TableDocument: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -114,7 +114,7 @@ struct PDFOutputTests {
     }
 
     @Test
-    func writesMultiPageToPDF() throws {
+    func `Writes Multi Page To PDF`() throws {
         struct MultiPageDocument: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
@@ -143,7 +143,7 @@ struct PDFOutputTests {
     }
 
     @Test
-    func writesStyledHTMLToPDF() throws {
+    func `Writes Styled HTMLTo PDF`() throws {
         struct StyledDocument: HTML.View {
             var body: some HTML.View {
                 ContentDivision {
