@@ -1,59 +1,182 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3.3
 
 import PackageDescription
 
+extension String {
+    static let pdfHTMLRendering: Self = "PDF HTML Rendering"
+    var tests: Self { self + " Tests" }
+}
+
+extension Target.Dependency {
+    static var pdfHTMLRendering: Self { .target(name: .pdfHTMLRendering) }
+}
+
+extension Target.Dependency {
+    static var htmlRenderingCore: Self {
+        .product(name: "HTML Rendering Core", package: "swift-html-render")
+    }
+    static var htmlRendering: Self {
+        .product(name: "HTML Rendering", package: "swift-html-render")
+    }
+    static var htmlRenderingCoreTestSupport: Self {
+        .product(name: "HTML Rendering Core Test Support", package: "swift-html-render")
+    }
+    static var pdfRenderingTestSupport: Self {
+        .product(name: "PDF Rendering Test Support", package: "swift-pdf-render")
+    }
+    static var pdfRendering: Self {
+        .product(name: "PDF Rendering", package: "swift-pdf-render")
+    }
+    static var copyOnWrite: Self {
+        .product(name: "Copy on Write", package: "swift-copy-on-write")
+    }
+    static var css: Self {
+        .product(name: "CSS", package: "swift-css")
+    }
+    static var htmlStandard: Self {
+        .product(name: "HTML Standard", package: "swift-html-standard")
+    }
+    static var rfc4648: Self {
+        .product(name: "RFC 4648", package: "swift-rfc-4648")
+    }
+    static var layoutPrimitives: Self {
+        .product(name: "Layout Primitives", package: "swift-layout-primitives")
+    }
+    static var dictionaryPrimitives: Self {
+        .product(name: "Dictionary Primitives", package: "swift-dictionary-primitives")
+    }
+    static var stackPrimitives: Self {
+        .product(name: "Stack Primitives", package: "swift-stack-primitives")
+    }
+    static var propertyPrimitives: Self {
+        .product(name: "Property Primitives", package: "swift-property-primitives")
+    }
+    static var standardLibraryExtensions: Self {
+        .product(name: "Standard Library Extensions", package: "swift-standard-library-extensions")
+    }
+    static var ownershipMutablePrimitives: Self {
+        .product(name: "Ownership Mutable Primitives", package: "swift-ownership-primitives")
+    }
+    static var sharedPrimitive: Self {
+        .product(name: "Ownership Shared Primitive", package: "swift-ownership-shared-primitives")
+    }
+    static var hashIndexedPrimitive: Self {
+        .product(name: "Hash Indexed Primitive", package: "swift-hash-table-primitives")
+    }
+    static var hashPrimitives: Self {
+        .product(name: "Hash Primitives", package: "swift-hash-primitives")
+    }
+    static var columnPrimitives: Self {
+        .product(name: "Column Primitives", package: "swift-column-primitives")
+    }
+    static var bufferLinearPrimitive: Self {
+        .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives")
+    }
+    static var dictionaryOrderedPrimitive: Self {
+        .product(name: "Dictionary Ordered Primitive", package: "swift-dictionary-ordered-primitives")
+    }
+    static var bytePrimitives: Self {
+        .product(name: "Byte Primitives", package: "swift-byte-primitives")
+    }
+}
+
 let package = Package(
-    name: "swift-pdf-html-rendering",
+    name: "swift-pdf-html-render",
     platforms: [
         .macOS(.v26),
         .iOS(.v26),
         .tvOS(.v26),
         .watchOS(.v26),
-        .visionOS(.v26)
+        .visionOS(.v26),
     ],
     products: [
-        .library(name: "PDF HTML Rendering", targets: ["PDF HTML Rendering"])
+        .library(name: .pdfHTMLRendering, targets: [.pdfHTMLRendering]),
+        .library(name: "PDF HTML Rendering Test Support", targets: ["PDF HTML Rendering Test Support"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/coenttb/swift-html-rendering", from: "0.1.15"),
-        .package(url: "https://github.com/coenttb/swift-pdf-rendering", from: "0.6.0"),
-        .package(url: "https://github.com/coenttb/swift-copy-on-write", from: "0.3.1"),
-        .package(url: "https://github.com/coenttb/swift-css", from: "0.6.1"),
-        .package(url: "https://github.com/swift-standards/swift-html-standard", from: "0.1.6"),
-        .package(url: "https://github.com/swift-standards/swift-css-standard", from: "0.1.7"),
-        .package(url: "https://github.com/swift-w3c/swift-w3c-css", from: "0.3.0"),
-        .package(path: "../../swift-primitives/swift-layout-primitives"),
-        .package(path: "../../swift-primitives/swift-test-primitives"),
-        .package(url: "https://github.com/swift-iso/swift-iso-9899", from: "0.2.3"),
-        .package(url: "https://github.com/swift-ietf/swift-rfc-4648", from: "0.2.1"),
-        .package(url: "https://github.com/swift-iec/swift-iec-61966", from: "0.1.3"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.7")
+        .package(url: "https://github.com/swift-foundations/swift-html-render.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-pdf-render.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-copy-on-write.git", branch: "main"),
+        .package(url: "https://github.com/swift-foundations/swift-css.git", branch: "main"),
+        .package(url: "https://github.com/swift-standards/swift-html-standard.git", branch: "main"),
+        .package(url: "https://github.com/swift-ietf/swift-rfc-4648.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-layout-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-dictionary-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-dictionary-ordered-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-standard-library-extensions.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-ownership-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-ownership-shared-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-hash-table-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-hash-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-byte-primitives.git", branch: "main"),
     ],
     targets: [
         .target(
-            name: "PDF HTML Rendering",
+            name: .pdfHTMLRendering,
             dependencies: [
-                .product(name: "HTML Renderable", package: "swift-html-rendering"),
-                .product(name: "PDF Rendering", package: "swift-pdf-rendering"),
-                .product(name: "Copy on Write", package: "swift-copy-on-write"),
-                .product(name: "CSS", package: "swift-css"),
-                .product(name: "HTML Standard", package: "swift-html-standard"),
-                .product(name: "CSS Standard", package: "swift-css-standard"),
-                .product(name: "W3C CSS", package: "swift-w3c-css"),                .product(name: "ISO 9899", package: "swift-iso-9899"),
-                .product(name: "IEC 61966", package: "swift-iec-61966"),
-                .product(name: "RFC 4648", package: "swift-rfc-4648"),
-                .product(name: "Layout Primitives", package: "swift-layout-primitives")
+                .htmlRenderingCore,
+                .pdfRendering,
+                .copyOnWrite,
+                .css,
+                .htmlStandard,
+                .rfc4648,
+                .layoutPrimitives,
+                .dictionaryPrimitives,
+                .product(name: "Dictionary Ordered Primitives", package: "swift-dictionary-ordered-primitives"),
+                .dictionaryOrderedPrimitive,
+                .bytePrimitives,
+                .stackPrimitives,
+                .propertyPrimitives,
+                .standardLibraryExtensions,
+                .ownershipMutablePrimitives,
+                .sharedPrimitive,
+                .hashIndexedPrimitive,
+                .hashPrimitives,
+                .columnPrimitives,
+                .bufferLinearPrimitive,
             ]
         ),
-        .testTarget(
-            name: "PDF HTML Rendering Tests",
+        .target(
+            name: "PDF HTML Rendering Test Support",
             dependencies: [
-                "PDF HTML Rendering",
-                .product(name: "HTML Rendering", package: "swift-html-rendering"),
-                .product(name: "HTML Rendering TestSupport", package: "swift-html-rendering"),
-                .product(name: "InlineSnapshotTesting", package: "swift-snapshot-testing"),
-                .product(name: "Test Primitives", package: "swift-test-primitives")
-            ]
-        )
-    ]
+                .pdfHTMLRendering,
+                .htmlRenderingCoreTestSupport,
+                .pdfRenderingTestSupport,
+            ],
+            path: "Tests/Support"
+        ),
+        .testTarget(
+            name: .pdfHTMLRendering.tests,
+            dependencies: [
+                .pdfHTMLRendering,
+                .htmlRendering,
+                "PDF HTML Rendering Test Support",
+            ],
+            path: "Tests/PDF HTML Rendering Tests"
+        ),
+    ],
+    swiftLanguageModes: [.v6]
 )
+
+for target in package.targets where ![.system, .binary, .plugin, .macro].contains(target.type) {
+    let ecosystem: [SwiftSetting] = [
+        .strictMemorySafety(),
+        .enableUpcomingFeature("ExistentialAny"),
+        .enableUpcomingFeature("InternalImportsByDefault"),
+        .enableUpcomingFeature("MemberImportVisibility"),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableExperimentalFeature("LifetimeDependence"),
+        .enableExperimentalFeature("Lifetimes"),
+        .enableExperimentalFeature("SuppressedAssociatedTypes"),
+        .enableUpcomingFeature("InferIsolatedConformances"),
+        .enableUpcomingFeature("LifetimeDependence"),
+    ]
+
+    let package: [SwiftSetting] = []
+
+    target.swiftSettings = (target.swiftSettings ?? []) + ecosystem + package
+}

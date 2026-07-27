@@ -1,11 +1,16 @@
-//
-//  File.swift
-//  swift-pdf-html-rendering
-//
-//  Created by Coen ten Thije Boonkkamp on 10/12/2025.
-//
+// PDF.HTML.Context.swift
+// Combined rendering context for HTML-to-PDF conversion
 
+public import Buffer_Linear_Primitive
+public import Column_Primitives
 import Copy_on_Write
+public import Dictionary_Ordered_Primitives
+public import Dictionary_Primitives
+public import HTML_Rendering_Core
+public import Hash_Indexed_Primitive
+public import Hash_Primitives
+public import Ownership_Shared_Primitive
+import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration
 
@@ -28,132 +33,131 @@ extension PDF.HTML {
         /// The immutable rendering configuration
         public private(set) var configuration: PDF.HTML.Configuration
 
+        // reason: @CoW copies this stored property into the macro-generated Storage
+        // class, where Self re-binds to the class and Self.Table fails to resolve
+        // (macro-copied-declaration false-positive; third prefer_self FP class after
+        // where-clause and conformance positions).
+        // swiftlint:disable prefer_self_in_static_references
         /// Active table layout context (nil when not in a table)
         public var table: Context.Table?
+        // swiftlint:enable prefer_self_in_static_references
+
+        // MARK: - Post-Push Layout Slots (γ-slots)
+
+        /// Pending table border color set by a post-push_layout CSS modifier
+        /// before `_pushElement("table", …)` created `table`.
+        ///
+        /// Drained at `pushBlockElement` "table" case after `context.table` is
+        /// instantiated; cleared on drain. Border-family CSS modifiers write
+        /// here when `context.table == nil` at dispatch time.
+        public var pendingTableBorderColor: PDF.Color?
+
+        /// Pending table border width set by a post-push_layout CSS modifier
+        /// before `_pushElement("table", …)` created `table`.
+        public var pendingTableBorderWidth: PDF.UserSpace.Size<1>?
+
+        /// Pending per-side border declarations captured from CSS modifiers
+        /// (`border-top`/`border-right`/`border-bottom`/`border-left`) that
+        /// fired AFTER `open(.style)` but BEFORE the inner element's
+        /// `_pushElement`. Drained into `Element.Scope.pendingBorder*` at
+        /// the next `_pushElement`; cleared on drain. Rendered at element
+        /// pop time per CSS Backgrounds 3 §3.
+        public var pendingSideBorderTop: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderRight: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderBottom: Element.Scope.PendingSideBorder?
+        public var pendingSideBorderLeft: Element.Scope.PendingSideBorder?
+
+        /// True when a `W3C_CSS_BoxModel.Width` modifier fired since the
+        /// last element push. Consumed at the next `_pushElement`: if the
+        /// element is a `<table>`, the table records `hasExplicitWidth =
+        /// true`; otherwise the flag is cleared. Drives the shrink-to-fit
+        /// gate in `finalizeFirstRow` per CSS 2.1 §17.5.2.2.
+        public var pendingExplicitWidth: Bool = false
 
         /// HTML attributes for the current element (colspan, rowspan, etc.)
         ///
         /// Populated by `HTML._Attributes` wrapper during rendering.
         /// Used by table cell rendering to extract colspan/rowspan values.
-        public var attributes: OrderedDictionary<String, String> = [:]
+        public var attributes: HTML.Context.Attributes = .init()
 
-        /// Current link URL for text being rendered inside an anchor element.
-        ///
-        /// Set by `Anchor+PDF.HTML.View` when rendering anchor content.
-        /// Used by `String+PDF.HTML.View` to pass URL to TextRun for PDF annotations.
-        public var currentLinkURL: String?
+        // MARK: - Link Tracking
 
-        /// Current internal link target ID for text being rendered inside an anchor element.
-        ///
-        /// Set when rendering `<a href="#section-id">` links. The ID is stored without the # prefix.
-        /// Used to create pending internal links that are resolved after rendering completes.
-        public var currentInternalLinkId: String?
+        /// Link state: URLs, internal link targets, named destinations.
+        public var link: Link = .init()
+
+        // MARK: - Block Flow
 
         /// Pending bottom margin from previous block element (for margin collapsing).
-        ///
-        /// In CSS, adjacent vertical margins collapse - only the larger margin is used.
-        /// This tracks the bottom margin of the previous block element so it can be
-        /// collapsed with the top margin of the next block element.
-        public var pendingBottomMargin: PDF.UserSpace.Height = 0
+        public var pendingBottomMargin: PDF.UserSpace.Height = .init(0)
 
-        /// Deferred render closure for keep-with-next behavior (page-break-after: avoid).
+        /// Break flags set by `Style.Context.Modifier.apply(to:)`.
         ///
-        /// When an element with `page-break-after: avoid` is encountered, instead of
-        /// rendering immediately, we store a closure that will render the element.
-        /// When the next block element is rendered, we check if the deferred header
-        /// plus at least one line of content fits on the current page. If not, we
-        /// start a new page before rendering the deferred content.
-        public var deferredKeepWithNextRender: DeferredRender?
-
-        /// Flag indicating the current element should avoid page break after it.
-        /// Set by `page-break-after: avoid` or `break-after: avoid` CSS property.
+        /// Scoped per style level: `_pushStyle` saves and clears these flags,
+        /// `_popStyle` processes flags set in that scope, then restores the parent's.
         public var avoidPageBreakAfter: Bool = false
-
-        /// Flag indicating a page break should be forced after the current element.
-        /// Set by `break-after: always/page` or similar CSS properties.
         public var forcePageBreakAfter: Bool = false
-
-        /// Flag indicating breaks should be avoided inside the current element.
-        /// Set by `page-break-inside: avoid` or `break-inside: avoid` CSS property.
         public var avoidPageBreakInside: Bool = false
 
-        // MARK: - Section Tracking (for headers/footers)
+        // MARK: - Speculative Rendering (Keep-With-Next)
 
-        /// Current section title (from most recent H1-H3 heading)
-        public var currentSectionTitle: String?
+        /// Snapshot of context state taken when speculative rendering begins.
+        ///
+        /// The `@CoW` property wrapper on both `PDF.HTML.Context` and
+        /// `PDF.Context` gives cheap snapshots via reference counting.
+        /// On rollback, the entire context is restored from the snapshot.
+        public var speculativeSnapshot: PDF.HTML.Context?
 
-        /// Section titles at the start of each page (page number -> section title)
-        /// Populated during rendering when headings are encountered.
-        public var pageSectionTitles: [Int: String] = [:]
+        /// Actions recorded during speculative rendering for replay after rollback.
+        public var speculativeActions: [Render_Primitives.Render.Action]?
 
-        /// Collected heading entries for bookmark generation
-        public var collectedHeadings: [HeadingEntry] = []
+        // MARK: - Section Tracking
 
-        // MARK: - Anchor Tracking (for internal links)
+        /// Section and heading state for headers/footers and bookmarks.
+        public var section: Section = .init()
 
-        /// Named destinations for internal links (id -> page/position)
-        public var namedDestinations: [String: DestinationInfo] = [:]
+        // MARK: - Render_Primitives.Render.Context Scope Stacks
 
-        /// Pending internal links to resolve (href="#id" links)
-        public var pendingInternalLinks: [PendingInternalLink] = []
+        /// Element scope stack for push.element/pop.element state save/restore.
+        public var elementStack: [Element.Scope] = []
+
+        /// Style scope stack for push.style/pop.style state save/restore.
+        public var styleScopeStack: [Style.Snapshot] = []
+
+        // MARK: - Head-Element Text Interception (Phase 1 CSS cascade scaffolding)
+
+        /// True while inside a `<style>` element scope (between matching
+        /// `_pushElement`/`_popElement` calls for tagName "style"). `text()`
+        /// calls during this scope append to `currentStyleBlockBuffer` for
+        /// later CSS parsing instead of rendering as visible PDF text.
+        public var insideStyleBlock: Bool = false
+
+        /// Buffer accumulating the current `<style>` element's text content.
+        /// Drained into `collectedStyleBlocks` at `_popElement` for the
+        /// style tag.
+        public var currentStyleBlockBuffer: String = ""
+
+        /// Accumulated `<style>` block contents, one entry per `<style>`
+        /// element rendered through `_render`. Phase 1's CSS parser consumes
+        /// these to extract type-selector rules (subsequent commit). Order
+        /// matches source order, preserving the cascade-source-order
+        /// invariant per CSS Cascade §6.4.4.
+        public var collectedStyleBlocks: [String] = []
+
+        /// True while inside a `<title>` element scope. `text()` calls during
+        /// this scope are silently dropped in Phase 1 — Phase 2 (deferred)
+        /// will route title content to `ISO_32000.Document.Info.title`.
+        public var insideTitleBlock: Bool = false
+
+        /// Accumulated parsed CSS rules from all `<style>` blocks rendered
+        /// so far. Each `<style>` element's contents are parsed at its
+        /// `_popElement` and appended here in source order. Phase 1's
+        /// `_pushElement` cascade-apply loop iterates this collection to
+        /// match type-selector rules against the pushing element's tag.
+        public var parsedStylesheet: PDF.HTML.CSS.Stylesheet = PDF.HTML.CSS.Stylesheet()
     }
 }
 
-// MARK: - Heading Entry for Bookmarks
-
-extension PDF.HTML.Context {
-    /// Entry for a heading collected during rendering
-    public struct HeadingEntry: Sendable {
-        /// Heading level (1-6)
-        public let level: Int
-        /// Heading text
-        public let text: String
-        /// Page number where heading appears (1-indexed)
-        public let pageNumber: Int
-        /// Y position on the page
-        public let yPosition: PDF.UserSpace.Y
-
-        public init(level: Int, text: String, pageNumber: Int, yPosition: PDF.UserSpace.Y) {
-            self.level = level
-            self.text = text
-            self.pageNumber = pageNumber
-            self.yPosition = yPosition
-        }
-    }
-}
-
-// MARK: - Destination Info for Internal Links
-
-extension PDF.HTML.Context {
-    /// Information about a named destination (anchor target)
-    public struct DestinationInfo: Sendable {
-        /// Page number where the destination is (1-indexed)
-        public let pageNumber: Int
-        /// Y position on the page
-        public let yPosition: PDF.UserSpace.Y
-
-        public init(pageNumber: Int, yPosition: PDF.UserSpace.Y) {
-            self.pageNumber = pageNumber
-            self.yPosition = yPosition
-        }
-    }
-
-    /// A pending internal link that needs to be resolved
-    public struct PendingInternalLink: Sendable {
-        /// The target anchor id (without #)
-        public let targetId: String
-        /// Page number where the link is
-        public let pageNumber: Int
-        /// Bounds of the link annotation
-        public let bounds: PDF.UserSpace.Rectangle
-
-        public init(targetId: String, pageNumber: Int, bounds: PDF.UserSpace.Rectangle) {
-            self.targetId = targetId
-            self.pageNumber = pageNumber
-            self.bounds = bounds
-        }
-    }
-}
+// MARK: - Margin Collapsing
 
 extension PDF.HTML.Context {
     /// Apply collapsed margin between blocks.
@@ -170,15 +174,15 @@ extension PDF.HTML.Context {
         bottom bottomMargin: PDF.UserSpace.Height
     ) {
         // Flush pending inline content
-        if pdf.hasInlineRuns {
-            pdf.flushInlineRuns()
+        if pdf.inline.hasRuns {
+            pdf.flush.inline()
         }
 
         // CSS margin collapse: use larger of adjacent margins
         let collapsedMargin = max(pendingBottomMargin, topMargin)
 
         // Apply the collapsed margin
-        if collapsedMargin > 0 {
+        if collapsedMargin > .init(0) {
             pdf.advance(collapsedMargin)
         }
 
@@ -191,44 +195,53 @@ extension PDF.HTML.Context {
     /// Call this when starting a new formatting context (e.g., new page,
     /// entering a block formatting context like a table cell).
     public mutating func resetMarginCollapsing() {
-        pendingBottomMargin = 0
+        pendingBottomMargin = .init(0)
     }
 }
 
+// MARK: - Scoped Style State
+
 extension PDF.HTML.Context {
-    /// Snapshot of PDF context state for restoration during deferred rendering
+    /// Execute a closure with scoped style and box model state.
     ///
-    /// **Important**: Only captures and restores **style** (font, color, etc.),
-    /// NOT the layout position. The deferred content should render at the
-    /// current Y position when the closure executes, not where the header
-    /// was originally encountered.
-    public struct Snapshot: Sendable {
-        public let style: PDF.Context.Style.Resolved
-
-        public init(from context: PDF.Context) {
-            self.style = context.style
-        }
-
-        public func restore(to context: inout PDF.Context) {
-            context.style = style
-            // NOTE: Do NOT restore layoutBox - the deferred content should
-            // render at the current position, not the original position
-        }
+    /// Saves style, margins, padding, explicit dimensions, and layout box X bounds
+    /// before the closure. Restores them after. Y position is NOT restored — it must
+    /// advance through content rendering.
+    public mutating func withSavedStyleState(
+        _ body: (inout PDF.HTML.Context) -> Void
+    ) {
+        let snapshot = Style.Snapshot(from: self)
+        body(&self)
+        snapshot.restore(to: &self)
     }
-
 }
-extension PDF.HTML.Context {
-    /// Deferred render operation for sticky headers
-    public struct DeferredRender: @unchecked Sendable {
-        /// Closure that renders the deferred content
-        ///
-        /// Note: Not marked @Sendable because rendering is single-threaded and synchronous.
-        /// The closure captures generic view types that aren't Sendable.
-        public let render: (inout PDF.HTML.Context) -> Void
-        /// Measured height of the deferred content
-        public let measuredHeight: PDF.UserSpace.Height
-    }
 
+// MARK: - Content Measurement
+
+extension PDF.HTML.Context {
+    /// Measure the height that content would occupy without rendering it.
+    ///
+    /// Creates a temporary context clone, runs the render closure in measurement
+    /// mode, and returns the resulting height. The current context is not modified.
+    ///
+    /// - Parameter render: Closure that renders content into the temporary context.
+    /// - Returns: The measured content height.
+    public mutating func measureContentHeight(
+        _ render: (inout PDF.HTML.Context) -> Void
+    ) -> PDF.UserSpace.Height {
+        let snapshot = Snapshot(from: pdf)
+        let configuration = configuration
+        let pendingBottomMargin = pendingBottomMargin
+
+        return pdf.measure { measureContext in
+            var tempContext = PDF.HTML.Context(pdf: measureContext, configuration: configuration)
+            tempContext.pendingBottomMargin = pendingBottomMargin
+            snapshot.restore(to: &tempContext.pdf)
+            render(&tempContext)
+            tempContext.pdf.flush.inline()
+            measureContext.layout.box.lly = tempContext.pdf.layout.box.lly
+        }
+    }
 }
 
 extension PDF.HTML.Context {
