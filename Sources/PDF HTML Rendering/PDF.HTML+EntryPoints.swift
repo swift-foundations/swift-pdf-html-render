@@ -87,7 +87,7 @@ extension PDF.HTML {
         // For each page, we render: header area, content area, footer area
         var finalPages: [PDF.Page] = []
 
-        for pageNumber in 1...totalPages {
+        (1...totalPages).forEach { pageNumber in
             let pageInfo = Page.Info(
                 pageNumber: pageNumber,
                 totalPages: totalPages,

@@ -1440,7 +1440,7 @@ extension PDF.HTML.Context {
         // (W3C "first-row empty cell" approximation; deferred to Round 2c).
         var measuredSum = 0.0
         var measuredCount = 0
-        for i in 0..<n {
+        (0..<n).forEach { i in
             if let m = recording.columnMaxContentWidths[i], m.underlying > 0 {
                 measuredSum += m.underlying
                 measuredCount += 1
@@ -1469,7 +1469,7 @@ extension PDF.HTML.Context {
         if useShrinkToFit {
             var rawWidths: [Double] = []
             var rawSum = 0.0
-            for i in 0..<n {
+            (0..<n).forEach { i in
                 let raw = recording.columnMaxContentWidths[i]?.underlying ?? avgMeasured
                 rawWidths.append(raw)
                 rawSum += raw
@@ -1493,7 +1493,7 @@ extension PDF.HTML.Context {
             var weights: [Double] = []
             weights.reserveCapacity(n)
             var weightSum = 0.0
-            for i in 0..<n {
+            (0..<n).forEach { i in
                 let pct = recording.columnWidthWeights[i] ?? uniformPercentHint
                 let measured = recording.columnMaxContentWidths[i]?.underlying ?? 0
                 let content = measured > 0 ? measured : avgMeasured
@@ -1501,7 +1501,7 @@ extension PDF.HTML.Context {
                 weights.append(w)
                 weightSum += w
             }
-            for i in 0..<n {
+            (0..<n).forEach { i in
                 let w =
                     totalWidth * Dimension_Primitives.Scale(weights[i] / max(weightSum, .ulpOfOne))
                 columnWidths.append(w)
@@ -1509,7 +1509,7 @@ extension PDF.HTML.Context {
         }
         // Apply min-content floor (W3C-required: a column never goes
         // below its widest unbreakable token).
-        for i in 0..<n {
+        (0..<n).forEach { i in
             if let minC = recording.columnMinContentWidths[i], columnWidths[i] < minC {
                 columnWidths[i] = minC
             }
@@ -1693,7 +1693,7 @@ extension PDF.HTML.Context {
         let currentRow = tableCtx.totalRowsRendered
         let borderColor = tableCtx.borderColor
         let borderWidth = tableCtx.borderWidth.width
-        for col in 0..<tableCtx.columnCount {
+        (0..<tableCtx.columnCount).forEach { col in
             if let span = tableCtx.spans.span(atRow: currentRow, column: col),
                 col == span.originColumn
             {
