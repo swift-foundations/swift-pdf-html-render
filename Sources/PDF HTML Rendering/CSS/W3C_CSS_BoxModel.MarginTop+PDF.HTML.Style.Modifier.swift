@@ -1,10 +1,10 @@
-// W3C_CSS_BoxModel.MarginTop+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_BoxModel.MarginTop+PDF.HTML.Style.Modifier.swift
 // CSS margin-top property to PDF context translation
 
 import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_BoxModel.MarginTop: PDF.HTML.Style.Rule.Modifier {
+extension W3C_CSS_BoxModel.MarginTop: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .lengthPercentage(let lp):

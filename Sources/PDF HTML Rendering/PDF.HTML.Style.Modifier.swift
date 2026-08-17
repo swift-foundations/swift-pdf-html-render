@@ -1,9 +1,9 @@
-// PDF.HTML.Style.Rule.Modifier.swift
+// PDF.HTML.Style.Modifier.swift
 // Style modifier protocol for CSS property application
 
 import PDF_Rendering
 
-extension PDF.HTML.Style.Rule {
+extension PDF.HTML.Style {
     /// Protocol for CSS properties that can modify PDF rendering context.
     ///
     /// CSS property types conform to this protocol to define how they affect
@@ -12,7 +12,7 @@ extension PDF.HTML.Style.Rule {
     ///
     /// Example conformance:
     /// ```swift
-    /// extension FontWeight: PDF.HTML.Style.Rule.Modifier {
+    /// extension FontWeight: PDF.HTML.Style.Modifier {
     ///     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
     ///         if self == .bold { context.style.font = context.style.font.bold }
     ///     }

@@ -1,9 +1,9 @@
-// W3C_CSS_Fonts.FontWeight+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_Fonts.FontWeight+PDF.HTML.Style.Modifier.swift
 // CSS font-weight property to PDF context translation
 
 import PDF_Rendering
 
-extension W3C_CSS_Fonts.FontWeight: PDF.HTML.Style.Rule.Modifier {
+extension W3C_CSS_Fonts.FontWeight: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .bold, .bolder:

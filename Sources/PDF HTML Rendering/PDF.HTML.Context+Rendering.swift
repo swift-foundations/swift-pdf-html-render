@@ -271,7 +271,7 @@ extension PDF.HTML.Context {
         //             debug-info mangler asserts forming a CanType from it
         //             (isActuallyCanonicalOrNull, AST/Type.h:421; fires on
         //             6.3.3 AND 6.4-dev).
-        // WHY: the crash is specific to the sugared `PDF.HTML.Style.Rule.Modifier`
+        // WHY: the crash is specific to the sugared `PDF.HTML.Style.Modifier`
         //      typealias spelling; the canonical-root spelling below sidesteps
         //      it without changing behavior.
         // TRACKING: swift-institute/Issues —
@@ -284,7 +284,7 @@ extension PDF.HTML.Context {
         // conformer it holds — heterogeneity is load-bearing, `some` cannot
         // express a runtime-checked downcast target.
         // swiftlint:disable:next no_any_protocol_existential
-        if let modifier = unwrapped as? any ISO_32000.HTML.Style.Rule.Modifier {
+        if let modifier = unwrapped as? any ISO_32000.HTML.Style.Modifier {
             // Inline style mutations to wrap-controlling modes (`whiteSpace`,
             // `whiteSpaceCollapse`) are NOT scoped to a paired pop in
             // swift-html's serialization of `HTML.Text("X").css.X` — the
@@ -316,7 +316,7 @@ extension PDF.HTML.Context {
         // conformer it holds — heterogeneity is load-bearing, `some` cannot
         // express a runtime-checked downcast target.
         // swiftlint:disable:next no_any_protocol_existential
-        if let htmlModifier = unwrapped as? any ISO_32000.HTML.Style.Rule.Context.Modifier {
+        if let htmlModifier = unwrapped as? any ISO_32000.HTML.Style.Context.Modifier {
             htmlModifier.apply(to: &self)
             handled = true
         }

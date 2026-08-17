@@ -34,7 +34,7 @@ import W3C_CSS_Values
 
 extension PDF.HTML.CSS {
     /// Dispatcher mapping `(property, value)` declaration strings to typed
-    /// CSS modifiers, applied via the existing `PDF.HTML.Style.Rule.Modifier`
+    /// CSS modifiers, applied via the existing `PDF.HTML.Style.Modifier`
     /// path (same machinery as inline `.css.X()` modifiers — author-level
     /// cascade origin, post-UA-applyTagStyle in `_pushElement`).
     public enum Apply {}
@@ -97,7 +97,7 @@ extension PDF.HTML.CSS.Apply {
         }
         // <length> (line-height: 24pt etc.) is intentionally deferred
         // by the existing LineHeight modifier (see
-        // W3C_CSS_Text.LineHeight+PDF.HTML.Style.Rule.Modifier.swift) —
+        // W3C_CSS_Text.LineHeight+PDF.HTML.Style.Modifier.swift) —
         // Phase 1 inherits that deferral.
     }
 

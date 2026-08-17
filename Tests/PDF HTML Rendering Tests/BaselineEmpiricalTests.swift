@@ -301,7 +301,7 @@ struct `Baseline Empirical Tests` {
     // This anchors A.4. The wrap-on-overflow primitive lives in
     // PDF.Context.Text.Run.render(into:) gated by `context.mode.noWrap`;
     // the HTML mapping is in
-    // W3C_CSS_Text.WhiteSpace+PDF.HTML.Style.Rule.Modifier.swift.
+    // W3C_CSS_Text.WhiteSpace+PDF.HTML.Style.Modifier.swift.
     @Test
     func `white-space nowrap suppresses wrap-on-overflow line-breaks`() throws {
         struct WideText: HTML.View {

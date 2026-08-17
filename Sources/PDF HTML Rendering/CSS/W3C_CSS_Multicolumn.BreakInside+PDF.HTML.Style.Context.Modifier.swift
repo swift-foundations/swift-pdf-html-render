@@ -1,4 +1,4 @@
-// W3C_CSS_Multicolumn.BreakInside+PDF.HTML.Style.Rule.Context.Modifier.swift
+// W3C_CSS_Multicolumn.BreakInside+PDF.HTML.Style.Context.Modifier.swift
 // CSS break-inside property to PDF context translation
 //
 // The modern `break-inside` property (CSS Fragmentation Module Level 3) replaces
@@ -7,7 +7,7 @@
 
 import PDF_Rendering
 
-extension W3C_CSS_Multicolumn.BreakInside: PDF.HTML.Style.Rule.Context.Modifier {
+extension W3C_CSS_Multicolumn.BreakInside: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         // Avoid values → prevent element from splitting across pages

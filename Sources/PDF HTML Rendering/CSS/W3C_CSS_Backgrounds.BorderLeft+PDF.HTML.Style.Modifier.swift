@@ -1,4 +1,4 @@
-// W3C_CSS_Backgrounds.BorderLeft+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_Backgrounds.BorderLeft+PDF.HTML.Style.Modifier.swift
 // CSS border-left property to PDF context translation.
 // Note: BorderLeft's `case properties` carries 3 separate associated
 // values (width keyword, style, color) — asymmetric vs BorderTop/Right/
@@ -8,7 +8,7 @@ public import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Values
 
-extension W3C_CSS_Backgrounds.BorderLeft: PDF.HTML.Style.Rule.Context.Modifier {
+extension W3C_CSS_Backgrounds.BorderLeft: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         guard case .properties(let widthKeyword, let cssStyle, let cssColor) = self else {
             return
@@ -41,6 +41,6 @@ extension W3C_CSS_Backgrounds.BorderLeft: PDF.HTML.Style.Rule.Context.Modifier {
 }
 
 // RawProperty<BorderLeft> dispatch via BorderSideProperty (see
-// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Rule.Modifier.swift).
+// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Modifier.swift).
 // BorderLeft's asymmetric case shape (BorderWidth.Width keyword vs full
 // BorderWidth) is handled in the BorderSideProperty conformance.

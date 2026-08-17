@@ -1,4 +1,4 @@
-// W3C_CSS_Paged.PageBreakInside+PDF.HTML.Style.Rule.Context.Modifier.swift
+// W3C_CSS_Paged.PageBreakInside+PDF.HTML.Style.Context.Modifier.swift
 // CSS page-break-inside property to PDF context translation
 //
 // The legacy `page-break-inside` property controls whether breaks should occur
@@ -7,7 +7,7 @@
 
 import PDF_Rendering
 
-extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.Style.Rule.Context.Modifier {
+extension W3C_CSS_Paged.PageBreakInside: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         case .avoid:

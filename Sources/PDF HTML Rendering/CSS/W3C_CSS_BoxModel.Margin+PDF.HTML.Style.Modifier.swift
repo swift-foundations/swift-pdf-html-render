@@ -1,10 +1,10 @@
-// W3C_CSS_BoxModel.Margin+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_BoxModel.Margin+PDF.HTML.Style.Modifier.swift
 // CSS margin property to PDF context translation
 
 import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_BoxModel.Margin: PDF.HTML.Style.Rule.Modifier {
+extension W3C_CSS_BoxModel.Margin: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         let currentSize = context.style.fontSize ?? configuration.defaultFontSize
 

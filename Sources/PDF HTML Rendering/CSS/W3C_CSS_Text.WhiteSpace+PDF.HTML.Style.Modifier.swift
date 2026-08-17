@@ -1,10 +1,10 @@
-// W3C_CSS_Text.WhiteSpace+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_Text.WhiteSpace+PDF.HTML.Style.Modifier.swift
 // CSS white-space property to PDF context translation
 
 import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_Text.WhiteSpace: PDF.HTML.Style.Rule.Modifier {
+extension W3C_CSS_Text.WhiteSpace: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         // Per CSS 2.1 §16.6 / CSS Text 3 §3, `white-space` is a shorthand
         // controlling two independent line-layout dimensions:

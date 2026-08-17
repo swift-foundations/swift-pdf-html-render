@@ -1,10 +1,10 @@
-// W3C_CSS_Backgrounds.Border+PDF.HTML.Style.Rule.Modifier.swift
+// W3C_CSS_Backgrounds.Border+PDF.HTML.Style.Modifier.swift
 // CSS border shorthand to PDF context translation
 
 public import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_Backgrounds.Border: PDF.HTML.Style.Rule.Context.Modifier {
+extension W3C_CSS_Backgrounds.Border: PDF.HTML.Style.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         switch self {
         case .properties(let width, let style, let color):
