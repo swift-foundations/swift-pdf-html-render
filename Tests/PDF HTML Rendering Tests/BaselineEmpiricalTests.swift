@@ -451,16 +451,16 @@ struct `Baseline Empirical Tests` {
                 Table {
                     TableRow {
                         TableDataCell {
-                            HTML.Element.Tag(tag: "b") { "LBOLD" }
-                            HTML.Element.Tag<Never>(tag: "br")
+                            HTML.Tag.Element(tag: "b") { "LBOLD" }
+                            HTML.Tag.Element<Never>(tag: "br")
                             "L1"
-                            HTML.Element.Tag<Never>(tag: "br")
+                            HTML.Tag.Element<Never>(tag: "br")
                             "L2"
-                            HTML.Element.Tag<Never>(tag: "br")
+                            HTML.Tag.Element<Never>(tag: "br")
                             "L3"
-                            HTML.Element.Tag<Never>(tag: "br")
+                            HTML.Tag.Element<Never>(tag: "br")
                             "L4"
-                            HTML.Element.Tag<Never>(tag: "br")
+                            HTML.Tag.Element<Never>(tag: "br")
                             Table {
                                 TableRow {
                                     TableDataCell { "" }
@@ -469,7 +469,7 @@ struct `Baseline Empirical Tests` {
                             }
                         }.css.verticalAlign(.top).width(.percent(100))
                         TableDataCell {
-                            HTML.Element.Tag(tag: "h3") { "HEADING" }
+                            HTML.Tag.Element(tag: "h3") { "HEADING" }
                         }.css.verticalAlign(.top)
                     }
                 }
@@ -645,7 +645,7 @@ struct `Baseline Empirical Tests` {
                         TableDataCell { "v28" }
                     }
                 }
-                HTML.Element.Tag<Never>(tag: "hr")
+                HTML.Tag.Element<Never>(tag: "hr")
                 // The totals table — outer 2-cell with nested 3-row inner.
                 Table {
                     TableRow {
@@ -668,8 +668,8 @@ struct `Baseline Empirical Tests` {
                         }
                     }
                 }.css.borderCollapse(.collapse)
-                HTML.Element.Tag<Never>(tag: "br")
-                HTML.Element.Tag<Never>(tag: "br")
+                HTML.Tag.Element<Never>(tag: "br")
+                HTML.Tag.Element<Never>(tag: "br")
                 Paragraph { "AFTER_PAYMENT_MARKER" }
             }
         }
@@ -724,7 +724,7 @@ struct `Baseline Empirical Tests` {
                         TableDataCell { "LEFT" }
                             .css.verticalAlign(.top).width(.percent(100))
                         TableDataCell {
-                            HTML.Element.Tag(tag: "h3") { "RIGHT" }
+                            HTML.Tag.Element(tag: "h3") { "RIGHT" }
                                 .css.margin(top: 0).margin(bottom: 0)
                                 .textAlign(.right)
                         }.css.verticalAlign(.top)
@@ -889,30 +889,30 @@ struct `Baseline Empirical Tests` {
                         TableDataCell {
                             Table {
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L1" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "L1" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "alpha beta gamma delta" }
+                                        HTML.Tag.Element(tag: "small") { "alpha beta gamma delta" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L2" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "L2" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "no-spaces-here" }
+                                        HTML.Tag.Element(tag: "small") { "no-spaces-here" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "L3" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "L3" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "still-no-spaces" }
+                                        HTML.Tag.Element(tag: "small") { "still-no-spaces" }
                                     }
                                 }
                             }
@@ -976,48 +976,48 @@ struct `Baseline Empirical Tests` {
                                 TableRow {
                                     TableDataCell { HTML.Empty() }
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "ADDR1" }
-                                        HTML.Element.Tag<Never>(tag: "br")
-                                        HTML.Element.Tag(tag: "small") { "ADDR2" }
-                                        HTML.Element.Tag<Never>(tag: "br")
-                                        HTML.Element.Tag(tag: "small") { "ADDR3" }
-                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR1" }
+                                        HTML.Tag.Element<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR2" }
+                                        HTML.Tag.Element<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR3" }
+                                        HTML.Tag.Element<Never>(tag: "br")
                                     }
                                 }
                                 // Metadata rows
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M1" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "value one two three" }
+                                        HTML.Tag.Element(tag: "small") { "value one two three" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M2" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "nospaces-here" }
+                                        HTML.Tag.Element(tag: "small") { "nospaces-here" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M3" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "anothernospaces" }
+                                        HTML.Tag.Element(tag: "small") { "anothernospaces" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M4" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "fourthrow" } }
                                 }
                             }
                             .css.borderCollapse(.collapse)
@@ -1077,51 +1077,51 @@ struct `Baseline Empirical Tests` {
                         TableDataCell { "RECIPIENT" }
                             .css.verticalAlign(.top).width(.percent(100))
                         TableDataCell {
-                            HTML.Element.Tag(tag: "h3") { "SENDER_NAME" }
+                            HTML.Tag.Element(tag: "h3") { "SENDER_NAME" }
                                 .css.margin(top: 0).margin(bottom: 0).textAlign(.right)
                             Table {
                                 TableRow {
                                     TableDataCell { HTML.Empty() }
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "ADDR1" }
-                                        HTML.Element.Tag<Never>(tag: "br")
-                                        HTML.Element.Tag(tag: "small") { "ADDR2" }
-                                        HTML.Element.Tag<Never>(tag: "br")
-                                        HTML.Element.Tag(tag: "small") { "ADDR3" }
-                                        HTML.Element.Tag<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR1" }
+                                        HTML.Tag.Element<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR2" }
+                                        HTML.Tag.Element<Never>(tag: "br")
+                                        HTML.Tag.Element(tag: "small") { "ADDR3" }
+                                        HTML.Tag.Element<Never>(tag: "br")
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M1" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M1" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "v one two three" }
+                                        HTML.Tag.Element(tag: "small") { "v one two three" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M2" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M2" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "nospaces" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "nospaces" } }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M3" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M3" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
                                     TableDataCell {
-                                        HTML.Element.Tag(tag: "small") { "anothernospaces" }
+                                        HTML.Tag.Element(tag: "small") { "anothernospaces" }
                                     }
                                 }
                                 TableRow {
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "M4" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "M4" } }
                                         .css.textAlign(.right).verticalAlign(.top).padding(
                                             right: .px(10)
                                         )
-                                    TableDataCell { HTML.Element.Tag(tag: "small") { "fourthrow" } }
+                                    TableDataCell { HTML.Tag.Element(tag: "small") { "fourthrow" } }
                                 }
                             }
                             .css.borderCollapse(.collapse)

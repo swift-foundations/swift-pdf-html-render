@@ -688,7 +688,7 @@ extension PDF.HTML.Context {
         }
 
         // Apply tag-specific style (UA-level origin per CSS Cascade §6.4.4).
-        HTML.Element.Tag<Never>.applyTagStyle(tagName, context: &context)
+        HTML.Tag.Element<Never>.applyTagStyle(tagName, context: &context)
 
         // Apply author-level CSS rules from <style> blocks. UA-level
         // applyTagStyle has already run; author rules override UA defaults
@@ -740,7 +740,7 @@ extension PDF.HTML.Context {
                 || context.pdf.margin.bottom != nil
             if !isNestedList,
                 !userOverrodeMargin,
-                let margins = HTML.Element.Tag<Never>.blockMargins(
+                let margins = HTML.Tag.Element<Never>.blockMargins(
                     for: tagName,
                     configuration: context.configuration
                 )
@@ -763,7 +763,7 @@ extension PDF.HTML.Context {
             }
 
             // Heading tracking for bookmarks
-            if let headingLevel = HTML.Element.Tag<Never>.headingLevel(for: tagName) {
+            if let headingLevel = HTML.Tag.Element<Never>.headingLevel(for: tagName) {
                 pushHeading(level: headingLevel, tagName: tagName, context: &context)
             }
 
@@ -1105,7 +1105,7 @@ extension PDF.HTML.Context {
                 if context.pdf.page.exceeds(adding: rowHeight) {
                     // Draw fragment borders for rows already on this page
                     if tableCtx.totalRowsRendered > 0 {
-                        HTML.Element.Tag<Never>.drawFragmentRightAndBottomBorders(
+                        HTML.Tag.Element<Never>.drawFragmentRightAndBottomBorders(
                             tableCtx: tableCtx,
                             fragmentStartY: tableCtx.currentFragmentStartY,
                             fragmentEndY: tableCtx.currentFragmentEndY,
@@ -1180,7 +1180,7 @@ extension PDF.HTML.Context {
 
         // List containers
         case "ol", "ul":
-            if let listType = HTML.Element.Tag<Never>.listType(for: tagName) {
+            if let listType = HTML.Tag.Element<Never>.listType(for: tagName) {
                 context.pdf.push(list: listType)
                 let indent = context.configuration.indent.list
                 context.pdf.layout.box.llx += indent
@@ -1243,7 +1243,7 @@ extension PDF.HTML.Context {
         case "table":
             // Draw table right and bottom borders
             if let tc = context.table {
-                HTML.Element.Tag<Never>.drawTableRightAndBottomBorders(
+                HTML.Tag.Element<Never>.drawTableRightAndBottomBorders(
                     tableCtx: tc,
                     context: &context
                 )
@@ -1287,7 +1287,7 @@ extension PDF.HTML.Context {
         default:
             // Finalize heading if popping a heading element
             if let heading = context.section.activeHeading,
-                HTML.Element.Tag<Never>.headingLevel(for: scope.tagName) != nil
+                HTML.Tag.Element<Never>.headingLevel(for: scope.tagName) != nil
             {
                 let text = String(
                     heading.text.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " })
@@ -1655,7 +1655,7 @@ extension PDF.HTML.Context {
                 width: cellWidth,
                 height: actualRowHeight
             )
-            HTML.Element.Tag<Never>.drawCellBorder(
+            HTML.Tag.Element<Never>.drawCellBorder(
                 bounds: cellBounds,
                 tableCtx: tableCtx,
                 context: &context
@@ -1802,7 +1802,7 @@ extension PDF.HTML.Context {
         context: inout PDF.HTML.Context
     ) {
         if let top {
-            HTML.Element.Tag<Never>.drawHorizontalBorder(
+            HTML.Tag.Element<Never>.drawHorizontalBorder(
                 from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
                 color: top.color,
@@ -1812,7 +1812,7 @@ extension PDF.HTML.Context {
             )
         }
         if let bottom {
-            HTML.Element.Tag<Never>.drawHorizontalBorder(
+            HTML.Tag.Element<Never>.drawHorizontalBorder(
                 from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
                 color: bottom.color,
@@ -1822,7 +1822,7 @@ extension PDF.HTML.Context {
             )
         }
         if let left {
-            HTML.Element.Tag<Never>.drawVerticalBorder(
+            HTML.Tag.Element<Never>.drawVerticalBorder(
                 from: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.lly),
                 to: PDF.UserSpace.Coordinate(x: bounds.llx, y: bounds.ury),
                 color: left.color,
@@ -1832,7 +1832,7 @@ extension PDF.HTML.Context {
             )
         }
         if let right {
-            HTML.Element.Tag<Never>.drawVerticalBorder(
+            HTML.Tag.Element<Never>.drawVerticalBorder(
                 from: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.lly),
                 to: PDF.UserSpace.Coordinate(x: bounds.urx, y: bounds.ury),
                 color: right.color,

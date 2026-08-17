@@ -1,10 +1,10 @@
-// HTML.Element.Tag+TableBorders.swift
+// HTML.Tag.Element+TableBorders.swift
 // Table border and background drawing helpers
 
 import HTML_Rendering_Core
 import PDF_Rendering
 
-extension HTML.Element.Tag {
+extension HTML.Tag.Element {
     /// Draw cell border (only left and top edges to avoid double borders)
     ///
     /// Uses border-collapse approach: each cell draws its left and top borders.

@@ -26,9 +26,9 @@ struct `Style Block Interception Tests` {
     @Test
     func `style text captures to collectedStyleBlocks; not rendered as visible text`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY_CONTENT_MARKER") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY_CONTENT_MARKER") }
         } head: {
-            HTML.Element.Tag(tag: "style") { HTML.Text("html { line-height: 1.5 }") }
+            HTML.Tag.Element(tag: "style") { HTML.Text("html { line-height: 1.5 }") }
         }
 
         let state = Ownership.Mutable(PDF.HTML.prepareContext(configuration: .init()))
@@ -62,9 +62,9 @@ struct `Style Block Interception Tests` {
     @Test
     func `title text silently suppressed; body content unaffected`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("VISIBLE_BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("VISIBLE_BODY") }
         } head: {
-            HTML.Element.Tag(tag: "title") { HTML.Text("INVISIBLE_TITLE") }
+            HTML.Tag.Element(tag: "title") { HTML.Text("INVISIBLE_TITLE") }
         }
 
         let state = Ownership.Mutable(PDF.HTML.prepareContext(configuration: .init()))
@@ -86,10 +86,10 @@ struct `Style Block Interception Tests` {
     @Test
     func `multiple style blocks preserve source order in collectedStyleBlocks`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("body") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("body") }
         } head: {
-            HTML.Element.Tag(tag: "style") { HTML.Text("FIRST_RULE") }
-            HTML.Element.Tag(tag: "style") { HTML.Text("SECOND_RULE") }
+            HTML.Tag.Element(tag: "style") { HTML.Text("FIRST_RULE") }
+            HTML.Tag.Element(tag: "style") { HTML.Text("SECOND_RULE") }
         }
 
         let state = Ownership.Mutable(PDF.HTML.prepareContext(configuration: .init()))
