@@ -1,10 +1,10 @@
-// W3C_CSS_Backgrounds.BorderStyle+PDF.HTML.Style.Modifier.swift
+// W3C_CSS_Backgrounds.BorderStyle+PDF.HTML.Style.Rule.Modifier.swift
 // CSS border-style property to PDF context translation
 
 public import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_Backgrounds.BorderStyle: PDF.HTML.Style.Context.Modifier {
+extension W3C_CSS_Backgrounds.BorderStyle: PDF.HTML.Style.Rule.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         guard let topStyle else { return }
 

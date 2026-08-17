@@ -49,9 +49,9 @@ struct `CSSCascade Apply Tests` {
         // Phase 1 verifies the structural ordering: author runs after UA,
         // overwriting the modified style.
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "small") { HTML.Text("SMALL_TEXT") }
+            HTML.Tag.Element(tag: "small") { HTML.Text("SMALL_TEXT") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("small { font-size: 11.2pt }")
             }
         }
@@ -82,9 +82,9 @@ struct `CSSCascade Apply Tests` {
     func `two type-selector rules for same property — second wins`() {
         // Verify-before-commit item from orchestrator note 2b.
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("html { line-height: 1.15 } html { line-height: 1.5 }")
             }
         }
@@ -97,9 +97,9 @@ struct `CSSCascade Apply Tests` {
 
         // Actually rewrite: use the same selector that matches the rendered element.
         let doc2 = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("div { line-height: 1.15 } div { line-height: 1.5 }")
             }
         }
@@ -123,9 +123,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `screen-only rule SKIPS for PDF`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text(
                     """
                     @media only screen and (max-width: 831px) {
@@ -147,9 +147,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `print rule APPLIES for PDF`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("@media print { div { font-size: 24px } }")
             }
         }
@@ -166,9 +166,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `bare-feature rule SKIPS in Phase 1`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("BODY") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("BODY") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("@media (min-width: 832px) { div { font-size: 999px } }")
             }
         }
@@ -189,9 +189,9 @@ struct `CSSCascade Apply Tests` {
         // tagName at match time. Test both: write "DIV" in CSS, push "DIV".
         // 20px → 15pt (factor 0.75).
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "DIV") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "DIV") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("DIV { font-size: 20px }")
             }
         }
@@ -209,9 +209,9 @@ struct `CSSCascade Apply Tests` {
         // Parser lowercases property names. Dispatcher switch sees lowercase.
         // 20px → 15pt (factor 0.75).
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("div { FONT-SIZE: 20px; Line-Height: 1.5 }")
             }
         }
@@ -226,9 +226,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `universal selector matches all elements`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("* { font-size: 18px }")
             }
         }
@@ -247,9 +247,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `class selector matches nothing in Phase 1`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text(".my-class { font-size: 999px }")
             }
         }
@@ -265,9 +265,9 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `unsupported property silently skipped — doesn't crash`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("div { -webkit-text-size-adjust: 100%; box-sizing: border-box }")
             }
         }
@@ -291,9 +291,9 @@ struct `CSSCascade Apply Tests` {
         // is parsed correctly into the stylesheet AND the parser
         // classified it as unconditional (Option C).
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") {
+            HTML.Tag.Element(tag: "style") {
                 HTML.Text("html { line-height: 1.5 }")
             }
         }
@@ -309,10 +309,10 @@ struct `CSSCascade Apply Tests` {
     @Test
     func `multiple style blocks accumulate rules in source order`() {
         let doc = HTML.Document {
-            HTML.Element.Tag(tag: "div") { HTML.Text("X") }
+            HTML.Tag.Element(tag: "div") { HTML.Text("X") }
         } head: {
-            HTML.Element.Tag(tag: "style") { HTML.Text("html { line-height: 1.15 }") }
-            HTML.Element.Tag(tag: "style") { HTML.Text("html { line-height: 1.5 }") }
+            HTML.Tag.Element(tag: "style") { HTML.Text("html { line-height: 1.15 }") }
+            HTML.Tag.Element(tag: "style") { HTML.Text("html { line-height: 1.5 }") }
         }
         let ctx = render(doc)
         #expect(ctx.parsedStylesheet.rules.count == 2)

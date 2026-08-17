@@ -1,10 +1,10 @@
-// HTML.Element.Tag+TagStyle.swift
+// HTML.Tag.Element+TagStyle.swift
 // Tag-specific styling, block margins, and heading level detection
 
 import HTML_Rendering_Core
 import PDF_Rendering
 
-extension HTML.Element.Tag {
+extension HTML.Tag.Element {
     /// Apply tag-specific styling based on tag name
     static func applyTagStyle(_ tagName: String, context: inout PDF.HTML.Context) {
         switch tagName {

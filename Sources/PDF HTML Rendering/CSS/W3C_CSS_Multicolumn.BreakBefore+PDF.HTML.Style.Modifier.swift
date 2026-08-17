@@ -1,4 +1,4 @@
-// W3C_CSS_Multicolumn.BreakBefore+PDF.HTML.Style.Modifier.swift
+// W3C_CSS_Multicolumn.BreakBefore+PDF.HTML.Style.Rule.Modifier.swift
 // CSS break-before property to PDF context translation
 //
 // The modern `break-before` property (CSS Fragmentation Module Level 3) replaces
@@ -7,7 +7,7 @@
 
 import PDF_Rendering
 
-extension W3C_CSS_Multicolumn.BreakBefore: PDF.HTML.Style.Modifier {
+extension W3C_CSS_Multicolumn.BreakBefore: PDF.HTML.Style.Rule.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         // Force page break values — skip if current page has no content

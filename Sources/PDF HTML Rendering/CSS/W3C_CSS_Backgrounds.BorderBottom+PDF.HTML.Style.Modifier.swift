@@ -1,4 +1,4 @@
-// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Modifier.swift
+// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Rule.Modifier.swift
 // CSS border-bottom property to PDF context translation.
 // Per CSS Backgrounds 3 §3, border-bottom is a longhand sibling of the
 // border shorthand and applies only to the element's bottom edge.
@@ -8,7 +8,7 @@ public import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Values
 
-extension W3C_CSS_Backgrounds.BorderBottom: PDF.HTML.Style.Context.Modifier {
+extension W3C_CSS_Backgrounds.BorderBottom: PDF.HTML.Style.Rule.Context.Modifier {
     public func apply(to context: inout PDF.HTML.Context) {
         guard case .properties(let properties) = self else { return }
 
@@ -46,7 +46,7 @@ extension W3C_CSS_Backgrounds.BorderBottom: PDF.HTML.Style.Context.Modifier {
 /// types via the shared `BorderSideProperty` protocol so a single
 /// conformance on the generic `RawProperty<P>` doesn't violate Swift's
 /// "no more than one conditional conformance" rule.
-extension RawProperty: PDF.HTML.Style.Context.Modifier
+extension RawProperty: PDF.HTML.Style.Rule.Context.Modifier
 where PropertyType: BorderSideProperty {
     public func apply(to context: inout PDF.HTML.Context) {
         let parts = parseBorderShorthand(self.value)

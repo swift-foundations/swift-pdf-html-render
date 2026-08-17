@@ -100,7 +100,7 @@ extension Render.Context {
                 },
                 element: { tagName, isBlock, isVoid, isPreElement in
                     if isBlock {
-                        let isHeading = HTML.Element.Tag<Never>.headingLevel(for: tagName) != nil
+                        let isHeading = HTML.Tag.Element<Never>.headingLevel(for: tagName) != nil
 
                         // When a non-heading block element opens and speculative
                         // content is pending, check whether the heading + this block
@@ -109,7 +109,7 @@ extension Render.Context {
                         if !isHeading && state.value.speculativeSnapshot != nil {
                             let lineHeight = state.value.pdf.style.line.height
                             let marginTop = PDF.UserSpace.Size<1>(
-                                HTML.Element.Tag<Never>.blockMargins(
+                                HTML.Tag.Element<Never>.blockMargins(
                                     for: tagName,
                                     configuration: state.value.configuration
                                 )?.top ?? .length(.em(0)),

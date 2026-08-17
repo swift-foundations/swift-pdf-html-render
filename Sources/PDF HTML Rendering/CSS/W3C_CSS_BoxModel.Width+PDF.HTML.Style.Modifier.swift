@@ -1,11 +1,11 @@
-// W3C_CSS_BoxModel.Width+PDF.HTML.Style.Modifier.swift
+// W3C_CSS_BoxModel.Width+PDF.HTML.Style.Rule.Modifier.swift
 // CSS width property to PDF context translation
 
 import Dimension_Primitives
 import PDF_Rendering
 import PDF_Standard
 
-extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Modifier {
+extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Rule.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .lengthPercentage(.percentage(let percentage)):

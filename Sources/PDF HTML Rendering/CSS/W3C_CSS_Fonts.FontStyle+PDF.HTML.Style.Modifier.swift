@@ -1,9 +1,9 @@
-// W3C_CSS_Fonts.FontStyle+PDF.HTML.Style.Modifier.swift
+// W3C_CSS_Fonts.FontStyle+PDF.HTML.Style.Rule.Modifier.swift
 // CSS font-style property to PDF context translation
 
 import PDF_Rendering
 
-extension W3C_CSS_Fonts.FontStyle: PDF.HTML.Style.Modifier {
+extension W3C_CSS_Fonts.FontStyle: PDF.HTML.Style.Rule.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .italic, .oblique, .obliqueAngle:

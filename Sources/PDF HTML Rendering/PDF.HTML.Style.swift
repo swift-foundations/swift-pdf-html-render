@@ -1,4 +1,4 @@
-// PDF.HTML.Style.swift
+// PDF.HTML.Style.Rule.swift
 // Namespace for style modifier protocols
 
 extension PDF.HTML {
