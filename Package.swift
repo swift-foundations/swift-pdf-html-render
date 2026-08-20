@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3.3
+// swift-tools-version: 6.4
 
 import PackageDescription
 
@@ -73,7 +73,10 @@ extension Target.Dependency {
         .product(name: "Buffer Linear Primitive", package: "swift-buffer-linear-primitives")
     }
     static var dictionaryOrderedPrimitive: Self {
-        .product(name: "Dictionary Ordered Primitive", package: "swift-dictionary-ordered-primitives")
+        .product(
+            name: "Dictionary Ordered Primitive",
+            package: "swift-dictionary-ordered-primitives"
+        )
     }
     static var bytePrimitives: Self {
         .product(name: "Byte Primitives", package: "swift-byte-primitives")
@@ -83,36 +86,81 @@ extension Target.Dependency {
 let package = Package(
     name: "swift-pdf-html-render",
     platforms: [
-        .macOS("27"),
-        .iOS("27"),
-        .tvOS("27"),
-        .watchOS("27"),
-        .visionOS("27"),
+        .macOS(.v27),
+        .iOS(.v27),
+        .tvOS(.v27),
+        .watchOS(.v27),
+        .visionOS(.v27),
     ],
     products: [
         .library(name: .pdfHTMLRendering, targets: [.pdfHTMLRendering]),
-        .library(name: "PDF HTML Rendering Test Support", targets: ["PDF HTML Rendering Test Support"]),
+        .library(
+            name: "PDF HTML Rendering Test Support",
+            targets: ["PDF HTML Rendering Test Support"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swift-foundations/swift-html-render.git", branch: "main"),
         .package(url: "https://github.com/swift-foundations/swift-pdf-render.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-copy-on-write.git", branch: "main"),
+        .package(
+            url: "https://github.com/swift-foundations/swift-copy-on-write.git",
+            branch: "main"
+        ),
         .package(url: "https://github.com/swift-foundations/swift-css.git", branch: "main"),
         .package(url: "https://github.com/swift-standards/swift-html-standard.git", branch: "main"),
         .package(url: "https://github.com/swift-ietf/swift-rfc-4648.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-layout-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-dictionary-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-dictionary-ordered-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-standard-library-extensions.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-ownership-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-ownership-shared-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-hash-table-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-hash-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-byte-primitives.git", branch: "main"),
+        .package(
+            url: "https://github.com/swift-primitives/swift-layout-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-dictionary-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-dictionary-ordered-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-stack-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-property-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-standard-library-extensions.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-ownership-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-ownership-shared-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-hash-table-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-hash-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-column-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-buffer-linear-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-byte-primitives.git",
+            branch: "main"
+        ),
     ],
     targets: [
         .target(
@@ -126,7 +174,10 @@ let package = Package(
                 .rfc4648,
                 .layoutPrimitives,
                 .dictionaryPrimitives,
-                .product(name: "Dictionary Ordered Primitives", package: "swift-dictionary-ordered-primitives"),
+                .product(
+                    name: "Dictionary Ordered Primitives",
+                    package: "swift-dictionary-ordered-primitives"
+                ),
                 .dictionaryOrderedPrimitive,
                 .bytePrimitives,
                 .stackPrimitives,
