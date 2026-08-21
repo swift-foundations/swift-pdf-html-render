@@ -2,14 +2,14 @@
 // Combined rendering context for HTML-to-PDF conversion
 
 public import Buffer_Linear_Primitive
-public import Column_Primitives
+import Column_Primitives
 import Copy_on_Write
 public import Dictionary_Ordered_Primitives
-public import Dictionary_Primitives
+import Dictionary_Primitives
 public import HTML_Rendering_Core
-public import Hash_Indexed_Primitive
-public import Hash_Primitives
-public import Ownership_Shared_Primitive
+import Hash_Indexed_Primitive
+import Hash_Primitives
+import Ownership_Shared_Primitive
 import Render_Primitives
 
 // MARK: - Context combining PDF.Context and Configuration

@@ -11,11 +11,11 @@
 // wrong here, not the code; a [RULE-EXEMPT] carve-out escalation to the linter
 // arc is pending.
 // swiftlint:disable:next exports_swift_strict_shape
-public import Dictionary_Primitives
+import Dictionary_Primitives
 @_exported import HTML_Rendering_Core
 @_exported import HTML_Standard
 @_exported import PDF_Rendering
 // reason: deliberately non-exported (MemberImportVisibility) — see the
 // Dictionary_Primitives comment above; ascii f40c3c9 precedent.
 // swiftlint:disable:next exports_swift_strict_shape
-public import Render_Primitives
+import Render_Primitives
