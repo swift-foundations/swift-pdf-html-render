@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.MarginBottom+PDF.HTML.Style.Modifier.swift
-// CSS margin-bottom property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -17,11 +14,11 @@ extension W3C_CSS_BoxModel.MarginBottom: PDF.HTML.Style.Modifier {
             context.margin.bottom = size.height
 
         case .auto:
-            // Auto margins handled during layout
+
             context.margin.bottom = nil
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

@@ -1,5 +1,3 @@
-// PDFOutput.swift
-
 import Foundation
 
 enum PDFOutput {

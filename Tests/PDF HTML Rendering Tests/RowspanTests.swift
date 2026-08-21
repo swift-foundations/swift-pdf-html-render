@@ -1,6 +1,3 @@
-// RowspanTests.swift
-// Minimal reproduction of rowspan cell content positioning issue
-
 import Foundation
 import HTML_Rendering
 import PDF_Rendering
@@ -11,10 +8,6 @@ import Testing
 @Suite
 struct `Rowspan Tests` {
 
-    /// Minimal test case for rowspan content positioning bug.
-    ///
-    /// Expected: "Spanning" text appears INSIDE the rowspan cell
-    /// Actual: "Spanning" text appears BELOW the table
     @Test
     func `rowspan cell content should appear inside cell`() throws {
         struct MinimalRowspanTable: HTML.View {
@@ -26,7 +19,7 @@ struct `Rowspan Tests` {
                             TableDataCell { "Row 1 Data" }
                         }
                         TableRow {
-                            // First column skipped due to rowspan
+
                             TableDataCell { "Row 2 Data" }
                         }
                     }
@@ -48,7 +41,6 @@ struct `Rowspan Tests` {
         print("Minimal rowspan test PDF written to: \(url.path)")
     }
 
-    /// Test with multiple rowspan cells to verify the issue persists
     @Test
     func `multiple rowspan cells content positioning`() throws {
         struct MultipleRowspanTable: HTML.View {
@@ -103,7 +95,6 @@ struct `Rowspan Tests` {
         print("Multiple rowspan test PDF written to: \(url.path)")
     }
 
-    /// Control test: table without rowspan should work correctly
     @Test
     func `table without rowspan renders correctly`() throws {
         struct SimpleTable: HTML.View {
@@ -137,7 +128,6 @@ struct `Rowspan Tests` {
         print("Control test (no rowspan) PDF written to: \(url.path)")
     }
 
-    /// Test matching 6.6 structure: TableHead with colspan + rowspan in body + TableFoot
     @Test
     func `rowspan with thead colspan and tfoot`() throws {
         struct ComplexTable: HTML.View {

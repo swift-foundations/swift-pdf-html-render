@@ -1,6 +1,3 @@
-// Table Performance Tests.swift
-// Performance benchmarks for HTML table rendering
-
 import HTML_Rendering
 import PDF_Rendering
 import Testing
@@ -11,15 +8,12 @@ extension PDF {
     #Tests
 }
 
-// Helper to render HTML views to PDF
 private func render<V: HTML.View>(_ view: V) {
     let document = PDF.Document {
         HTML.Document { view }
     }
     let _ = [UInt8](document)
 }
-
-// MARK: - Simple Table Scaling
 
 extension PDF.Test.Performance {
 
@@ -37,8 +31,6 @@ extension PDF.Test.Performance {
     func `simple table 10x100`() {
         render(SimpleTable10x100())
     }
-
-    // MARK: - Scaling at Various Sizes
 
     @Test(.timed(iterations: 20, warmup: 3))
     func `simple table 10x1`() {
@@ -65,36 +57,26 @@ extension PDF.Test.Performance {
         render(SimpleTable10x25())
     }
 
-    // MARK: - Rowspan Tests (Mirror reflection)
-
     @Test(.timed(iterations: 10, warmup: 2))
     func `table with rowspan 30 rows`() {
         render(RowspanTable30())
     }
-
-    // MARK: - Complex Table
 
     @Test(.timed(iterations: 5, warmup: 1))
     func `complex table mixed spans`() {
         render(ComplexTable30())
     }
 
-    // MARK: - Throughput
-
     @Test(.timed(iterations: 500, warmup: 50))
     func `throughput single table 5x10`() {
         render(SimpleTable5x10())
     }
-
-    // MARK: - Span Overhead Comparison
 
     @Test(.timed(iterations: 10, warmup: 2))
     func `simple table 5x30`() {
         render(SimpleTable5x30())
     }
 }
-
-// MARK: - Pre-defined Table Structures
 
 private struct SimpleTable5x10: HTML.View {
     var body: some HTML.View {

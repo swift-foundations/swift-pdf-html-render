@@ -1,26 +1,10 @@
-// PDF.HTML+EntryPoints.swift
-// Public entry points for HTML to PDF rendering
-
 import HTML_Rendering_Core
 import Ownership_Mutable_Primitives
 import PDF_Rendering
 import Render_Primitives
 
-// MARK: - Entry Points
-
 extension PDF.HTML {
-    //    /// Render HTML content to PDF pages.
-    //    public static func pages<H: Render_Primitives.Render.View>(
-    //        configuration: PDF.HTML.Configuration = .init(),
-    //        @HTML.Builder html: () -> H
-    //    ) -> [PDF.Page] {
-    //        let state = Ownership.Mutable(prepareContext(configuration: configuration))
-    //        var renderCtx = Render_Primitives.Render.Context.pdfHTML(state: state)
-    //        renderCtx.render(html())
-    //        return finalizeRendering(context: &state.value).pages
-    //    }
 
-    /// Render HTML content to PDF pages with collected metadata.
     public static func render<H: Render_Primitives.Render.View>(
         configuration: PDF.HTML.Configuration = .init(),
         @HTML.Builder html: () -> H
@@ -32,21 +16,8 @@ extension PDF.HTML {
     }
 }
 
-// MARK: - Two-Pass Rendering with Headers/Footers
-
 extension PDF.HTML {
-    /// Render HTML content to PDF with running headers and footers.
-    ///
-    /// Uses two-pass rendering to provide accurate page numbers ("Page X of Y"):
-    /// - Pass 1: Render content to determine total page count
-    /// - Pass 2: Re-render with headers and footers on each page
-    ///
-    /// - Parameters:
-    ///   - configuration: Configuration for the rendering (must include header.height/footer.height)
-    ///   - header: Builder that creates header content for each page
-    ///   - footer: Builder that creates footer content for each page
-    ///   - content: The main HTML content to render
-    /// - Returns: Array of PDF pages with headers and footers
+
     public static func pages<
         Content: Render_Primitives.Render.View,
         Header: Render_Primitives.Render.View,
@@ -61,7 +32,7 @@ extension PDF.HTML {
             Render_Primitives.Render.Empty()
         }
     ) -> [PDF.Page] {
-        // Adjust margins to account for header/footer space
+
         let adjustedMargins = PDF.UserSpace.Insets(
             top: configuration.margins.top + configuration.header.height,
             leading: configuration.margins.leading,
@@ -69,7 +40,6 @@ extension PDF.HTML {
             trailing: configuration.margins.trailing
         )
 
-        // PASS 1: Render content to get page count and section info
         var pass1Config = configuration
         pass1Config.margins = adjustedMargins
 
@@ -83,8 +53,6 @@ extension PDF.HTML {
         let totalPages = pass1State.value.pdf.pages.count
         let pageSectionTitles = pass1State.value.section.pageTitles
 
-        // PASS 2: Render again with headers and footers
-        // For each page, we render: header area, content area, footer area
         var finalPages: [PDF.Page] = []
 
         (1...totalPages).forEach { pageNumber in
@@ -96,7 +64,6 @@ extension PDF.HTML {
                 date: configuration.documentDate
             )
 
-            // Create a single-page context for header
             var headerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
                 margins: PDF.UserSpace.Insets(
@@ -116,7 +83,6 @@ extension PDF.HTML {
             headerRenderCtx.render(header(pageInfo))
             headerState.value.pdf.flush.inline()
 
-            // Create a single-page context for footer
             var footerContext = PDF.Context(
                 mediaBox: configuration.mediaBox,
                 margins: PDF.UserSpace.Insets(
@@ -136,10 +102,8 @@ extension PDF.HTML {
             footerRenderCtx.render(footer(pageInfo))
             footerState.value.pdf.flush.inline()
 
-            // Combine: get content page, header content, footer content
             let contentPage = pass1State.value.pdf.pages[pageNumber - 1]
 
-            // Merge content streams: header + content + footer
             var mergedContents: [PDF.ContentStream] = []
             if let headerPage = headerState.value.pdf.pages.first {
                 mergedContents.append(contentsOf: headerPage.contents)
@@ -149,7 +113,6 @@ extension PDF.HTML {
                 mergedContents.append(contentsOf: footerPage.contents)
             }
 
-            // Merge resources
             var mergedResources = contentPage.resources
             if let headerPage = headerState.value.pdf.pages.first {
                 for (name, font) in headerPage.resources.fonts {

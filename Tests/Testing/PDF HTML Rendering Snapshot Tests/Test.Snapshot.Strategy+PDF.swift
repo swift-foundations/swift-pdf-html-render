@@ -1,8 +1,3 @@
-//
-//  Test.Snapshot.Strategy+PDF.swift
-//  swift-pdf-html-rendering
-//
-
 import Binary_Serializable_Primitives
 import Byte_Primitive
 import PDF_Rendering

@@ -1,18 +1,13 @@
-// PDF.HTML.Configuration.Indent.swift
-// Block element indentation settings
-
 import PDF_Standard
 
 extension PDF.HTML.Configuration {
-    /// Block element indentation settings.
+
     public struct Indent: Sendable, Equatable {
-        /// List indentation (default: 30pt)
+
         public var list: PDF.UserSpace.Width
 
-        /// Blockquote indentation (default: 30pt)
         public var blockquote: PDF.UserSpace.Width
 
-        /// Figure margin (default: 40pt)
         public var figure: PDF.UserSpace.Width
 
         public init(

@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.MarginLeft+PDF.HTML.Style.Modifier.swift
-// CSS margin-left property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -17,11 +14,11 @@ extension W3C_CSS_BoxModel.MarginLeft: PDF.HTML.Style.Modifier {
             context.margin.left = size.width
 
         case .auto:
-            // Auto margins handled during layout
+
             context.margin.left = nil
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

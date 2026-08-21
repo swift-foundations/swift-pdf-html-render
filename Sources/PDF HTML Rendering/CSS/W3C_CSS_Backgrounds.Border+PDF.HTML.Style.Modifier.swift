@@ -1,6 +1,3 @@
-// W3C_CSS_Backgrounds.Border+PDF.HTML.Style.Modifier.swift
-// CSS border shorthand to PDF context translation
-
 public import PDF_Rendering
 import PDF_Standard
 

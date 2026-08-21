@@ -1,10 +1,7 @@
 import Render_Primitives
 
 extension PDF.HTML.Context {
-    /// Replays a single rendering action through the PDF backend.
-    ///
-    /// Used by speculative rendering to replay recorded actions after
-    /// a rollback (page break due to keep-with-next).
+
     public mutating func interpret(_ action: Render_Primitives.Render.Action) {
         switch action {
         case .text(let content): text(content)

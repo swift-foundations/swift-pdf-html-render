@@ -1,8 +1,3 @@
-//
-//  Outline Snapshot Tests.swift
-//  swift-pdf-html-rendering
-//
-
 import HTML_Rendering
 import PDF_HTML_Rendering
 import PDF_Rendering
@@ -14,8 +9,6 @@ import Tests_Inline_Snapshot
 struct `Outline Snapshot Tests` {
     @Suite struct Snapshot {}
 }
-
-// MARK: - Snapshot
 
 extension OutlineSnapshotTests.Snapshot {
     @Test

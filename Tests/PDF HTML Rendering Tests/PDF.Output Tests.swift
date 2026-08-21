@@ -1,6 +1,3 @@
-// PDF.Output Tests.swift
-// Visual inspection tests - writes PDFs to /tmp
-
 import Foundation
 import HTML_Rendering
 import PDF_Rendering
@@ -162,7 +159,7 @@ struct `PDFOutput Tests` {
                         Paragraph { "Box with border" }
                     }
                     .css
-                    //                    .border(.px(1), .solid, .hex("#ccc"))
+
                     .padding(.px(20))
                     .margin(.px(10))
                 }

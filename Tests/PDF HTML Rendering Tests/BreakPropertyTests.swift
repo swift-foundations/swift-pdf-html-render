@@ -1,9 +1,3 @@
-// BreakPropertyTests.swift
-// Comprehensive tests for CSS break properties in PDF rendering
-//
-// Tests cover both legacy (page-break-*) and modern (break-*) CSS properties
-// for page break control during PDF generation.
-
 import CSS
 import Foundation
 import HTML_Rendering
@@ -12,8 +6,6 @@ import Testing
 
 @testable import PDF_HTML_Rendering
 
-// MARK: - PageBreakAfter Tests
-
 @Suite
 struct `PageBreakAfter Tests` {
 
@@ -21,12 +13,11 @@ struct `PageBreakAfter Tests` {
     func `pageBreakAfter avoid keeps header with following content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
-                // Fill most of page with content
+
                 for i in 1...40 {
                     Paragraph { "Filler \(i)" }
                 }
 
-                // Sticky header near bottom of page
                 H2 { "STICKY_HEADER" }
                     .css.pageBreakAfter(.avoid)
 
@@ -36,7 +27,6 @@ struct `PageBreakAfter Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Both header and content should render
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
         #expect(contentString.contains("STICKY_HEADER"))
@@ -56,7 +46,6 @@ struct `PageBreakAfter Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Should have at least 2 pages
         #expect(pages.count >= 2, "Should have at least 2 pages after forced break")
     }
 
@@ -73,12 +62,9 @@ struct `PageBreakAfter Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Short content should fit on one page
         #expect(pages.count == 1, "Short content with auto should fit on one page")
     }
 }
-
-// MARK: - PageBreakBefore Tests
 
 @Suite
 struct `PageBreakBefore Tests` {
@@ -96,7 +82,6 @@ struct `PageBreakBefore Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Should have at least 2 pages
         #expect(pages.count >= 2, "Should have at least 2 pages after forced break")
     }
 
@@ -116,8 +101,6 @@ struct `PageBreakBefore Tests` {
     }
 }
 
-// MARK: - PageBreakInside Tests
-
 @Suite
 struct `PageBreakInside Tests` {
 
@@ -125,12 +108,11 @@ struct `PageBreakInside Tests` {
     func `pageBreakInside avoid keeps element together`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
-                // Fill most of page
+
                 for i in 1...35 {
                     Paragraph { "Filler \(i)" }
                 }
 
-                // Element that should not split
                 ContentDivision {
                     Paragraph { "KEEP_TOGETHER_START" }
                     Paragraph { "KEEP_TOGETHER_END" }
@@ -141,15 +123,12 @@ struct `PageBreakInside Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Both parts should be in PDF
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
         #expect(contentString.contains("KEEP_TOGETHER_START"))
         #expect(contentString.contains("KEEP_TOGETHER_END"))
     }
 }
-
-// MARK: - BreakAfter Tests (Modern CSS)
 
 @Suite
 struct `BreakAfter Tests` {
@@ -158,7 +137,7 @@ struct `BreakAfter Tests` {
     func `breakAfter avoid keeps header with following content`() {
         struct TestView: HTML.View {
             var body: some HTML.View {
-                // Fill most of page
+
                 for i in 1...40 {
                     Paragraph { "Filler \(i)" }
                 }
@@ -234,8 +213,6 @@ struct `BreakAfter Tests` {
     }
 }
 
-// MARK: - BreakBefore Tests (Modern CSS)
-
 @Suite
 struct `BreakBefore Tests` {
 
@@ -286,8 +263,6 @@ struct `BreakBefore Tests` {
         #expect(pages.count == 1)
     }
 }
-
-// MARK: - BreakInside Tests (Modern CSS)
 
 @Suite
 struct `BreakInside Tests` {
@@ -341,8 +316,6 @@ struct `BreakInside Tests` {
     }
 }
 
-// MARK: - Consecutive Sticky Headers Tests
-
 @Suite
 struct `Consecutive Sticky Headers Tests` {
 
@@ -354,7 +327,6 @@ struct `Consecutive Sticky Headers Tests` {
                     Paragraph { "Filler \(i)" }
                 }
 
-                // Two consecutive sticky headers
                 H3 { "ARTICLE_HEADER" }
                     .css.pageBreakAfter(.avoid)
 
@@ -401,8 +373,6 @@ struct `Consecutive Sticky Headers Tests` {
         #expect(contentString.contains("MODERN_CONTENT"))
     }
 }
-
-// MARK: - Section Wrapper Tests
 
 @Suite
 struct `Section Wrapper Tests` {
@@ -457,8 +427,6 @@ struct `Section Wrapper Tests` {
         #expect(contentString.contains("MODERN_SECTION_CONTENT"))
     }
 }
-
-// MARK: - Sticky Header with Table Tests
 
 @Suite
 struct `Sticky Header with Table Tests` {

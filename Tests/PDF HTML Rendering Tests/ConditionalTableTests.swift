@@ -1,6 +1,3 @@
-// ConditionalTableTests.swift
-// Tests for conditional content inside table elements
-
 import Foundation
 import HTML_Rendering
 import PDF_Rendering
@@ -11,7 +8,6 @@ import Testing
 @Suite
 struct `Conditional Table Tests` {
 
-    /// Test conditional row inside TableBody (crashes without Mirror-based detection)
     @Test
     func `Conditional TableRow inside TableBody`() {
         struct TestTable: HTML.View {
@@ -38,7 +34,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test conditional content inside TableDataCell
     @Test
     func `Conditional content inside TableDataCell`() {
         struct TestTable: HTML.View {
@@ -66,9 +61,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test conditional row with styled content inside TableBody (mimics Checklist crash)
-    /// This more closely matches the structure in Checklist.swift where StrongImportance
-    /// (a styled element) is used inside conditional table cells.
     @Test
     func `Conditional TableRow with styled content inside TableBody`() {
         struct TestChecklist: HTML.View {
@@ -116,7 +108,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test conditional content with styled wrapper inside TableDataCell
     @Test
     func `Conditional styled content inside TableDataCell`() {
         struct TestTable: HTML.View {
@@ -149,7 +140,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test multiple consecutive conditional sections (stress test)
     @Test
     func `Multiple conditional sections in table`() {
         struct TestTable: HTML.View {
@@ -194,8 +184,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test Optional (if without else) inside TableBody - this creates Optional<TableRow<...>>
-    /// which is different from _Conditional and needs separate Mirror-based handling.
     @Test
     func `Optional TableRow inside TableBody (if without else)`() {
         struct TestChecklist: HTML.View {
@@ -217,7 +205,7 @@ struct `Conditional Table Tests` {
                             TableDataCell { "Free" }
                             TableDataCell { "Before banking" }
                         }
-                        // This is an 'if' WITHOUT 'else' - creates Optional<TableRow<...>>
+
                         if showSCorpRow {
                             TableRow {
                                 TableDataCell {
@@ -245,7 +233,6 @@ struct `Conditional Table Tests` {
         let _ = [UInt8](document)
     }
 
-    /// Test Optional with false condition (nil case)
     @Test
     func `Optional TableRow with false condition (nil case)`() {
         struct TestTable: HTML.View {

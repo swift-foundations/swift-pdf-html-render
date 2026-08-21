@@ -1,29 +1,9 @@
-// CSS.BorderShorthandParser.swift
-// Minimal parser for the `border-*` shorthand value form
-// `<line-width> || <line-style> || <line-color>` per CSS Backgrounds 3 §3.
-//
-// swift-css's `.css.border(...)` DSL emits inline styles as
-// `RawProperty<P>` carrying a serialized string like "1px solid #000000".
-// Because the institute's modifier dispatch is type-driven, RawProperty<*>
-// does not reach the typed BorderBottom/BorderTop/BorderLeft/BorderRight
-// modifiers without a parsing step. This file supplies that parsing layer
-// and the conditional RawProperty conformances that hand off to the typed
-// modifiers.
-
 public import PDF_Rendering
 import PDF_Standard
 import Standard_Library_Extensions
 
-/// Marker protocol for per-side border longhand properties. Provides a
-/// uniform entry point for the `RawProperty<P>` conditional conformance
-/// that hands off to the typed modifier per side.
-///
-/// swift-css emits per-side borders as `RawProperty<BorderBottom>` etc.,
-/// so this protocol lets one conformance dispatch all four sides without
-/// triggering Swift's "no more than one conditional conformance" rule.
 public protocol BorderSideProperty: W3C_CSS_Shared.Property {
-    /// Apply the parsed shorthand parts to the institute context as if a
-    /// typed instance of this side's property had been emitted directly.
+
     static func applyParsedShorthand(
         width: W3C_CSS_Backgrounds.BorderWidth?,
         style: W3C_CSS_Values.LineStyle?,
@@ -75,8 +55,7 @@ extension W3C_CSS_Backgrounds.BorderLeft: BorderSideProperty {
         color: W3C_CSS_Values.Color?,
         to context: inout PDF.HTML.Context
     ) {
-        // BorderLeft.properties uses BorderWidth.Width (keyword) rather than
-        // BorderWidth (full) — extract the keyword from the parsed width.
+
         let widthKeyword: W3C_CSS_Backgrounds.BorderWidth.Width?
         if case .values(let values) = width {
             widthKeyword = values.top
@@ -91,12 +70,6 @@ extension W3C_CSS_Backgrounds.BorderLeft: BorderSideProperty {
     }
 }
 
-/// Parse a border shorthand value into its (width, style, color) parts.
-///
-/// Tolerates extra whitespace (single, double, leading, or trailing) since
-/// swift-css emits string-interpolation of optional descriptions. Token
-/// classification is order-independent: each token is matched against the
-/// canonical CSS shapes for width/style/color.
 internal func parseBorderShorthand(
     _ value: String
 ) -> (
@@ -127,9 +100,6 @@ internal func parseBorderShorthand(
     return (width: width, style: style, color: color)
 }
 
-/// Tokenize on whitespace. Respects parenthesized functional values like
-/// `rgb(0, 0, 0)` — the comma-separated args inside `(...)` remain one
-/// token.
 private func tokenizeBorderShorthand(_ value: String) -> [String] {
     var result: [String] = []
     var current = ""
@@ -158,9 +128,6 @@ private func tokenizeBorderShorthand(_ value: String) -> [String] {
     return result
 }
 
-/// Recognize a CSS `<line-width>` token. Accepts `thin`/`medium`/`thick`
-/// keywords and `<length>` values (subset: numeric + unit `px`/`em`/`rem`/
-/// `pt`/`in`/`cm`/`mm` — matches swift-css's `Length.description` output).
 private func parseBorderWidthToken(_ s: String) -> W3C_CSS_Backgrounds.BorderWidth? {
     switch s {
     case "thin", "medium", "thick":
@@ -204,9 +171,6 @@ private func parseLengthToken(_ s: String) -> W3C_CSS_Values.Length? {
     return nil
 }
 
-/// Recognize a CSS `<color>` token. Supports `#rgb`/`#rrggbb` hex,
-/// `rgb(...)`/`rgba(...)` functional, and named colors (delegated to
-/// `W3C_CSS_Values.NamedColor.init(rawValue:)`).
 private func parseColorToken(_ s: String) -> W3C_CSS_Values.Color? {
     if s.hasPrefix("#") {
         return .hex(W3C_CSS_Values.HexColor(String(s.dropFirst())))

@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.PaddingRight+PDF.HTML.Style.Modifier.swift
-// CSS padding-right property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -17,7 +14,7 @@ extension W3C_CSS_BoxModel.PaddingRight: PDF.HTML.Style.Modifier {
             context.padding.right = size.width
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

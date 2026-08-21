@@ -1,113 +1,51 @@
-// PDF.HTML.Configuration.swift
-// Configuration for HTML to PDF transformation
-
 import Dimension_Primitives
 import Geometry_Primitives
 import Layout_Primitives
 import PDF_Rendering
 import PDF_Standard
 
-/// Configuration for HTML to PDF transformation.
-///
-/// Controls page layout, typography, and spacing during transformation.
 extension PDF.HTML {
     public struct Configuration: Sendable {
-        // MARK: - Page Layout
 
-        /// Paper size
         public var paperSize: PDF.UserSpace.Rectangle
 
-        /// Page margins.
-        ///
-        /// Default 36pt (0.5 inch) aligns with WebKit's print default and
-        /// coenttb-html-to-pdf's `EdgeInsets.standard`, matching W3C UA
-        /// stylesheet expectations for HTML→PDF rendering. Override
-        /// explicitly for tighter or wider margins.
         public var margins: PDF.UserSpace.Insets
 
-        // MARK: - Headers & Footers
-
-        /// Page header configuration
         public var header: Header
 
-        /// Page footer configuration
         public var footer: Footer
 
-        // MARK: - Document Metadata
-
-        /// Document title (used in headers/footers and PDF metadata)
         public var documentTitle: String?
 
-        /// Document date string (used in headers/footers)
         public var documentDate: String?
 
-        // MARK: - Typography
-
-        /// Default font
         public var defaultFont: PDF.Font
 
-        /// Default font size in points
         public var defaultFontSize: PDF.UserSpace.Size<1>
 
-        /// Default text color
         public var defaultColor: PDF.Color
 
-        /// Line height (CSS line-height property)
-        ///
-        /// - `.normal`: Uses font metrics to calculate a reasonable line height
-        /// - `.multiple(1.5)`: Multiplier of font size
-        /// - `.lengthPercentage(.px(18))`: Fixed length
         public var lineHeight: LineHeight
 
-        // MARK: - Spacing
-
-        /// Paragraph spacing (multiplier of font size)
         public var paragraphSpacing: Dimension_Primitives.Scale<1, Double>
 
-        /// Heading spacing (multiplier of heading size)
         public var headingSpacing: Dimension_Primitives.Scale<1, Double>
 
-        // MARK: - Typography Scales
-
-        /// Typography scale settings (subscript, superscript, small text)
         public var typography: Typography
 
-        // MARK: - Block Indentation
-
-        /// Block element indentation settings
         public var indent: Indent
 
-        // MARK: - Spacing
-
-        /// Horizontal gap multiplier in em (default: 0.5, used for list markers)
         public var horizontalGapEm: Dimension_Primitives.Scale<1, Double>
 
-        // MARK: - Table Configuration
-
-        /// Table styling configuration
         public var table: Table
 
-        // MARK: - Outline Configuration
-
-        /// Document outline (bookmarks/TOC) settings
         public var outline: Outline
 
-        // MARK: - Link Configuration
-
-        /// Link annotation settings
         public var link: Link
 
-        // MARK: - Annotation Configuration
-
-        /// Annotation settings
         public var annotation: Annotation
 
-        // MARK: - Viewer Preferences
-
-        /// PDF viewer preferences
         public var viewer: Viewer
-
-        // MARK: - Init
 
         public init(
             paperSize: PDF.UserSpace.Rectangle = .a4,
@@ -156,16 +94,11 @@ extension PDF.HTML {
 }
 
 extension PDF.HTML.Configuration {
-    // MARK: - Computed
 
-    /// Media box (same as paper size, for use with PDF.Context)
     public var mediaBox: PDF.UserSpace.Rectangle {
         paperSize
     }
 
-    /// Content area (paper size minus margins) as a Rectangle
-    ///
-    /// Access `.width` and `.height` for dimensions.
     public var content: PDF.UserSpace.Rectangle {
         PDF.UserSpace.Rectangle(
             x: .zero + margins.leading,
@@ -175,28 +108,10 @@ extension PDF.HTML.Configuration {
         )
     }
 
-    // MARK: - Line Height Resolution
-
-    /// Resolve line height to a concrete multiplier for PDF rendering.
-    ///
-    /// - Parameters:
-    ///   - font: The font being used
-    ///   - fontSize: The current font size
-    /// - Returns: A multiplier value (e.g., 1.2 means line height = fontSize * 1.2)
     public func resolveLineHeight(for font: PDF.Font, fontSize: PDF.UserSpace.Size<1>) -> Double {
         switch lineHeight {
         case .normal:
-            // CSS "line-height: normal" uses the font's normalLineHeight
-            // which is (ascender - descender + leading) / unitsPerEm
-            //
-            // Per ISO 32000-2 Table 121, Leading is the "spacing between baselines
-            // of consecutive lines of text" with a default of 0.
-            //
-            // For Standard 14 fonts where leading is 0, fall back to a
-            // 1.2 multiplier — the value mainstream browsers use for
-            // CSS `line-height: normal` (CSS 2.1 §10.8.1 leaves the
-            // exact value UA-defined; Chrome/Firefox/Safari converge
-            // on ~1.2 for most Standard 14 / Latin fonts).
+
             let normalHeight = font.metrics.line.normal.value
             if font.metrics.leading == .zero {
                 let metricsLineHeight = font.metrics.line.height.value
@@ -209,10 +124,10 @@ extension PDF.HTML.Configuration {
             return factor
 
         case .lengthPercentage(let lp):
-            // Convert to multiplier based on font size
+
             switch lp {
             case .length(let length):
-                // For length values, calculate as multiple of font size
+
                 let points = PDF.UserSpace.Size<1>(
                     length,
                     currentSize: fontSize,
@@ -224,19 +139,16 @@ extension PDF.HTML.Configuration {
                 return pct.value / 100.0
 
             case .calc:
-                // calc() can't be evaluated statically - use normal fallback
+
                 return font.metrics.line.normal.value
             }
 
         case .global:
-            // Global values (inherit, initial) - use normal as fallback
+
             return font.metrics.line.normal.value
         }
     }
 
-    // MARK: - Heading Sizes
-
-    /// Font size for heading level (1-6)
     public func headingSize(level: Int) -> PDF.UserSpace.Size<1> {
         switch level {
         case 1: return defaultFontSize * 2.0
@@ -249,8 +161,6 @@ extension PDF.HTML.Configuration {
         }
     }
 
-    /// Margin multiplier (em-based) for heading level (1-6)
-    /// Based on WebKit user-agent stylesheet defaults
     public func headingMarginEm(for tag: String) -> Dimension_Primitives.Scale<1, Double> {
         switch tag {
         case "h1": return 0.67

@@ -1,10 +1,7 @@
-// PDF.HTML.Context.Table.Cell.swift
-// Cell accessor providing padding and positioned bounds/content
-
 import PDF_Rendering
 
 extension PDF.HTML.Context.Table {
-    /// Cell accessor providing padding and positioned bounds/content
+
     public struct Cell {
         private let table: PDF.HTML.Context.Table
         private let row: Int?
@@ -29,12 +26,11 @@ extension PDF.HTML.Context.Table {
 }
 
 extension PDF.HTML.Context.Table.Cell {
-    /// Cell padding
+
     public var padding: PDF.UserSpace.Size<1> {
         table._cellPadding
     }
 
-    /// Get a positioned cell accessor
     public func callAsFunction(
         row: Int,
         column: Int,
@@ -44,7 +40,6 @@ extension PDF.HTML.Context.Table.Cell {
         Self(table: table, row: row, column: column, colspan: colspan, rowspan: rowspan)
     }
 
-    /// Cell bounds (full cell rectangle) - requires positioned cell
     public var bounds: PDF.UserSpace.Rectangle {
         guard let row, let column else {
             preconditionFailure(
@@ -58,7 +53,6 @@ extension PDF.HTML.Context.Table.Cell {
         return PDF.UserSpace.Rectangle(x: x, y: y, width: width, height: height)
     }
 
-    /// Content bounds (cell bounds minus padding) - requires positioned cell
     public var content: PDF.UserSpace.Rectangle {
         bounds.insetBy(dx: table._cellPadding.width, dy: table._cellPadding.height)
     }

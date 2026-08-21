@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.Padding+PDF.HTML.Style.Modifier.swift
-// CSS padding property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -118,7 +115,7 @@ extension W3C_CSS_BoxModel.Padding: PDF.HTML.Style.Modifier {
             }
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

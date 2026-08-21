@@ -1,6 +1,3 @@
-// OutlineTests.swift
-// Tests for PDF outline/bookmark generation with H<N> wrapper
-
 import CSS
 import Foundation
 import HTML_Rendering
@@ -9,10 +6,6 @@ import Testing
 
 @testable import PDF_HTML_Rendering
 
-// MARK: - H<N> Wrapper (reproduces rule-legal behavior)
-
-/// Generic heading wrapper that applies `.css.pageBreakAfter(.avoid)` to keep headings with following content.
-/// This is the same pattern used in rule-legal documents.
 struct H<let N: Int> {
 
     @HTML.Builder
@@ -30,8 +23,6 @@ struct H<let N: Int> {
         }
     }
 }
-
-// MARK: - Outline Tests
 
 @Suite
 struct `Outline Generation Tests` {
@@ -99,20 +90,18 @@ struct `Outline Generation Tests` {
     @Test
     func `Mixed raw and wrapped headings all appear in outline`() throws {
         let result = PDF.HTML.render {
-            // Raw H1 in Header (like documentHeader)
+
             Header {
                 H1 { "DOCUMENT TITLE" }
                 Paragraph { "(A Corporation)" }
             }
 
-            // Wrapped H3 (like articleI)
             Section {
                 H<3> { "ARTICLE I" }
                 H<4> { "NAME" }
                 Paragraph { "The name of this corporation is Test Corp." }
             }
 
-            // Another wrapped section
             Section {
                 H<3> { "ARTICLE II" }
                 H<4> { "PURPOSE" }
@@ -125,7 +114,6 @@ struct `Outline Generation Tests` {
             print("DEBUG TEST: - Level \(h.level): '\(h.text)' page \(h.pageNumber)")
         }
 
-        // Should have all headings
         #expect(result.headings.count >= 5, "Should collect at least 5 headings")
         #expect(
             result.headings.contains { $0.text == "DOCUMENT TITLE" },
@@ -161,7 +149,6 @@ struct `Outline Generation Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to the temp directory for visual inspection
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("outline-test.pdf")
         try Data(bytes).write(to: url)
         print("DEBUG TEST: PDF written to: \(url.path)")
@@ -173,7 +160,6 @@ struct `Outline Generation Tests` {
             print("DEBUG TEST: Outline has \(outline.items.count) top-level items")
             printOutlineItems(outline.items, indent: 0)
 
-            // The main title should be in the outline
             let hasMainTitle = containsTitle(outline.items, "MAIN DOCUMENT TITLE")
             #expect(hasMainTitle, "Outline should contain 'MAIN DOCUMENT TITLE'")
         }
@@ -203,7 +189,7 @@ struct `Outline Generation Tests` {
             result.headings.count >= 1,
             "Should collect at least 1 heading from H1 with BR elements"
         )
-        // The text should be extracted (even if it's just the first part)
+
         let hasH1 = result.headings.contains { h in
             h.level == 1 && !h.text.isEmpty
         }
@@ -216,7 +202,7 @@ struct `Outline Generation Tests` {
             info: .init(title: "Articles of Incorporation"),
             generateOutline: true
         ) {
-            // documentHeader style - EXACTLY like the real document
+
             Header {
                 H1 {
                     "ARTICLES OF INCORPORATION"
@@ -230,7 +216,6 @@ struct `Outline Generation Tests` {
                     .textAlign(.center)
             }
 
-            // Article sections using H<N> wrapper
             Section {
                 H<3> { "ARTICLE I" }
                 H<4> { "NAME" }
@@ -252,7 +237,6 @@ struct `Outline Generation Tests` {
 
         let bytes = [UInt8](doc)
 
-        // Write to the temp directory for visual inspection
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "articles-of-incorporation-test.pdf"
         )
@@ -265,7 +249,6 @@ struct `Outline Generation Tests` {
             print("DEBUG TEST: Final outline structure:")
             printOutlineItems(outline.items, indent: 0)
 
-            // Check for expected items
             let hasArticlesTitle = containsTitle(
                 outline.items,
                 "ARTICLES OF INCORPORATION OF TEST CORPORATION, INC."
@@ -281,8 +264,6 @@ struct `Outline Generation Tests` {
         }
     }
 }
-
-// MARK: - Helper Functions
 
 private func printOutlineItems(_ items: [ISO_32000.Outline.Item], indent: Int) {
     let prefix = String(repeating: "  ", count: indent)
@@ -306,8 +287,6 @@ private func containsTitle(_ items: [ISO_32000.Outline.Item], _ title: String) -
     return false
 }
 
-// MARK: - Diagnostic Tests for Single vs Multiple H1
-
 @Suite
 struct `Single vs Multiple H1 Diagnostic Tests` {
 
@@ -317,7 +296,7 @@ struct `Single vs Multiple H1 Diagnostic Tests` {
             info: .init(title: "Single H1 Parent Test"),
             generateOutline: true
         ) {
-            // Single H1 parent with H3 children (like Articles of Incorporation)
+
             H1 { "DOCUMENT TITLE" }
 
             Section {
@@ -355,7 +334,7 @@ struct `Single vs Multiple H1 Diagnostic Tests` {
             info: .init(title: "Multiple H1 Parents Test"),
             generateOutline: true
         ) {
-            // First H1 with H3 children
+
             H1 { "FIRST DOCUMENT" }
 
             Section {
@@ -368,7 +347,6 @@ struct `Single vs Multiple H1 Diagnostic Tests` {
                 Paragraph { "Content." }
             }
 
-            // Second H1 with H3 children
             H1 { "SECOND DOCUMENT" }
 
             Section {

@@ -1,6 +1,3 @@
-// W3C_CSS_Backgrounds.BorderRight+PDF.HTML.Style.Modifier.swift
-// CSS border-right property to PDF context translation.
-
 public import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Values
@@ -36,6 +33,3 @@ extension W3C_CSS_Backgrounds.BorderRight: PDF.HTML.Style.Context.Modifier {
         )
     }
 }
-
-// RawProperty<BorderRight> dispatch via BorderSideProperty (see
-// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Modifier.swift).

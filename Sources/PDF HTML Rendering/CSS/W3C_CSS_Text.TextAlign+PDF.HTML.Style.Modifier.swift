@@ -1,6 +1,3 @@
-// W3C_CSS_Text.TextAlign+PDF.HTML.Style.Modifier.swift
-// CSS text-align property to PDF context translation
-
 import Layout_Primitives
 import PDF_Rendering
 import PDF_Standard
@@ -18,7 +15,7 @@ extension W3C_CSS_Text.TextAlign: PDF.HTML.Style.Modifier {
             context.style.textAlign = .trailing
 
         case .justify:
-            // Justify not fully supported - fall back to leading
+
             context.style.textAlign = .leading
 
         default:

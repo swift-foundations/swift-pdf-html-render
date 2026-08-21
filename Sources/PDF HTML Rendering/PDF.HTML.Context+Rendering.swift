@@ -1,11 +1,3 @@
-// PDF.HTML.Context+Render.swift
-// Render_Primitives.Render.Context conformance for HTML-to-PDF rendering.
-//
-// Maps the Render_Primitives.Render.Context protocol to PDF.HTML.Context, enabling
-// the same Render_Primitives.Render.View tree to render through both HTML.Context
-// (for byte output) and PDF.HTML.Context (for PDF pages) via pure
-// static dispatch — eliminating PDF.HTML.View and Mirror-based dispatch.
-
 import Byte_Primitives
 import Dictionary_Ordered_Primitive
 import Dictionary_Ordered_Primitives
@@ -14,20 +6,10 @@ import Layout_Primitives
 import PDF_Rendering
 import Render_Primitives
 
-// MARK: - Render_Primitives.Render.Context Conformance
-
 extension PDF.HTML.Context {
 
-    // MARK: - Text
-
     public mutating func text(_ content: borrowing String) {
-        // Phase 1 CSS cascade scaffolding: head-element text interception.
-        // `<style>` text content is the CSS source — buffer for later parsing
-        // (subsequent commit) instead of rendering as visible PDF text.
-        // `<title>` text is metadata — silently dropped in Phase 1 (Phase 2
-        // will route to `ISO_32000.Document.Info.title`). `<meta>` / `<link>`
-        // are void elements and have no text content (handled by the void
-        // path in `_pushElement`).
+
         if insideStyleBlock {
             currentStyleBlockBuffer += copy content
             return
@@ -40,12 +22,7 @@ extension PDF.HTML.Context {
 
         if table?.recording != nil {
             table!.recording!.commands.append(.text(copy))
-            // Round 2b.1 (C-1 measurement): measure tokens for column min/max
-            // accumulators when inside a recorded cell. Style is frozen at
-            // recording-entry value (style stack isn't mutated during
-            // recording per _pushStyle:542); nested-element font changes
-            // (small/h3) therefore measure at outer style — approximate by
-            // design; Round 2b.2 will assess fidelity.
+
             if table!.recording!.currentCellColumn != nil {
                 let runs = PDF.Context.Text.Run.runsWithSymbolSupport(
                     text: copy,
@@ -83,20 +60,12 @@ extension PDF.HTML.Context {
                 if maxToken > table!.recording!.currentCellMinWidth {
                     table!.recording!.currentCellMinWidth = maxToken
                 }
-                // W3C CSS Box Sizing 3 §4.1: max-content equals the width
-                // the box would take on a single logical line. Text runs
-                // accumulate into `currentLineWidth`; line-boundary events
-                // (br, nested tr push, cell pop) commit MAX into
-                // `currentCellMaxWidth` and reset. Prior implementation
-                // summed lineWidth directly into `currentCellMaxWidth`,
-                // which over-counted nested-table content (turned MAX of
-                // rows into SUM of rows).
+
                 table!.recording!.currentLineWidth += lineWidth
             }
             return
         }
 
-        // Capture heading text for bookmarks
         if section.activeHeading != nil {
             if !section.activeHeading!.text.isEmpty {
                 section.activeHeading!.text += " "
@@ -119,13 +88,10 @@ extension PDF.HTML.Context {
         }
     }
 
-    // MARK: - Breaks
-
     public mutating func lineBreak() {
         if table?.recording != nil {
             table!.recording!.commands.append(.lineBreak)
-            // Explicit line boundary: commit MAX into currentCellMaxWidth
-            // and reset currentLineWidth (W3C CSS Box Sizing 3 §4.1).
+
             if table!.recording!.currentCellColumn != nil {
                 let lw = table!.recording!.currentLineWidth
                 if lw > table!.recording!.currentCellMaxWidth {
@@ -157,8 +123,6 @@ extension PDF.HTML.Context {
         pdf.advance(spacing)
     }
 
-    // MARK: - Media
-
     public mutating func image(source: String, alt: String) {
         if table?.recording != nil {
             table!.recording!.commands.append(.image(source: source, alt: alt))
@@ -175,8 +139,6 @@ extension PDF.HTML.Context {
         pdf.flush.inline()
     }
 
-    // MARK: - Page
-
     public mutating func pageBreak() {
         if table?.recording != nil {
             table!.recording!.commands.append(.pageBreak)
@@ -186,8 +148,6 @@ extension PDF.HTML.Context {
         pdf.flush.text()
         pdf.page.new()
     }
-
-    // MARK: - Attributes
 
     public mutating func set(attribute name: String, _ value: String?) {
         if table?.recording != nil {
@@ -209,7 +169,7 @@ extension PDF.HTML.Context {
             table!.recording!.commands.append(.addClass(name))
             return
         }
-        // No-op: PDF doesn't use CSS class names.
+
     }
 
     public mutating func write(raw bytes: [UInt8]) {
@@ -217,7 +177,7 @@ extension PDF.HTML.Context {
             table!.recording!.commands.append(.writeRaw(bytes))
             return
         }
-        // No-op: raw HTML bytes have no PDF representation.
+
     }
 
     public mutating func register(
@@ -226,18 +186,14 @@ extension PDF.HTML.Context {
         selector: String?,
         pseudo: String?
     ) -> String? {
-        // PDF doesn't generate CSS class names.
+
         nil
     }
-
-    // MARK: - Inline Style Application
 
     public mutating func apply(inlineStyle property: Any) -> Bool {
         if table?.recording != nil {
             table!.recording!.commands.append(.inlineStyle(property))
-            // Capture cell-level hints only between cells (recording depth
-            // 1 = inside TR, after one cell popped and before the next
-            // pushes). Otherwise inline-styles inside a cell would leak.
+
             if table!.recording!.elementDepth == 1 {
                 Self.captureCellWidthHint(from: property, into: &table!.recording!)
                 Self.captureCellPaddingHint(from: property, into: &table!.recording!)
@@ -245,7 +201,6 @@ extension PDF.HTML.Context {
             return true
         }
 
-        // Unwrap Optional if needed
         let unwrapped: Any
         let mirror = Mirror(reflecting: property)
         if mirror.displayStyle == .optional {
@@ -258,41 +213,12 @@ extension PDF.HTML.Context {
         var handled = false
 
         if unwrapped is W3C_CSS_BoxModel.Width {
-            // Mark the next `_pushElement` as receiving an explicit width
-            // declaration. Tables consume this to gate shrink-to-fit
-            // (§17.5.2.2); non-table elements simply clear the flag.
+
             pendingExplicitWidth = true
         }
 
-        // swiftlint:disable:next workaround_marker_present
-        // WORKAROUND: spell these existentials through the canonical root
-        //             (ISO_32000) — the `PDF` typealias puts TypeAliasType
-        //             sugar in the written type, and the Windows (+Asserts)
-        //             debug-info mangler asserts forming a CanType from it
-        //             (isActuallyCanonicalOrNull, AST/Type.h:421; fires on
-        //             6.3.3 AND 6.4-dev).
-        // WHY: the crash is specific to the sugared `PDF.HTML.Style.Modifier`
-        //      typealias spelling; the canonical-root spelling below sidesteps
-        //      it without changing behavior.
-        // TRACKING: swift-institute/Issues —
-        //           swift-issue-noncanonical-existential-windows-debuginfo-ice;
-        //           swiftlang/swift#86202.
-        // WHEN TO REMOVE: when swift-pdf's windows-existential-repro.yml
-        //                 cross-package variant goes CLEAN on the CI toolchain.
-        // reason: `unwrapped` is an untyped CSS property value (`Any`); this
-        // dynamic downcast dispatches to whichever concrete Style.Modifier
-        // conformer it holds — heterogeneity is load-bearing, `some` cannot
-        // express a runtime-checked downcast target.
-        // swiftlint:disable:next no_any_protocol_existential
         if let modifier = unwrapped as? any ISO_32000.HTML.Style.Modifier {
-            // Inline style mutations to wrap-controlling modes (`whiteSpace`,
-            // `whiteSpaceCollapse`) are NOT scoped to a paired pop in
-            // swift-html's serialization of `HTML.Text("X").css.X` — the
-            // builder emits `inlineStyle(modifier)` + `text("X")` without a
-            // closing marker. Mode mutations therefore leak to subsequent
-            // siblings within the enclosing block. To preserve correct wrap
-            // semantics for the prior accumulated runs, flush before
-            // mutating the mode.
+
             if pdf.inline.hasRuns {
                 pdf.flush.inline()
             }
@@ -300,28 +226,11 @@ extension PDF.HTML.Context {
             handled = true
         }
 
-        // swiftlint:disable:next workaround_marker_present
-        // WORKAROUND: canonical-root spelling — see the comment on the
-        //             Style.Modifier downcast above.
-        // WHY: same Windows (+Asserts) debug-info mangler assertion described
-        //      above; this is the paired downcast for the context-scoped
-        //      modifier protocol.
-        // TRACKING: swift-institute/Issues —
-        //           swift-issue-noncanonical-existential-windows-debuginfo-ice;
-        //           swiftlang/swift#86202.
-        // WHEN TO REMOVE: when swift-pdf's windows-existential-repro.yml
-        //                 cross-package variant goes CLEAN on the CI toolchain.
-        // reason: `unwrapped` is an untyped CSS property value (`Any`); this
-        // dynamic downcast dispatches to whichever concrete Context.Modifier
-        // conformer it holds — heterogeneity is load-bearing, `some` cannot
-        // express a runtime-checked downcast target.
-        // swiftlint:disable:next no_any_protocol_existential
         if let htmlModifier = unwrapped as? any ISO_32000.HTML.Style.Context.Modifier {
             htmlModifier.apply(to: &self)
             handled = true
         }
 
-        // Apply box model after style modifiers set margins/padding
         if handled {
             applyBoxModel()
         }
@@ -329,10 +238,6 @@ extension PDF.HTML.Context {
         return handled
     }
 
-    // MARK: - Recording Helper
-
-    /// Record a command if in table first-row recording mode.
-    /// Returns `true` if the command was recorded (caller should return early).
     @inline(always)
     private static func record(
         _ command: Table.Recording.Command,
@@ -343,12 +248,6 @@ extension PDF.HTML.Context {
         return true
     }
 
-    /// Extract a CSS `width: <percentage>` hint from a recorded inline-style
-    /// property and buffer it for the next `<td>`/`<th>` push at recording
-    /// depth 0. Only the percentage form is consumed; length-form (px/em/cm)
-    /// hints fall through as uniform-weight, a documented gap for the current
-    /// invoice corpus (verified to use only %-form). Optional unwrapping
-    /// mirrors the runtime dispatch path at `apply(inlineStyle:)`.
     private static func captureCellWidthHint(
         from property: Any,
         into recording: inout PDF.HTML.Context.Table.Recording
@@ -367,13 +266,6 @@ extension PDF.HTML.Context {
         }
     }
 
-    /// Extract horizontal padding hints (padding-left, padding-right) from
-    /// a recorded inline-style property and accumulate so the next
-    /// `<td>`/`<th>` cell's content metrics include the CSS box-model
-    /// padding (W3C CSS 2.1 §17.5.2.2 cell width includes padding). Only
-    /// px length-percentage values are converted; em/% require font-size
-    /// resolution that isn't available at recording time and fall through
-    /// as 0.
     private static func captureCellPaddingHint(
         from property: Any,
         into recording: inout PDF.HTML.Context.Table.Recording
@@ -407,8 +299,6 @@ extension PDF.HTML.Context {
         return 0
     }
 
-    // MARK: - Block Structure
-
     public static func _pushBlock(
         _ context: inout Self,
         role: Render_Primitives.Render.Semantic.Block?,
@@ -429,8 +319,6 @@ extension PDF.HTML.Context {
         PDF.Context._popBlock(&context.pdf)
     }
 
-    // MARK: - Inline Structure
-
     public static func _pushInline(
         _ context: inout Self,
         role: Render_Primitives.Render.Semantic.Inline?,
@@ -444,8 +332,6 @@ extension PDF.HTML.Context {
         if record(.popInline, context: &context) { return }
         PDF.Context._popInline(&context.pdf)
     }
-
-    // MARK: - Lists
 
     public static func _pushList(
         _ context: inout Self,
@@ -471,8 +357,6 @@ extension PDF.HTML.Context {
         PDF.Context._popItem(&context.pdf)
     }
 
-    // MARK: - Links
-
     public static func _pushLink(
         _ context: inout Self,
         destination: borrowing String
@@ -488,8 +372,6 @@ extension PDF.HTML.Context {
         if record(.popLink, context: &context) { return }
         PDF.Context._popLink(&context.pdf)
     }
-
-    // MARK: - Attributes
 
     public static func _pushAttributes(_ context: inout Self) {
         if record(.pushAttributes, context: &context) { return }
@@ -518,8 +400,6 @@ extension PDF.HTML.Context {
         }
     }
 
-    // MARK: - Elements
-
     public static func _pushElement(
         _ context: inout Self,
         tagName: String,
@@ -527,7 +407,7 @@ extension PDF.HTML.Context {
         isVoid: Bool,
         isPreElement: Bool
     ) {
-        // Recording mode: capture commands for first-row column measurement
+
         if context.table?.recording != nil {
             context.table!.recording!.commands.append(
                 .pushElement(
@@ -537,29 +417,20 @@ extension PDF.HTML.Context {
                     isPreElement: isPreElement
                 )
             )
-            // Round 4.3 R#7: treat thead/tbody/tfoot as transparent for
-            // recording-depth tracking — they don't add structural depth
-            // between table and tr (CSS 2.1 §17.5: a table row group is a
-            // "transparent" container). Otherwise cells of `<thead><tr>...`
-            // would land at depth==2 (instead of depth==1) and miss
-            // cell-detection.
+
             let isTransparent =
                 isVoid
                 || tagName == "thead"
                 || tagName == "tbody"
                 || tagName == "tfoot"
-            // Mirror push order in pushedIsVoid so the matching pop can
-            // skip its decrement (keeps elementDepth symmetric).
+
             context.table!.recording!.pushedIsVoid.append(isTransparent)
             if !isTransparent {
-                // Round 4.3 R#7: top-level TR push (depth==0) starts a new
-                // row of THIS table. Reset per-row cell counter.
+
                 if context.table!.recording!.elementDepth == 0 && tagName == "tr" {
                     context.table!.recording!.cellsPushedInCurrentRow = 0
                 }
-                // Top-level cell of THIS table = depth == 1, tagName td/th.
-                // (depth==0 = TABLE; depth==1 = TR; cell pushes from TR at
-                // depth==1; nested cells deeper.)
+
                 if context.table!.recording!.elementDepth == 1
                     && (tagName == "td" || tagName == "th")
                 {
@@ -571,8 +442,7 @@ extension PDF.HTML.Context {
                     let colspan = context.table!.recording!.pendingColspan
                     context.table!.recording!.pendingColspan = 1
                     context.table!.recording!.cellsPushedInCurrentRow += colspan
-                    // First row finalizes total `columnCount`; later rows
-                    // just contribute samples to existing columns.
+
                     if context.table!.recording!.topLevelRowIndex == 0 {
                         context.table!.recording!.columnCount = max(
                             context.table!.recording!.columnCount,
@@ -587,10 +457,7 @@ extension PDF.HTML.Context {
                         context.table!.recording!.pendingCellHorizontalPadding
                     context.table!.recording!.pendingCellHorizontalPadding = 0
                 }
-                // Nested-TR boundary (depth > 1 = TR inside an outer cell's
-                // nested content): commit pending logical-line width and
-                // reset. W3C CSS Box Sizing 3 §4.1 — max-content of the
-                // outer cell is MAX of nested row widths, not SUM.
+
                 if context.table!.recording!.elementDepth > 1
                     && tagName == "tr"
                     && context.table!.recording!.currentCellColumn != nil
@@ -606,9 +473,6 @@ extension PDF.HTML.Context {
             return
         }
 
-        // Handle void elements: push a marker scope so the matching
-        // `pop.element` from the Render contract pops a balanced entry
-        // (skipping state restoration via `scope.isVoid`).
         if isVoid {
             let voidScope = Element.Scope(
                 tagName: tagName,
@@ -626,16 +490,11 @@ extension PDF.HTML.Context {
             )
             context.elementStack.append(voidScope)
             handleVoidElement(tagName, context: &context)
-            // Void elements aren't tables; clear the one-shot flag.
+
             context.pendingExplicitWidth = false
             return
         }
 
-        // Save element-scoped state. Drain any pending per-side border
-        // declarations (set by CSS modifiers that fired between this
-        // element's `open(.style)` and `_pushElement`). The pending fields
-        // on `context` represent borders intended for THIS element; clear
-        // them after transfer so they don't leak to the next push.
         let pendingBorderTop = context.pendingSideBorderTop
         let pendingBorderRight = context.pendingSideBorderRight
         let pendingBorderBottom = context.pendingSideBorderBottom
@@ -664,16 +523,6 @@ extension PDF.HTML.Context {
         scope.pendingBorderLeft = pendingBorderLeft
         context.elementStack.append(scope)
 
-        // Phase 1 CSS cascade scaffolding: enter head-element text-interception
-        // scope. `<style>` text content buffers for parsing; `<title>` text is
-        // silently suppressed (Phase 2 will route to Info.title). `<meta>` and
-        // `<link>` are void elements and never reach this non-void path; their
-        // text content (if any) is impossible per the HTML spec.
-        //
-        // HTML tag names are case-insensitive per HTML §3.2.2 — lowercase
-        // the comparison to be robust against tag("STYLE") / tag("Title")
-        // call sites even though all current institute typed builders emit
-        // lowercase.
         let loweredTag = tagName.lowercased()
         switch loweredTag {
         case "style":
@@ -687,20 +536,10 @@ extension PDF.HTML.Context {
             break
         }
 
-        // Apply tag-specific style (UA-level origin per CSS Cascade §6.4.4).
         HTML.Tag.Element<Never>.applyTagStyle(tagName, context: &context)
 
-        // Apply author-level CSS rules from <style> blocks. UA-level
-        // applyTagStyle has already run; author rules override UA defaults
-        // per CSS Cascade §6.4 (origin/importance). Source-order
-        // resolution: later rules at same selector win because each
-        // dispatched modifier overwrites state. Phase 1: type-selector +
-        // universal matching only; print-media-aware @media filter.
-        // O(rules × elements) lookup — fine for normalize-size stylesheets;
-        // Phase 2 may add indexed-by-tag-name optimization.
         context.applyParsedCSSRules(forTagName: loweredTag)
 
-        // Handle anchor tags: extract href from attributes
         if tagName == "a" {
             if let href = context.attributes["href"] {
                 if href.hasPrefix("#") {
@@ -711,7 +550,6 @@ extension PDF.HTML.Context {
             }
         }
 
-        // Handle named destinations (id attribute)
         if let elementId = context.attributes["id"], !elementId.isEmpty {
             let pageNumber = context.pdf.completedPages.count + 1
             let yPosition = context.pdf.layout.box.lly
@@ -726,14 +564,6 @@ extension PDF.HTML.Context {
                 context.pdf.flush.inline()
             }
 
-            // Block margins (CSS margin collapsing).
-            // Tag-default margins are skipped when the consumer has supplied
-            // an explicit CSS margin via `.css.margin(top:)` / `.margin(bottom:)`
-            // — `pdf.margin.top`/`pdf.margin.bottom` set by the Margin modifier
-            // is taken as the cascade winner. `applyBoxModel` already advances Y
-            // by the user-supplied top margin at modifier-dispatch time, so
-            // skipping the tag default here avoids double-applying the same
-            // margin (the prior code emitted user + default).
             let isNestedList = (tagName == "ul" || tagName == "ol") && context.pdf.list.depth > 0
             let userOverrodeMargin =
                 context.pdf.margin.top != nil
@@ -762,26 +592,21 @@ extension PDF.HTML.Context {
                 }
             }
 
-            // Heading tracking for bookmarks
             if let headingLevel = HTML.Tag.Element<Never>.headingLevel(for: tagName) {
                 pushHeading(level: headingLevel, tagName: tagName, context: &context)
             }
 
-            // Tag-specific block setup
             pushBlockElement(tagName, context: &context)
         } else {
-            // Tag-specific inline setup
+
             pushInlineElement(tagName, context: &context)
         }
-        // Consume the one-shot explicit-width flag. Tables capture it
-        // inside `pushBlockElement` "table" case before this clears.
+
         context.pendingExplicitWidth = false
     }
 
     public static func _popElement(_ context: inout Self, isBlock: Bool) {
-        // Recording mode: track element depth. Mirror the push-side
-        // `if !isVoid` guard via the `pushedIsVoid` stack so a void pop
-        // doesn't decrement depth that its push didn't increment.
+
         if context.table?.recording != nil {
             let wasVoid = context.table!.recording!.pushedIsVoid.popLast() ?? false
             if wasVoid {
@@ -790,29 +615,23 @@ extension PDF.HTML.Context {
             }
             context.table!.recording!.elementDepth -= 1
             if context.table!.recording!.elementDepth < 0 {
-                // Round 4.3 R#7: table pop reached — finalize column widths
-                // from ALL rows' measurements, then replay all commands.
+
                 let recording = context.table!.recording!
                 context.table!.recording = nil
                 finalizeFirstRow(recording, context: &context)
-                // Fall through to normal pop logic for the TABLE.
+
             } else {
-                // Cell-pop detection: elementDepth was 2 (td/th) before
-                // decrement and is now 1 (back at TR level). Finalize the
-                // popping cell's min/max into per-column dicts via MAX.
+
                 if context.table!.recording!.elementDepth == 1,
                     let col = context.table!.recording!.currentCellColumn
                 {
-                    // Final line-boundary commit: any in-flight
-                    // currentLineWidth is the last logical line.
+
                     let lw = context.table!.recording!.currentLineWidth
                     if lw > context.table!.recording!.currentCellMaxWidth {
                         context.table!.recording!.currentCellMaxWidth = lw
                     }
                     context.table!.recording!.currentLineWidth = .init(0)
-                    // Add captured horizontal padding to cell intrinsic
-                    // metrics (CSS 2.1 §17.5.2.2 cell width includes
-                    // padding).
+
                     let pad = context.table!.recording!.currentCellPadding
                     if pad > 0 {
                         context.table!.recording!.currentCellMaxWidth +=
@@ -833,17 +652,9 @@ extension PDF.HTML.Context {
                     }
                     context.table!.recording!.currentCellColumn = nil
                 }
-                // Top-level TR pop (depth==0 after decrement): row ended.
-                // Increment row index so subsequent rows stop expanding
-                // columnCount.
+
                 if context.table!.recording!.elementDepth == 0 {
-                    // Check if we just popped a TR via the pushedIsVoid
-                    // stack peek — but the stack was already popped earlier
-                    // in this function. We use a different heuristic:
-                    // depth==0 after decrement could be a TR pop OR a top
-                    // level non-TR pop. Either way, increment row index
-                    // since topLevelRowIndex is only meaningful when crossing
-                    // a TR.
+
                     context.table!.recording!.topLevelRowIndex += 1
                 }
                 context.table!.recording!.commands.append(.popElement(isBlock: isBlock))
@@ -853,13 +664,6 @@ extension PDF.HTML.Context {
 
         guard let scope = context.elementStack.popLast() else { return }
 
-        // Phase 1 CSS cascade scaffolding: exit head-element text-interception
-        // scope. `<style>` content drains to `collectedStyleBlocks` AND
-        // parses into `parsedStylesheet` for subsequent `_pushElement`
-        // rule-application. `<title>` clears its flag; the buffered-
-        // and-dropped text is unreachable (Phase 2 will route to
-        // `ISO_32000.Document.Info.title` via a `pendingTitle: String`
-        // field instead).
         switch scope.tagName.lowercased() {
         case "style":
             if context.insideStyleBlock {
@@ -878,8 +682,6 @@ extension PDF.HTML.Context {
             break
         }
 
-        // Void scopes are markers — handleVoidElement made no per-scope
-        // state changes at push, so no state to restore at pop.
         if scope.isVoid { return }
 
         if isBlock {
@@ -892,7 +694,6 @@ extension PDF.HTML.Context {
             popInlineElement(scope.tagName, context: &context)
         }
 
-        // Restore element-scoped state
         context.pdf.style = scope.style
         context.pdf.layout.box.llx = scope.llx
         context.pdf.layout.box.urx = scope.urx
@@ -902,12 +703,10 @@ extension PDF.HTML.Context {
         context.link.currentInternalId = scope.internalLinkId
     }
 
-    // MARK: - Style Scope
-
     public static func _pushStyle(_ context: inout Self) {
         if record(.pushStyle, context: &context) { return }
         context.styleScopeStack.append(Style.Snapshot(from: context))
-        // Clear so inner scopes don't consume the parent's break flags.
+
         context.forcePageBreakAfter = false
         context.avoidPageBreakAfter = false
         context.avoidPageBreakInside = false
@@ -916,7 +715,6 @@ extension PDF.HTML.Context {
     public static func _popStyle(_ context: inout Self) {
         if record(.popStyle, context: &context) { return }
 
-        // Apply bottom padding and margin before restoring
         if let paddingBottom = context.pdf.padding.bottom, paddingBottom > .zero {
             context.pdf.advance(paddingBottom)
         }
@@ -924,14 +722,12 @@ extension PDF.HTML.Context {
             context.pdf.advance(marginBottom)
         }
 
-        // Handle force page break set in THIS scope only.
         if context.forcePageBreakAfter {
             context.pdf.flush.inline()
             context.pdf.page.new()
             context.forcePageBreakAfter = false
         }
 
-        // Restore saved state, then restore parent's break flags.
         if let snapshot = context.styleScopeStack.popLast() {
             snapshot.restore(to: &context)
             context.forcePageBreakAfter = snapshot.forcePageBreakAfter
@@ -941,12 +737,8 @@ extension PDF.HTML.Context {
     }
 }
 
-// MARK: - Box Model Application
-
 extension PDF.HTML.Context {
-    /// Apply CSS box model (margins, padding, explicit width) to layout.
-    ///
-    /// Called after style modifiers set margin/padding properties.
+
     mutating func applyBoxModel() {
         if let marginTop = pdf.margin.top, marginTop > .zero {
             pdf.advance(marginTop)
@@ -968,24 +760,15 @@ extension PDF.HTML.Context {
         }
         if let explicitWidth = pdf.constraint.width {
             pdf.layout.box.urx = pdf.layout.box.llx + explicitWidth
-            // Consume the Width modifier's one-shot output. CSS `width`
-            // does not inherit (CSS 2.1 §10.3.4 / CSS Box Sizing 3 §6),
-            // so a child element's own applyBoxModel must NOT re-apply
-            // its ancestor's resolved width. Clearing here scopes the
-            // constraint to the modifier dispatch that set it.
+
             pdf.constraint.width = nil
         }
         if pdf.constraint.height != nil {
-            // Symmetric one-shot consumption. `applyBoxModel` does not
-            // currently read constraint.height, but clearing here keeps
-            // the semantic consistent so a future Height-consumer reads
-            // from a freshly-set value rather than a stale ancestor one.
+
             pdf.constraint.height = nil
         }
     }
 }
-
-// MARK: - Void Element Handling
 
 extension PDF.HTML.Context {
     private static func handleVoidElement(
@@ -994,12 +777,7 @@ extension PDF.HTML.Context {
     ) {
         switch tagName {
         case "br":
-            // `<br>` produces a single line break. `flush.inline()` renders
-            // the buffered text run AND advances Y by line height as part of
-            // that render. Only emit an explicit `advance.line()` when there
-            // was nothing to flush — that case handles consecutive `<br><br>`
-            // (blank line). Without this guard, `text<br>` advances TWO
-            // lines instead of one.
+
             if context.pdf.inline.runs.isEmpty {
                 context.pdf.advance.line()
             } else {
@@ -1029,16 +807,14 @@ extension PDF.HTML.Context {
     }
 }
 
-// MARK: - Block Element Push/Pop
-
 extension PDF.HTML.Context {
-    /// Tag-specific setup for block elements (called from _pushElement).
+
     private static func pushBlockElement(
         _ tagName: String,
         context: inout PDF.HTML.Context
     ) {
         switch tagName {
-        // Table elements — basic block fallback (proper table handling is TODO)
+
         case "table":
             let tableStartY = context.pdf.layout.box.lly
             let availableWidth = context.pdf.layout.box.width
@@ -1067,19 +843,12 @@ extension PDF.HTML.Context {
             context.table?.currentFragmentStartY = tableStartY
             context.table?.currentFragmentEndY = tableStartY
             context.table?.hasExplicitWidth = explicit
-            // Round 4.3 R#7: start recording at TABLE push (was at first
-            // TR push) so all rows contribute to max-content / min-content
-            // measurement per W3C CSS 2.1 §17.5.2.2. Finalization + replay
-            // happen at table pop instead of first-row pop.
+
             if !context.table!.columnsInitialized {
                 context.table?.recording = .init(savedY: tableStartY)
             }
             context.resetMarginCollapsing()
 
-            // γ-slot drain: Border-family CSS modifiers that fired before
-            // `_pushElement("table", …)` (when `context.table == nil`) stashed
-            // their target values here; apply them now that the table context
-            // exists, then clear the slots.
             if let pendingColor = context.pendingTableBorderColor {
                 context.table?.borderColor = pendingColor
                 context.pendingTableBorderColor = nil
@@ -1095,15 +864,14 @@ extension PDF.HTML.Context {
             }
 
         case "tbody", "tfoot":
-            break  // Pass-through
+            break
 
         case "tr":
             if var tableCtx = context.table {
                 let rowHeight = context.pdf.style.line.height + tableCtx.cell.padding.height * 2
 
-                // Ensure room for this row; page-break if needed
                 if context.pdf.page.exceeds(adding: rowHeight) {
-                    // Draw fragment borders for rows already on this page
+
                     if tableCtx.totalRowsRendered > 0 {
                         HTML.Tag.Element<Never>.drawFragmentRightAndBottomBorders(
                             tableCtx: tableCtx,
@@ -1116,7 +884,6 @@ extension PDF.HTML.Context {
                     context.pdf.flush.text()
                     context.pdf.page.new()
 
-                    // Update fragment tracking for new page
                     let newY = context.pdf.layout.box.lly
                     tableCtx.currentFragmentStartY = newY
                     tableCtx.currentFragmentEndY = newY
@@ -1137,14 +904,13 @@ extension PDF.HTML.Context {
 
         case "td", "th":
             if var tableCtx = context.table, tableCtx.columnsInitialized {
-                // Skip columns occupied by rowspan from previous rows
+
                 tableCtx.advanceToNextAvailableColumn()
 
                 let column = tableCtx.currentColumn
                 let colspan = context.attributes["colspan"].flatMap { Int($0) } ?? 1
                 let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
 
-                // Mark grid for multi-row spanning
                 if rowspan > 1 {
                     tableCtx.spans.mark(
                         fromRow: tableCtx.totalRowsRendered,
@@ -1165,7 +931,7 @@ extension PDF.HTML.Context {
                     let contentWidth = cellWidth - cellPadding.width * 2
                     let contentY = tableCtx.bounds.lly + cellPadding.height
                     let contentHeight = tableCtx.bounds.height - cellPadding.height * 2
-                    // Save layout box (restored in popElement)
+
                     context.pdf.layout.box = PDF.UserSpace.Rectangle(
                         x: contentX,
                         y: contentY,
@@ -1178,7 +944,6 @@ extension PDF.HTML.Context {
                 }
             }
 
-        // List containers
         case "ol", "ul":
             if let listType = HTML.Tag.Element<Never>.listType(for: tagName) {
                 context.pdf.push(list: listType)
@@ -1186,7 +951,7 @@ extension PDF.HTML.Context {
                 context.pdf.layout.box.llx += indent
                 let savedPendingMargin = context.pendingBottomMargin
                 context.pendingBottomMargin = .init(0)
-                // Store the saved margin in the element stack's last entry
+
                 if let last = context.elementStack.popLast() {
                     context.elementStack.append(
                         Element.Scope(
@@ -1207,7 +972,6 @@ extension PDF.HTML.Context {
                 }
             }
 
-        // List items
         case "li":
             let marker = context.pdf.nextListMarker()
             let markerWidth: PDF.UserSpace.Width
@@ -1234,21 +998,20 @@ extension PDF.HTML.Context {
         }
     }
 
-    /// Tag-specific cleanup for block elements (called from _popElement).
     private static func popBlockElement(
         _ scope: Element.Scope,
         context: inout PDF.HTML.Context
     ) {
         switch scope.tagName {
         case "table":
-            // Draw table right and bottom borders
+
             if let tc = context.table {
                 HTML.Tag.Element<Never>.drawTableRightAndBottomBorders(
                     tableCtx: tc,
                     context: &context
                 )
             }
-            // Restore saved table context from scope
+
             context.table = scope.savedTable
 
         case "thead":
@@ -1273,19 +1036,18 @@ extension PDF.HTML.Context {
                 context.pdf.flush.inline()
             }
             _ = context.pdf.list.stack.popLast()
-            // Restore the pending margin saved during push
+
             context.pendingBottomMargin = scope.savedPendingMargin
 
         case "li":
-            // Flush inline runs BEFORE clearing marker — otherwise the marker
-            // is consumed by emitLine during flush, but already nil.
+
             if context.pdf.inline.hasRuns {
                 context.pdf.flush.inline()
             }
             context.pdf.list.marker = nil
 
         default:
-            // Finalize heading if popping a heading element
+
             if let heading = context.section.activeHeading,
                 HTML.Tag.Element<Never>.headingLevel(for: scope.tagName) != nil
             {
@@ -1313,15 +1075,13 @@ extension PDF.HTML.Context {
     }
 }
 
-// MARK: - Inline Element Push/Pop
-
 extension PDF.HTML.Context {
     private static func pushInlineElement(
         _ tagName: String,
         context: inout PDF.HTML.Context
     ) {
         if tagName == "q" {
-            // Opening curly quote
+
             let openQuote = PDF.Context.Text.Run(
                 bytes: [0x93],
                 font: context.pdf.style.font,
@@ -1339,7 +1099,7 @@ extension PDF.HTML.Context {
         context: inout PDF.HTML.Context
     ) {
         if tagName == "q" {
-            // Closing curly quote
+
             let closeQuote = PDF.Context.Text.Run(
                 bytes: [0x94],
                 font: context.pdf.style.font,
@@ -1352,8 +1112,6 @@ extension PDF.HTML.Context {
         }
     }
 }
-
-// MARK: - Heading Tracking
 
 extension PDF.HTML.Context {
     private static func pushHeading(
@@ -1368,7 +1126,6 @@ extension PDF.HTML.Context {
         let pageNumber = context.pdf.completedPages.count + 1
         let yPosition = context.pdf.layout.box.lly
 
-        // Start capturing text for this heading (finalized in popBlockElement)
         context.section.activeHeading = .init(
             level: level,
             pageNumber: pageNumber,
@@ -1377,67 +1134,18 @@ extension PDF.HTML.Context {
     }
 }
 
-// MARK: - Table First-Row Measurement
-
 extension PDF.HTML.Context {
-    /// Finalize first-row measurement: compute column widths and replay recorded commands.
+
     private static func finalizeFirstRow(
         _ recording: Table.Recording,
         context: inout PDF.HTML.Context
     ) {
         guard var tableCtx = context.table, recording.columnCount > 0 else { return }
 
-        // Round 2b.2 (C-1 allocator): hybrid percent+content weighted
-        // allocation. Per-column weight is the SUM of the percent hint and
-        // the max-content measurement captured during first-row recording in
-        // Round 2b.1. Weights are normalized to `bounds.width`; each column
-        // is floored at its min-content width (W3C-required invariant).
-        //
-        // Algorithm:
-        //   weight[i] = percentHint[i] + maxContent[i]
-        //   where percentHint[i] is `recording.columnWidthWeights[i]` (or
-        //   uniform `100/n` if no hint), and maxContent[i] is
-        //   `recording.columnMaxContentWidths[i]` (or the average of
-        //   measured columns when this column's first-row cell is empty).
-        //   columnWidths[i] = bounds.width × weight[i] / Σweight
-        //   columnWidths[i] = max(columnWidths[i], minContentWidth[i])
-        //
-        // Heuristic rationale (NOT strict CSS 2.1 §17.5.2.2):
-        //   Strict W3C treats `width: N%` on a cell as `N% of containing
-        //   block` (hard fraction). Existing institute consumer code
-        //   (Letter.Header, Invoice header, Invoice totals) uses
-        //   `.width(.percent(100))` as a dominance HINT, not a literal 100%
-        //   constraint. Strict W3C starves adjacent columns to min-content
-        //   (verified empirically in Phase E Round 2b.2 attempts a/b — broke
-        //   C-E4 by collapsing inner-table host cell). Pure content-measured
-        //   (ignore percent) breaks the percent regression locks (verified
-        //   in attempt c). Additive `percent + content` respects both:
-        //   short-content tables with `width(100%)` preserve dominance via
-        //   the percent term; rich-content tables let content-heavy columns
-        //   claim proportional space via the max-content term.
-        //
-        // Content metric: max-content (`columnMaxContentWidths`) — sum of
-        // per-token + inter-token-space widths per cell, single-line
-        // interpretation per the Recording.swift comment. This is the
-        // W3C "max-content" preferred width: the width that fits all
-        // content on a single line. Min-content (`columnMinContentWidths`)
-        // is the widest unbreakable token per cell and is applied as the
-        // FLOOR (W3C-required: a column never goes below its min-content).
-        //
-        // Approximations (Round 2c follow-up):
-        //   * First-row-only measurement: columns whose first-row cell is
-        //     empty (e.g., `td { HTML.Empty() }` in Letter.Sender header)
-        //     have max-content == 0. We substitute the average-of-measured
-        //     so the column gets a fair share rather than zero.
-        //   * Pure-content fallback when no measurements exist: degrades
-        //     to legacy weighted allocator (matches prior empty-table
-        //     behavior; preserves byte-identity).
         let n = recording.columnCount
         let totalWidth = tableCtx.bounds.width
         let uniformPercentHint = 100.0 / Double(n)
 
-        // Average-measured max-content for substituting unmeasured columns
-        // (W3C "first-row empty cell" approximation; deferred to Round 2c).
         var measuredSum = 0.0
         var measuredCount = 0
         (0..<n).forEach { i in
@@ -1448,17 +1156,6 @@ extension PDF.HTML.Context {
         }
         let avgMeasured = measuredCount > 0 ? measuredSum / Double(measuredCount) : 0.0
 
-        // W3C CSS 2.1 §17.5.2.2: a `width: auto` table with no percent
-        // column hints uses shrink-to-fit — each column gets its
-        // max-content; the table's used width is the sum (capped at
-        // bounds.width). The institute's additive `percent + content`
-        // heuristic with uniform 50% baseline over-allocates columns
-        // whose content is small, producing the ~80–200pt over-wide
-        // label columns previously seen in factuur metadata / totals
-        // tables. With R#7 all-row measurement, `columnMaxContentWidths`
-        // now reflects the widest cell in each column (not just the
-        // first row), so shrink-to-fit no longer over-shrinks when a
-        // later row's label is wider than the first row's.
         let hasPercentHints = !recording.columnWidthWeights.isEmpty
         let useShrinkToFit =
             !tableCtx.hasExplicitWidth
@@ -1485,11 +1182,7 @@ extension PDF.HTML.Context {
                 }
             }
         } else {
-            // Additive `percent + content` heuristic (legacy behavior).
-            // Strict §17.5.2.2 in the percent-hint case would starve
-            // adjacent columns to min-content (broke C-E4 in Phase E
-            // 2b.2 attempts a/b); the additive form respects both the
-            // dominance hint and content-heavy adjacent columns.
+
             var weights: [Double] = []
             weights.reserveCapacity(n)
             var weightSum = 0.0
@@ -1507,8 +1200,7 @@ extension PDF.HTML.Context {
                 columnWidths.append(w)
             }
         }
-        // Apply min-content floor (W3C-required: a column never goes
-        // below its widest unbreakable token).
+
         (0..<n).forEach { i in
             if let minC = recording.columnMinContentWidths[i], columnWidths[i] < minC {
                 columnWidths[i] = minC
@@ -1518,20 +1210,16 @@ extension PDF.HTML.Context {
         tableCtx.columnsInitialized = true
         tableCtx.spans.preallocate(rows: 64, columns: recording.columnCount)
 
-        // Reset row state for replay
         tableCtx.currentColumn = 0
         tableCtx.maxCellHeightInCurrentRow = .init(0)
         tableCtx.pendingCellBorders = []
         context.table = tableCtx
 
-        // Restore Y position (content will re-render at correct position)
         context.pdf.layout.box.lly = recording.savedY
 
-        // Replay all recorded commands — cells now position correctly
         replay(recording.commands, context: &context)
     }
 
-    /// Replay recorded rendering commands.
     private static func replay(
         _ commands: [Table.Recording.Command],
         context: inout PDF.HTML.Context
@@ -1623,10 +1311,8 @@ extension PDF.HTML.Context {
     }
 }
 
-// MARK: - Table Row/Cell Pop Helpers
-
 extension PDF.HTML.Context {
-    /// Finalize a table row: compute row height, draw borders, advance Y.
+
     private static func popTableRow(
         scope: Element.Scope,
         context: inout PDF.HTML.Context
@@ -1643,7 +1329,6 @@ extension PDF.HTML.Context {
             ? tableCtx.maxCellHeightInCurrentRow
             : minRowHeight
 
-        // Draw cell borders with correct row height
         let rowStartY = tableCtx.bounds.lly
         let rowEndY = rowStartY + actualRowHeight
         for pending in tableCtx.pendingCellBorders {
@@ -1660,8 +1345,7 @@ extension PDF.HTML.Context {
                 tableCtx: tableCtx,
                 context: &context
             )
-            // Per-side borders declared via CSS modifiers on the cell (TD/TH).
-            // Rendered here once cell bounds are finalized.
+
             drawScopeSideBorders(
                 top: pending.pendingBorderTop,
                 right: pending.pendingBorderRight,
@@ -1672,8 +1356,6 @@ extension PDF.HTML.Context {
             )
         }
 
-        // Per-side borders declared via CSS modifiers on the row (TR).
-        // Span the row's full width.
         let rowBounds = PDF.UserSpace.Rectangle(
             x: tableCtx.bounds.llx,
             y: rowStartY,
@@ -1689,7 +1371,6 @@ extension PDF.HTML.Context {
             context: &context
         )
 
-        // Draw left border extensions for columns occupied by rowspan from previous rows
         let currentRow = tableCtx.totalRowsRendered
         let borderColor = tableCtx.borderColor
         let borderWidth = tableCtx.borderWidth.width
@@ -1697,7 +1378,7 @@ extension PDF.HTML.Context {
             if let span = tableCtx.spans.span(atRow: currentRow, column: col),
                 col == span.originColumn
             {
-                // Draw left border for the spanning cell's column at this row's height
+
                 let cellX = tableCtx.xForColumn(col)
                 context.pdf.emit.line(
                     from: PDF.UserSpace.Coordinate(x: cellX, y: rowStartY),
@@ -1708,28 +1389,8 @@ extension PDF.HTML.Context {
             }
         }
 
-        // Update row heights
         tableCtx.rowHeights.append(actualRowHeight)
 
-        // Advance past this row.
-        //
-        // When the row's content (typically a cell containing a nested table
-        // or multi-line text that page-broke) crossed a page boundary during
-        // rendering, the current cursor (`pdf.layout.box.lly`) reflects the
-        // new page's row-end-Y. `rowStartY` was captured at row-push time on
-        // the previous page, so `rowStartY + actualRowHeight` is a stale
-        // page-N coord that would overwrite the page-(N+M) cursor and shoot
-        // it past the content boundary — manifesting downstream as a forced
-        // page break when the subsequent block's text-run trips
-        // `page.ensure`.
-        //
-        // Detection: `lly` only decreases via `page.new()` (resets to top-
-        // of-content); `pdf.advance` only increases it. So `currentLly <
-        // rowStartY` is a reliable single-page-break signal. (Multi-page-
-        // break rows — content spanning 3+ pages — could in theory miss
-        // this heuristic if rowStartY on page N is numerically smaller than
-        // currentLly on page N+2; flagged as C-14 future work, not observed
-        // in practice.)
         let pageBrokeInRow = context.pdf.layout.box.lly < rowStartY
         let effectiveRowEndY = pageBrokeInRow ? context.pdf.layout.box.lly : rowEndY
         context.pdf.layout.box.lly = effectiveRowEndY
@@ -1741,7 +1402,6 @@ extension PDF.HTML.Context {
         context.table = tableCtx
     }
 
-    /// Finalize a table cell: track height, register pending border.
     private static func popTableCell(
         scope: Element.Scope,
         isHeader: Bool,
@@ -1755,7 +1415,6 @@ extension PDF.HTML.Context {
         let rowspan = context.attributes["rowspan"].flatMap { Int($0) } ?? 1
         let textAlignment = context.pdf.style.textAlign
 
-        // Compute actual cell content height (content Y advance + bottom padding)
         let cellContentHeight: PDF.UserSpace.Height
         if let tableCtx = context.table {
             cellContentHeight =
@@ -1766,7 +1425,7 @@ extension PDF.HTML.Context {
         }
 
         context.with(\.table) { tc in
-            // Track max cell height for row height computation
+
             if rowspan == 1 && cellContentHeight > tc.maxCellHeightInCurrentRow {
                 tc.maxCellHeightInCurrentRow = cellContentHeight
             }
@@ -1788,11 +1447,6 @@ extension PDF.HTML.Context {
         }
     }
 
-    /// Render per-side borders declared via CSS modifiers on a row or cell.
-    /// Per CSS Backgrounds 3 §3, each side's border is an independent
-    /// stroke at the box's corresponding edge. `style` is passed through
-    /// to the renderer: `.solid` (default) emits one stroke; `.double`
-    /// emits two parallel strokes with a gap per §3.5.
     private static func drawScopeSideBorders(
         top: Element.Scope.PendingSideBorder?,
         right: Element.Scope.PendingSideBorder?,

@@ -1,9 +1,3 @@
-// W3C_CSS_Backgrounds.BorderLeft+PDF.HTML.Style.Modifier.swift
-// CSS border-left property to PDF context translation.
-// Note: BorderLeft's `case properties` carries 3 separate associated
-// values (width keyword, style, color) — asymmetric vs BorderTop/Right/
-// Bottom which carry a single `Properties` struct.
-
 public import PDF_Rendering
 import PDF_Standard
 import W3C_CSS_Values
@@ -39,8 +33,3 @@ extension W3C_CSS_Backgrounds.BorderLeft: PDF.HTML.Style.Context.Modifier {
         )
     }
 }
-
-// RawProperty<BorderLeft> dispatch via BorderSideProperty (see
-// W3C_CSS_Backgrounds.BorderBottom+PDF.HTML.Style.Modifier.swift).
-// BorderLeft's asymmetric case shape (BorderWidth.Width keyword vs full
-// BorderWidth) is handled in the BorderSideProperty conformance.

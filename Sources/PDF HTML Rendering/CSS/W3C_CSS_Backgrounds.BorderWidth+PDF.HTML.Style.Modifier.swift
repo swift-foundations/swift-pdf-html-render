@@ -1,6 +1,3 @@
-// W3C_CSS_Backgrounds.BorderWidth+PDF.HTML.Style.Modifier.swift
-// CSS border-width property to PDF context translation
-
 public import PDF_Rendering
 import PDF_Standard
 
@@ -30,18 +27,15 @@ extension W3C_CSS_Backgrounds.BorderWidth: PDF.HTML.Style.Context.Modifier {
     }
 }
 
-// CSS `thin` / `medium` / `thick` keyword widths map to 1 / 3 / 5 px
-// per the CSS spec convention. `.length(L)` delegates to the shared
-// CSS length-to-PDF converter at `CSS+PDF.UserSpace.Size.swift`.
 private func pdfWidth(
     fromKeyword keyword: W3C_CSS_Backgrounds.BorderWidth.Width,
     currentSize: PDF.UserSpace.Size<1>,
     baseFontSize: PDF.UserSpace.Size<1>
 ) -> PDF.UserSpace.Size<1>? {
     switch keyword {
-    case .thin: return .init(0.75)  // 1px @ 96 DPI
-    case .medium: return .init(2.25)  // 3px @ 96 DPI
-    case .thick: return .init(3.75)  // 5px @ 96 DPI
+    case .thin: return .init(0.75)
+    case .medium: return .init(2.25)
+    case .thick: return .init(3.75)
 
     case .length(let length):
         return PDF.UserSpace.Size<1>(

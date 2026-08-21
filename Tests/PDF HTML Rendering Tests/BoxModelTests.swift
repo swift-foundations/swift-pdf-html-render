@@ -1,6 +1,3 @@
-// BoxModelTests.swift
-// Tests for CSS Box Model (margin, padding, width, height) in PDF rendering
-
 import CSS
 import Foundation
 import HTML_Rendering
@@ -8,8 +5,6 @@ import PDF_Rendering
 import Testing
 
 @testable import PDF_HTML_Rendering
-
-// MARK: - Margin Tests
 
 @Suite
 struct `Margin Tests` {
@@ -29,7 +24,6 @@ struct `Margin Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Both paragraphs should render
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
         #expect(contentString.contains("FIRST_PARAGRAPH"))
@@ -129,8 +123,6 @@ struct `Margin Tests` {
         #expect(contentString.contains("EM_MARGIN_CONTENT"))
     }
 }
-
-// MARK: - Padding Tests
 
 @Suite
 struct `Padding Tests` {
@@ -247,8 +239,6 @@ struct `Padding Tests` {
     }
 }
 
-// MARK: - Width Tests
-
 @Suite
 struct `Width Tests` {
 
@@ -307,8 +297,6 @@ struct `Width Tests` {
     }
 }
 
-// MARK: - Height Tests
-
 @Suite
 struct `Height Tests` {
 
@@ -348,8 +336,6 @@ struct `Height Tests` {
         #expect(contentString.contains("AUTO_HEIGHT_CONTENT"))
     }
 }
-
-// MARK: - Combined Box Model Tests
 
 @Suite
 struct `Combined Box Model Tests` {
@@ -434,8 +420,6 @@ struct `Combined Box Model Tests` {
     }
 }
 
-// MARK: - Box Model with Text Flow Tests
-
 @Suite
 struct `Box Model with Text Flow Tests` {
 
@@ -454,7 +438,6 @@ struct `Box Model with Text Flow Tests` {
 
         let pages = PDF.HTML.pages { TestView() }
 
-        // Content should still render
         let allContent = pages.flatMap { $0.contents }.flatMap { $0.data }
         let contentString = String(decoding: allContent, as: UTF8.self)
         #expect(contentString.contains("longer paragraph"))

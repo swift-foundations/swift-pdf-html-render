@@ -1,24 +1,9 @@
-// CSSStylesheetParserTests.swift
-// Phase 1 CSS cascade scaffolding — Commit 3:
-// CSS stylesheet parser test budget.
-//
-// Covers:
-//   - Tokenizer: comment strip, identifier, string, hex color, units
-//   - Selector parser: type, universal, comma-list, unsupported-don't-crash
-//   - Declaration parser: single property, multi-property
-//   - @media classification: print, screen, only screen, only print,
-//     (min-width: ...), screen and (min-width: ...), comma-lists
-//   - Malformed-input safety
-//   - Source-order preservation
-
 import Testing
 
 @testable import PDF_HTML_Rendering
 
 @Suite
 struct `CSSStylesheet Parser Tests` {
-
-    // MARK: - Tokenizer / Comment Handling
 
     @Test
     func `comments are stripped before parsing rules`() {
@@ -38,12 +23,10 @@ struct `CSSStylesheet Parser Tests` {
     func `unterminated comment doesn't crash`() {
         let css = "html { color: red; } /* unterminated"
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(css)
-        // Should parse the first rule and gracefully bail at the comment.
+
         #expect(sheet.rules.count == 1)
         #expect(sheet.rules.first?.selectors == [.type("html")])
     }
-
-    // MARK: - Selector Parsing
 
     @Test
     func `type selectors lowercase`() {
@@ -89,7 +72,7 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules.count == 3)
         for rule in sheet.rules {
             if case .unsupported = rule.selectors.first ?? .universal {
-                // expected
+
             } else {
                 Issue.record("Expected .unsupported for \(rule.selectors)")
             }
@@ -100,7 +83,7 @@ struct `CSSStylesheet Parser Tests` {
     func `pseudo-element ::before unsupported`() {
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse("p::before { content: 'x' }")
         if case .unsupported = sheet.rules.first?.selectors.first ?? .universal {
-            // expected
+
         } else {
             Issue.record("Expected .unsupported for pseudo-element")
         }
@@ -110,13 +93,11 @@ struct `CSSStylesheet Parser Tests` {
     func `descendant combinator unsupported`() {
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse("ul li { padding: 0 }")
         if case .unsupported = sheet.rules.first?.selectors.first ?? .universal {
-            // expected
+
         } else {
             Issue.record("Expected .unsupported for descendant combinator")
         }
     }
-
-    // MARK: - Declaration Parsing
 
     @Test
     func `single property declaration parses`() {
@@ -173,8 +154,6 @@ struct `CSSStylesheet Parser Tests` {
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse("html { line-height: 1.5 }")
         #expect(sheet.rules.first?.declarations.count == 1)
     }
-
-    // MARK: - @media Classification
 
     @Test
     func `at-media print classifies as printIncludes`() {
@@ -256,8 +235,6 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules[2].mediaContext == .printIncludes)
     }
 
-    // MARK: - Other At-Rules (Parse-and-Skip)
-
     @Test
     func `at-import is silently skipped`() {
         let css = """
@@ -283,14 +260,11 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules.first?.selectors == [.type("body")])
     }
 
-    // MARK: - Malformed-Input Safety
-
     @Test
     func `unterminated rule doesn't crash`() {
-        let css = "html { line-height: 1.5"  // missing `}`
+        let css = "html { line-height: 1.5"
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(css)
-        // Parser exhausts input gracefully; may or may not produce a partial rule.
-        // The contract is: NO CRASH.
+
         _ = sheet
     }
 
@@ -313,8 +287,6 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules.isEmpty)
     }
 
-    // MARK: - Source-Order Preservation
-
     @Test
     func `rules emitted in source order`() {
         let css = """
@@ -328,8 +300,6 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules[1].declarations.first?.value == "1.5")
         #expect(sheet.rules[2].selectors == [.type("body")])
     }
-
-    // MARK: - Real-World normalize.css Excerpt
 
     @Test
     func `normalize.css-style rules parse without loss`() {
@@ -352,11 +322,9 @@ struct `CSSStylesheet Parser Tests` {
         #expect(sheet.rules[5].declarations.first?.value == "80%")
     }
 
-    // MARK: - DocumentStyles-Style Cascade
-
     @Test
     func `DocumentStyles preamble + media-query classification`() {
-        // Mirrors HTML.Document.document.swift's DocumentStyles structure.
+
         let css = """
             html { line-height: 1.15 }
             html { line-height: 1.5 }
@@ -370,15 +338,11 @@ struct `CSSStylesheet Parser Tests` {
         let sheet = PDF.HTML.CSS.Stylesheet.Parser.parse(css)
         #expect(sheet.rules.count == 4)
 
-        // First two: normalize.css line-height then doc override — both
-        // unconditional. The cascade-apply step at Commit 4 picks the
-        // last source-order rule for any given property at same selector.
         #expect(sheet.rules[0].mediaContext == .unconditional)
         #expect(sheet.rules[1].mediaContext == .unconditional)
         #expect(sheet.rules[0].declarations.first?.value == "1.15")
         #expect(sheet.rules[1].declarations.first?.value == "1.5")
 
-        // Both @media queries are screen-only and skip for PDF.
         #expect(sheet.rules[2].mediaContext == .screenOnly)
         #expect(sheet.rules[3].mediaContext == .screenOnly)
     }

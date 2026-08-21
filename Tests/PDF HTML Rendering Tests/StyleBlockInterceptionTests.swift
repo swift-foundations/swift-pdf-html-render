@@ -1,16 +1,3 @@
-// StyleBlockInterceptionTests.swift
-// Phase 1 CSS cascade scaffolding — Commit 2:
-// `<style>` and `<title>` head-element text interception in PDF.HTML.Context.
-//
-// Validates the contracts:
-//   1. `<style>` element text content is captured into `collectedStyleBlocks`
-//      (one entry per `<style>`), preserving source order.
-//   2. `<style>` element text content is NOT rendered as visible PDF text.
-//   3. `<title>` element text content is silently suppressed (Phase 2 will
-//      route to ISO_32000.Document.Info.title via a separate field).
-//   4. Body text content renders normally (no regression).
-//   5. `insideStyleBlock` / `insideTitleBlock` flags clear correctly on pop.
-
 import Byte_Primitives_Standard_Library_Integration
 import Foundation
 import HTML_Rendering
@@ -39,11 +26,9 @@ struct `Style Block Interception Tests` {
         #expect(state.value.collectedStyleBlocks.count == 1)
         #expect(state.value.collectedStyleBlocks.first?.contains("line-height: 1.5") == true)
 
-        // Flag cleared after pop
         #expect(state.value.insideStyleBlock == false)
         #expect(state.value.currentStyleBlockBuffer.isEmpty)
 
-        // PDF content streams should NOT contain CSS text
         let pageBytes = Array(state.value.pdf.pages.flatMap { $0.contents }.flatMap { $0.data })
         let pageString = String(decoding: pageBytes, as: UTF8.self)
         #expect(
@@ -55,7 +40,6 @@ struct `Style Block Interception Tests` {
             "CSS rule syntax must not appear in PDF content stream"
         )
 
-        // Body content WAS rendered (sanity)
         #expect(pageString.contains("BODY_CONTENT_MARKER"))
     }
 

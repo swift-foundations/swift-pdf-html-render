@@ -1,43 +1,15 @@
-// PDF.HTML.CSS.Stylesheet.Parser.swift
-// Recursive-descent CSS stylesheet parser for Phase 1.
-//
-// Pattern: follows the institute idiom established by
-// `W3C_SVG2.Paths.Path.Parser` — a struct with cursor state
-// (input + index) and recursive-descent methods. Single static
-// entry point `parse(_:)`.
-//
-// Phase 1 scope (per Research/css-cascade-architectural-gap-2026-05-13.md):
-//   - Tokenizes CSS with comment stripping and whitespace skipping.
-//   - Parses rules: selector list + declaration block.
-//   - Parses selectors: type, universal, comma-separated lists.
-//     Class / ID / attribute / pseudo / combinator selectors are
-//     parsed-but-classified `.unsupported` per CSS Selectors §3.1.
-//   - Parses declarations into (property, value) string pairs.
-//     Value-grammar parsing deferred to Commit 4's per-property
-//     modifier dispatchers.
-//   - Parses `@media` and classifies into MediaContext.
-//   - Other at-rules (`@import`, `@charset`, `@keyframes`, `@supports`,
-//     `@page`, etc.) are parsed-and-skipped.
-//   - Malformed input does not crash: parser recovers by skipping
-//     to the next `;` or `}` delimiter.
-//
-// Phase 2 (deferred): full selector engine, specificity, !important,
-// inheritance propagation, @media viewport-feature evaluation.
-
 import PDF_Rendering
 import Standard_Library_Extensions
 
 extension PDF.HTML.CSS.Stylesheet {
-    /// Parser for CSS stylesheet text content (typically `<style>` block bodies).
-    public struct Parser {
 
-        // MARK: - Cursor State
+    public struct Parser {
 
         private let input: [Character]
         private var index: Int
 
         private init(source: String) {
-            // Materialize as Array<Character> for O(1) index advancement.
+
             self.input = Array(source)
             self.index = 0
         }
@@ -46,19 +18,10 @@ extension PDF.HTML.CSS.Stylesheet {
 
 extension PDF.HTML.CSS.Stylesheet.Parser {
 
-    // MARK: - Entry Point
-
-    /// Parse a CSS stylesheet source string.
-    ///
-    /// - Parameter source: The CSS text content (typically the inner
-    ///   text of one `<style>` element).
-    /// - Returns: Stylesheet with rules in source order.
     public static func parse(_ source: String) -> PDF.HTML.CSS.Stylesheet {
         var parser = Self(source: source)
         return parser.parseStylesheet()
     }
-
-    // MARK: - Top-Level
 
     private mutating func parseStylesheet() -> PDF.HTML.CSS.Stylesheet {
         var rules: [PDF.HTML.CSS.Rule] = []
@@ -69,7 +32,7 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
             } else if let rule = parseRuleSet(mediaContext: .unconditional) {
                 rules.append(rule)
             } else {
-                // Malformed top-level — recover to next `}` or `;`.
+
                 recoverToNextDelimiter()
             }
             skipNoise()
@@ -77,15 +40,13 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         return PDF.HTML.CSS.Stylesheet(rules: rules)
     }
 
-    // MARK: - At-Rules
-
     private mutating func parseAtRule(
         into rules: inout [PDF.HTML.CSS.Rule],
         currentMediaContext: PDF.HTML.CSS.MediaContext
     ) {
-        // Consume '@'
+
         advance()
-        // Read at-rule name.
+
         let nameStart = index
         while index < input.count, let c = peek(), c.isLetter || c == "-" {
             advance()
@@ -93,7 +54,7 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         let atName = String(input[nameStart..<index]).lowercased()
 
         if atName == "media" {
-            // Parse query string up to '{'.
+
             let queryStart = index
             while index < input.count, peek() != "{" {
                 advance()
@@ -103,14 +64,12 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
             )
             let classified = Self.classifyMediaQuery(query)
 
-            // Consume '{'
             if peek() == "{" { advance() }
 
-            // Parse inner rules until matching '}'.
             skipNoise()
             while index < input.count, peek() != "}" {
                 if peek() == "@" {
-                    // Nested at-rule: recurse with classified context as ambient.
+
                     parseAtRule(into: &rules, currentMediaContext: classified)
                 } else if let rule = parseRuleSet(mediaContext: classified) {
                     rules.append(rule)
@@ -119,20 +78,16 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
                 }
                 skipNoise()
             }
-            // Consume closing '}'
+
             if peek() == "}" { advance() }
         } else {
-            // Other at-rules: skip the entire rule including any block.
-            // `@import url(...);` ends at `;`; `@keyframes { ... }` ends
-            // at matching `}`; `@charset "..."` ends at `;`. Use a
-            // unified skip-to-delimiter strategy that handles either.
+
             skipAtRuleBody()
         }
     }
 
     private mutating func skipAtRuleBody() {
-        // Skip up to next `;` or matching block — whichever comes first.
-        // A block is opened by `{` and balanced.
+
         while index < input.count {
             let c = peek()
             if c == ";" {
@@ -162,18 +117,16 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         }
     }
 
-    // MARK: - Rule Sets
-
     private mutating func parseRuleSet(
         mediaContext: PDF.HTML.CSS.MediaContext
     ) -> PDF.HTML.CSS.Rule? {
         let selectorStart = index
-        // Read selectors up to '{'.
+
         while index < input.count {
             let c = peek()
             if c == "{" { break }
             if c == "}" || c == ";" {
-                // Malformed — bail.
+
                 return nil
             }
             advance()
@@ -183,11 +136,10 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         let selectorList = parseSelectorList(
             String(input[selectorStart..<index])
         )
-        advance()  // consume '{'
+        advance()
 
         let declarations = parseDeclarations()
 
-        // Consume '}'
         if peek() == "}" { advance() }
 
         return PDF.HTML.CSS.Rule(
@@ -197,13 +149,8 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         )
     }
 
-    // MARK: - Selectors
-
     private func parseSelectorList(_ raw: String) -> [PDF.HTML.CSS.Selector] {
-        // Split on top-level commas. CSS selectors don't have nested
-        // commas at Phase 1 supported levels (universal/type), but
-        // attribute selectors `[attr="a,b"]` would; treat them all as
-        // .unsupported anyway so naive split suffices.
+
         let parts = raw.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
         return parts.map { classifySelector(String($0.trimming(where: \.isWhitespace))) }
     }
@@ -215,23 +162,18 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         if raw == "*" {
             return .universal
         }
-        // A pure type selector is an HTML element name: alpha-only,
-        // optionally with digits after first letter (e.g., h1, h6).
-        // Reject anything containing `.`, `#`, `[`, `]`, `:`, whitespace,
-        // `>`, `+`, `~`, `&`, `*`.
+
         for c in raw {
             if ".#[]:>+~&*".contains(c) || c.isWhitespace {
                 return .unsupported(raw)
             }
         }
-        // First character must be alpha (HTML tag names).
+
         guard let first = raw.first, first.isLetter else {
             return .unsupported(raw)
         }
         return .type(raw.lowercased())
     }
-
-    // MARK: - Declarations
 
     private mutating func parseDeclarations() -> [PDF.HTML.CSS.Declaration] {
         var decls: [PDF.HTML.CSS.Declaration] = []
@@ -240,7 +182,7 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
             if let decl = parseDeclaration() {
                 decls.append(decl)
             } else {
-                // Recover to next `;` or `}` within this declaration block.
+
                 while index < input.count, peek() != ";", peek() != "}" {
                     advance()
                 }
@@ -252,7 +194,7 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
     }
 
     private mutating func parseDeclaration() -> PDF.HTML.CSS.Declaration? {
-        // Property name: identifier (letters, digits, hyphens).
+
         let nameStart = index
         while index < input.count, let c = peek(),
             c.isLetter || c.isNumber || c == "-"
@@ -262,12 +204,10 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         let property = String(input[nameStart..<index]).lowercased()
         guard !property.isEmpty else { return nil }
 
-        // Expect ':'.
         skipInlineSpaces()
         guard peek() == ":" else { return nil }
         advance()
 
-        // Read value up to ';' or '}', respecting parens and string quotes.
         let value = readDeclarationValue()
         if peek() == ";" { advance() }
 
@@ -301,18 +241,10 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         return String(input[valueStart..<index])
     }
 
-    // MARK: - @media classification
-
-    /// Classify a media query string against the print/`print`
-    /// rendering target.
-    ///
-    /// Internal-visible so the tests can verify classification logic
-    /// without round-tripping through the full parser.
     internal static func classifyMediaQuery(_ query: String) -> PDF.HTML.CSS.MediaContext {
         let lowered = String(query.lowercased().trimming(where: \.isWhitespace))
         if lowered.isEmpty { return .bareFeature }
 
-        // Split on top-level commas (media-query-list).
         let parts = lowered.split(separator: ",").map {
             String($0.trimming(where: \.isWhitespace))
         }
@@ -349,29 +281,17 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         return .other
     }
 
-    /// Extract the media type token from a single media-query part.
-    /// Returns nil for bare feature queries (e.g., `(min-width: 832px)`).
-    ///
-    /// Examples:
-    ///   "print" → "print"
-    ///   "only print" → "print"
-    ///   "not screen" → "screen" (Phase 1 ignores `not` negation;
-    ///     classified as screen for skip purposes — conservative)
-    ///   "screen and (min-width: 832px)" → "screen"
-    ///   "(min-width: 832px)" → nil
     private static func extractMediaType(_ part: String) -> String? {
         var tokens = part.split(separator: " ").map(String.init)
-        // Strip leading "only" / "not" modifier.
+
         if let first = tokens.first, first == "only" || first == "not" {
             tokens.removeFirst()
         }
         guard let first = tokens.first else { return nil }
-        // Bare feature: starts with '('.
+
         if first.hasPrefix("(") { return nil }
         return first
     }
-
-    // MARK: - Tokenizer Helpers
 
     private func peek() -> Character? {
         guard index < input.count else { return nil }
@@ -383,14 +303,13 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         index += 1
     }
 
-    /// Skip whitespace and CSS comments (`/* ... */`).
     private mutating func skipNoise() {
         while index < input.count {
             let c = input[index]
             if c.isWhitespace {
                 index += 1
             } else if c == "/", index + 1 < input.count, input[index + 1] == "*" {
-                // Comment: skip until "*/".
+
                 index += 2
                 while index + 1 < input.count {
                     if input[index] == "*" && input[index + 1] == "/" {
@@ -400,7 +319,7 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
                     index += 1
                 }
                 if index + 1 >= input.count {
-                    // Unterminated comment — consume to end.
+
                     index = input.count
                 }
             } else {
@@ -409,8 +328,6 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         }
     }
 
-    /// Skip only horizontal whitespace, not newlines or comments.
-    /// Used between identifier and `:` in declaration parsing.
     private mutating func skipInlineSpaces() {
         while index < input.count {
             let c = input[index]
@@ -422,7 +339,6 @@ extension PDF.HTML.CSS.Stylesheet.Parser {
         }
     }
 
-    /// Recovery: skip ahead until `}` or `;` at top level.
     private mutating func recoverToNextDelimiter() {
         while index < input.count {
             let c = input[index]

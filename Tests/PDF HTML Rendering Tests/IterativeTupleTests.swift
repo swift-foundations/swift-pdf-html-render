@@ -1,7 +1,3 @@
-// IterativeTupleTests.swift
-// Verify iterative _Tuple rendering eliminates stack overflow
-// from deeply nested buildPartialBlock binary trees.
-
 import HTML_Rendering
 import PDF_Rendering
 import Testing
@@ -17,8 +13,6 @@ struct `Iterative Tuple Tests` {
         }
         return [UInt8](document)
     }
-
-    // MARK: - Tables (primary crash scenario)
 
     @Test
     func `10x10 table renders without stack overflow`() {
@@ -38,8 +32,6 @@ struct `Iterative Tuple Tests` {
         #expect(!bytes.isEmpty)
     }
 
-    // MARK: - Deep flat view hierarchies
-
     @Test
     func `30-element flat view body renders without stack overflow`() {
         let bytes = render(FlatView30())
@@ -52,8 +44,6 @@ struct `Iterative Tuple Tests` {
         #expect(!bytes.isEmpty)
     }
 }
-
-// MARK: - Test Views
 
 private struct Row10: HTML.View {
     var body: some HTML.View {

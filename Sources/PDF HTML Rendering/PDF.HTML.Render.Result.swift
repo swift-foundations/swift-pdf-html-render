@@ -1,19 +1,12 @@
-// PDF.HTML.Render.Result.swift
-// Shared rendering infrastructure and result type
-
 import PDF_Rendering
 
-// MARK: - Render Namespace
-
 extension PDF.HTML {
-    /// Namespace for rendering result types.
+
     public enum Render {}
 }
 
-// MARK: - Shared Rendering Infrastructure
-
 extension PDF.HTML {
-    /// Create a rendering context from configuration with all defaults applied.
+
     static func prepareContext(
         configuration: PDF.HTML.Configuration
     ) -> PDF.HTML.Context {
@@ -33,7 +26,6 @@ extension PDF.HTML {
         return Self.Context(pdf: pdfContext, configuration: configuration)
     }
 
-    /// Finalize rendering: flush deferred content, resolve internal links, return result.
     static func finalizeRendering(
         context: inout PDF.HTML.Context
     ) -> Render.Result {
@@ -54,16 +46,14 @@ extension PDF.HTML {
     }
 }
 
-// MARK: - Render Result
-
 extension PDF.HTML.Render {
-    /// Result of rendering HTML to PDF, including collected metadata for outlines.
+
     public struct Result: Sendable {
-        /// The rendered PDF pages
+
         public let pages: [PDF.Page]
-        /// Collected headings for outline/bookmark generation
+
         public let headings: [PDF.HTML.Context.Section.HeadingEntry]
-        /// Named destinations for internal links
+
         public let namedDestinations: [String: PDF.HTML.Context.Link.Destination]
     }
 }

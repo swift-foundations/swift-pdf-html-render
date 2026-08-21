@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.Margin+PDF.HTML.Style.Modifier.swift
-// CSS margin property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -10,7 +7,7 @@ extension W3C_CSS_BoxModel.Margin: PDF.HTML.Style.Modifier {
 
         switch self {
         case .auto:
-            // Auto margins handled during layout
+
             context.margin.top = nil
             context.margin.right = nil
             context.margin.bottom = nil
@@ -61,7 +58,7 @@ extension W3C_CSS_BoxModel.Margin: PDF.HTML.Style.Modifier {
             left.apply(to: &context, configuration: configuration)
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

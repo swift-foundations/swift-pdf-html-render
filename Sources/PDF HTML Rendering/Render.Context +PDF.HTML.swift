@@ -5,38 +5,28 @@ import PDF_Rendering
 import Render_Primitives
 
 extension Render.Context {
-    /// Creates a rendering context that forwards operations to a PDF HTML context.
-    ///
-    /// - Parameter state: A mutable reference to the PDF HTML rendering state.
-    /// - Returns: A witness-based rendering context backed by the PDF HTML context.
+
     public static func pdfHTML(state: Ownership.Mutable<PDF.HTML.Context>) -> Self {
 
-        /// Records an action during speculative rendering (if active).
         func record(_ action: Render.Action) {
             if state.value.speculativeActions != nil {
                 state.value.speculativeActions!.append(action)
             }
         }
 
-        /// Checks whether speculative content fits on the current page.
-        ///
-        /// If it doesn't fit: rollback to snapshot, page break, replay.
-        /// Called when a block element opens or explicitly via `checkFit`.
         func resolveSpeculative(minimumRequired: PDF.UserSpace.Height) {
             guard let snapshot = state.value.speculativeSnapshot,
                 let actions = state.value.speculativeActions
             else { return }
 
-            // Clear speculative state before replay to prevent re-recording.
             state.value.speculativeSnapshot = nil
             state.value.speculativeActions = nil
 
             if !state.value.pdf.page.exceeds(adding: minimumRequired) {
                 state.value.avoidPageBreakAfter = false
-                return  // Fits — keep speculative content as-is.
+                return
             }
 
-            // Doesn't fit — rollback, page break, replay.
             state.value = snapshot
             state.value.speculativeSnapshot = nil
             state.value.speculativeActions = nil
@@ -102,10 +92,6 @@ extension Render.Context {
                     if isBlock {
                         let isHeading = HTML.Tag.Element<Never>.headingLevel(for: tagName) != nil
 
-                        // When a non-heading block element opens and speculative
-                        // content is pending, check whether the heading + this block
-                        // fit on the current page. Heading → heading doesn't resolve
-                        // (consecutive headings should stick together).
                         if !isHeading && state.value.speculativeSnapshot != nil {
                             let lineHeight = state.value.pdf.style.line.height
                             let marginTop = PDF.UserSpace.Size<1>(
@@ -116,16 +102,11 @@ extension Render.Context {
                                 currentSize: state.value.pdf.style.fontSize,
                                 baseFontSize: state.value.configuration.defaultFontSize
                             ).height
-                            // Require enough space for the next block's margin plus
-                            // at least 3 lines of content — a heading with only 1-2
-                            // orphaned lines beneath it looks worse than a page break.
+
                             let minimumFollowingContent = marginTop + lineHeight * 3
                             resolveSpeculative(minimumRequired: minimumFollowingContent)
                         }
 
-                        // Headings implicitly begin speculative rendering so they
-                        // keep with the next block — same as browser UA stylesheet
-                        // `break-after: avoid` on h1–h6.
                         if isHeading && state.value.speculativeSnapshot == nil {
                             state.value.speculativeSnapshot = state.value
                             state.value.speculativeActions = []
@@ -207,9 +188,7 @@ extension Render.Context {
             },
             applyInlineStyle: {
                 let handled = state.value.apply(inlineStyle: $0)
-                // After the style modifier fires, check if it set avoidPageBreakAfter.
-                // If so, begin speculative rendering: save a snapshot of the entire
-                // context (cheap via @CoW) and start recording actions for replay.
+
                 if state.value.avoidPageBreakAfter && state.value.speculativeSnapshot == nil {
                     state.value.speculativeSnapshot = state.value
                     state.value.speculativeActions = []

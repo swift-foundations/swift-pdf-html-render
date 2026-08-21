@@ -1,6 +1,3 @@
-// W3C_CSS_Backgrounds.BorderColor+PDF.HTML.Style.Modifier.swift
-// CSS border-color property to PDF context translation
-
 public import PDF_Rendering
 import PDF_Standard
 

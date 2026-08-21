@@ -1,6 +1,3 @@
-// W3C_CSS_BoxModel.MarginRight+PDF.HTML.Style.Modifier.swift
-// CSS margin-right property to PDF context translation
-
 import PDF_Rendering
 import PDF_Standard
 
@@ -17,11 +14,11 @@ extension W3C_CSS_BoxModel.MarginRight: PDF.HTML.Style.Modifier {
             context.margin.right = size.width
 
         case .auto:
-            // Auto margins handled during layout
+
             context.margin.right = nil
 
         case .global:
-            // Inherit/initial/unset - no change for PDF
+
             break
         }
     }

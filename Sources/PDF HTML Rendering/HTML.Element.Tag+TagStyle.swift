@@ -1,14 +1,11 @@
-// HTML.Tag.Element+TagStyle.swift
-// Tag-specific styling, block margins, and heading level detection
-
 import HTML_Rendering_Core
 import PDF_Rendering
 
 extension HTML.Tag.Element {
-    /// Apply tag-specific styling based on tag name
+
     static func applyTagStyle(_ tagName: String, context: inout PDF.HTML.Context) {
         switch tagName {
-        // Headings
+
         case "h1":
             context.pdf.style.font = context.pdf.style.font.bold
             context.pdf.style.fontSize = context.configuration.headingSize(level: 1)
@@ -33,18 +30,15 @@ extension HTML.Tag.Element {
             context.pdf.style.font = context.pdf.style.font.bold
             context.pdf.style.fontSize = context.configuration.headingSize(level: 6)
 
-        // Emphasis and importance
         case "strong", "b":
             context.pdf.style.font = context.pdf.style.font.bold
 
         case "em", "i":
             context.pdf.style.font = context.pdf.style.font.italic
 
-        // Code and preformatted
-        // WebKit uses a smaller monospace font relative to body text
         case "code", "kbd", "samp":
             context.pdf.style.font = .courier
-            // WebKit's monospace is slightly smaller than body text
+
             context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
 
         case "pre":
@@ -52,7 +46,6 @@ extension HTML.Tag.Element {
             context.pdf.style.fontSize = (context.pdf.style.fontSize) * 0.9
             context.pdf.mode.preserveWhitespace = true
 
-        // Text decoration
         case "s", "strike", "del":
             context.pdf.style.textMarkup = .strikeOut
 
@@ -62,13 +55,11 @@ extension HTML.Tag.Element {
         case "mark":
             context.pdf.style.textMarkup = .highlight(.rgb(red: 1.0, green: 1.0, blue: 0.0))
 
-        // Sub/superscript
-        // WebKit: font-size ~0.83em, vertical-align: sub/super
         case "sub":
             let currentSize = context.pdf.style.fontSize
             context.pdf.style.fontSize =
                 currentSize * context.configuration.typography.subscriptScale
-            // Subscript drops below baseline
+
             context.pdf.style.verticalOffset -=
                 (currentSize * context.configuration.typography.subscriptOffset).height
 
@@ -76,25 +67,19 @@ extension HTML.Tag.Element {
             let currentSize = context.pdf.style.fontSize
             context.pdf.style.fontSize =
                 currentSize * context.configuration.typography.superscriptScale
-            // Superscript rises above baseline
+
             context.pdf.style.verticalOffset +=
                 (currentSize * context.configuration.typography.superscriptOffset).height
 
-        // Small - WebKit default is smaller
         case "small":
-            // reason: no Size<1> *= Double compound-assignment overload; a = a * b is the
-            // only expressible form (SIMD generic *= mis-resolution)
-            // swiftlint:disable:next shorthand_operator
+
             context.pdf.style.fontSize =
                 context.pdf.style.fontSize * context.configuration.typography.smallScale
 
-        // Links
         case "a":
             context.pdf.style.color = .blue
             context.pdf.style.textMarkup = .underline
 
-        // Block indentation
-        // WebKit default margin-left for blockquote is 40px = 30pt (at 72/96 conversion)
         case "blockquote", "dd":
             let indent = context.configuration.indent.blockquote
             context.pdf.layout.box.llx += indent
@@ -104,7 +89,6 @@ extension HTML.Tag.Element {
             context.pdf.layout.box.llx += margin
             context.pdf.layout.box.urx -= margin
 
-        // Citation, definition, and variable (all italic in WebKit)
         case "cite", "dfn", "var":
             context.pdf.style.font = context.pdf.style.font.italic
 
@@ -113,7 +97,6 @@ extension HTML.Tag.Element {
         }
     }
 
-    /// Get block margins for a tag name
     static func blockMargins(
         for tagName: String,
         configuration: PDF.HTML.Configuration
@@ -129,25 +112,15 @@ extension HTML.Tag.Element {
         case "blockquote":
             return (.length(.em(1.0)), .length(.em(1.0)))
 
-        // Note: <figure> has no vertical margins - its children provide spacing.
-        // This matches WebKit behavior where figure acts as a transparent container
-        // for margin collapsing, with only horizontal indentation applied.
         case "pre":
             return (.length(.em(1.0)), .length(.em(1.0)))
 
         case "ul", "ol":
-            // Note: nested lists have no margins (handled by parent li element)
+
             return (.length(.em(1.0)), .length(.em(1.0)))
 
-        // Note: <li> has no default margins per WHATWG HTML Standard
-        // The parent <ul>/<ol> provides the 1em margins
         case "table":
-            // WebKit / mainstream-UA default: table has no inherent vertical
-            // margin (browsers rely on adjacent flow content's own margins).
-            // CSS 2.1 §17 does not specify a default; aligning with the
-            // de-facto W3C-evergreen UA stylesheet by returning nil so that
-            // consumer-provided `.css.margin(top:bottom:)` is the sole
-            // source of vertical spacing for tables.
+
             return nil
 
         default:
@@ -155,9 +128,6 @@ extension HTML.Tag.Element {
         }
     }
 
-    // MARK: - Heading Level Detection
-
-    /// Get heading level for tag name (nil if not a heading)
     static func headingLevel(for tagName: String) -> Int? {
         switch tagName {
         case "h1": return 1
@@ -170,12 +140,10 @@ extension HTML.Tag.Element {
         }
     }
 
-    /// Check if tag is a list container
     static func isListContainer(_ tagName: String) -> Bool {
         tagName == "ol" || tagName == "ul"
     }
 
-    /// Get list type for a list container tag
     static func listType(for tagName: String) -> PDF.Context.List.Kind? {
         switch tagName {
         case "ol": return .ordered(startNumber: 1)

@@ -1,19 +1,14 @@
-// PDF.HTML.Context.Table.PendingCellBorder.swift
-// Pending cell border drawn after content when actual row height is known
-
 import Layout_Primitives
 
 extension PDF.HTML.Context.Table {
-    /// Pending cell borders to draw after content (so we know actual row height)
+
     public struct PendingCellBorder {
         let column: Int
         let colspan: Int
         let rowspan: Int
         let isHeader: Bool
         let textAlignment: Horizontal.Alignment
-        /// Per-side border declarations captured on the cell scope via
-        /// CSS modifiers (`border-bottom`, etc.). Rendered at row-pop time
-        /// once the cell's bounds are finalized.
+
         let pendingBorderTop: PDF.HTML.Context.Element.Scope.PendingSideBorder?
         let pendingBorderRight: PDF.HTML.Context.Element.Scope.PendingSideBorder?
         let pendingBorderBottom: PDF.HTML.Context.Element.Scope.PendingSideBorder?
