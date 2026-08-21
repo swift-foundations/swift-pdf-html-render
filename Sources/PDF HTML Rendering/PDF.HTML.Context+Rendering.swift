@@ -167,7 +167,7 @@ extension PDF.HTML.Context {
         pdf.flush.inline()
         let run = PDF.Context.Text.Run(
             text: alt.isEmpty ? "[image]" : "[\(alt)]",
-            font: pdf.style.font.italic ?? pdf.style.font,
+            font: pdf.style.font.italic,
             fontSize: pdf.style.fontSize,
             color: .gray(0.5)
         )

@@ -8,7 +8,7 @@ extension W3C_CSS_BoxModel.Height: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
         switch self {
         case .lengthPercentage(let lp):
-            let currentSize = context.style.fontSize ?? configuration.defaultFontSize
+            let currentSize = context.style.fontSize
             let size = PDF.UserSpace.Size<1>(
                 lp,
                 currentSize: currentSize,

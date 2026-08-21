@@ -22,7 +22,7 @@ extension W3C_CSS_BoxModel.Width: PDF.HTML.Style.Modifier {
         case .lengthPercentage(let lp):
             // Length form (px, em, pt, etc.) — relative to current/base font
             // size, which is the correct reference for absolute length units.
-            let currentSize = context.style.fontSize ?? configuration.defaultFontSize
+            let currentSize = context.style.fontSize
             let size = PDF.UserSpace.Size<1>(
                 lp,
                 currentSize: currentSize,

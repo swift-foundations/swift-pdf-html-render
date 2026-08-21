@@ -6,7 +6,7 @@ import PDF_Standard
 
 extension W3C_CSS_BoxModel.Margin: PDF.HTML.Style.Modifier {
     public func apply(to context: inout PDF.Context, configuration: PDF.HTML.Configuration) {
-        let currentSize = context.style.fontSize ?? configuration.defaultFontSize
+        let currentSize = context.style.fontSize
 
         switch self {
         case .auto:
